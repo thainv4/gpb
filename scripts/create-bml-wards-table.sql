@@ -1,0 +1,137 @@
+-- =====================================================
+-- Script: Create BML_WARDS Table
+-- Description: Tạo bảng BML_WARDS cho module Ward
+-- Author: LIS GPB Team
+-- Date: 2024-01-15
+-- Version: 1.0
+-- =====================================================
+
+-- Drop table if exists (for development only)
+-- DROP TABLE BML_WARDS CASCADE CONSTRAINTS;
+
+-- Create BML_WARDS table
+CREATE TABLE BML_WARDS (
+    -- ========== PRIMARY KEY ==========
+    ID VARCHAR2(36) NOT NULL,
+    
+    -- ========== BUSINESS FIELDS ==========
+    WARD_CODE VARCHAR2(20) NOT NULL,
+    WARD_NAME VARCHAR2(200) NOT NULL,
+    PROVINCE_ID VARCHAR2(36) NOT NULL,
+    SHORT_NAME VARCHAR2(50) NOT NULL,
+    SORT_ORDER NUMBER(10) NOT NULL,
+    IS_ACTIVE NUMBER(1) DEFAULT 1 NOT NULL,
+    
+    -- ========== AUDIT FIELDS ==========
+    CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    UPDATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    DELETED_AT TIMESTAMP,
+    CREATED_BY VARCHAR2(50),
+    UPDATED_BY VARCHAR2(50),
+    VERSION NUMBER(10) DEFAULT 1 NOT NULL,
+    
+    -- ========== CONSTRAINTS ==========
+    CONSTRAINT PK_BML_WARDS PRIMARY KEY (ID),
+    CONSTRAINT UK_BML_WARDS_CODE UNIQUE (WARD_CODE),
+    CONSTRAINT FK_BML_WARDS_PROVINCE FOREIGN KEY (PROVINCE_ID) REFERENCES BML_PROVINCES(ID),
+    CONSTRAINT CK_BML_WARDS_ACTIVE CHECK (IS_ACTIVE IN (0, 1)),
+    CONSTRAINT CK_BML_WARDS_SORT_ORDER CHECK (SORT_ORDER > 0)
+);
+
+-- ========== INDEXES ==========
+-- Primary key index (automatically created)
+-- CREATE INDEX PK_BML_WARDS ON BML_WARDS(ID);
+
+-- Unique indexes (automatically created by constraints)
+-- CREATE INDEX UK_BML_WARDS_CODE ON BML_WARDS(WARD_CODE);
+
+-- Performance indexes
+CREATE INDEX IDX_BML_WARDS_ACTIVE ON BML_WARDS(IS_ACTIVE);
+CREATE INDEX IDX_BML_WARDS_SORT_ORDER ON BML_WARDS(SORT_ORDER);
+CREATE INDEX IDX_BML_WARDS_CREATED_AT ON BML_WARDS(CREATED_AT);
+CREATE INDEX IDX_BML_WARDS_DELETED_AT ON BML_WARDS(DELETED_AT);
+CREATE INDEX IDX_BML_WARDS_PROVINCE_ID ON BML_WARDS(PROVINCE_ID);
+
+-- Composite indexes for common queries
+CREATE INDEX IDX_BML_WARDS_PROVINCE_ACTIVE ON BML_WARDS(PROVINCE_ID, IS_ACTIVE);
+CREATE INDEX IDX_BML_WARDS_PROVINCE_SORT ON BML_WARDS(PROVINCE_ID, SORT_ORDER);
+CREATE INDEX IDX_BML_WARDS_ACTIVE_SORT ON BML_WARDS(IS_ACTIVE, SORT_ORDER);
+
+-- ========== TRIGGERS ==========
+-- Trigger for UPDATED_AT and VERSION
+CREATE OR REPLACE TRIGGER TR_BML_WARDS_UPDATED_AT
+BEFORE UPDATE ON BML_WARDS
+FOR EACH ROW
+BEGIN
+    :NEW.UPDATED_AT := CURRENT_TIMESTAMP;
+    :NEW.VERSION := :OLD.VERSION + 1;
+END;
+/
+
+-- ========== COMMENTS ==========
+COMMENT ON TABLE BML_WARDS IS 'Bảng quản lý thông tin các xã phường thị trấn Việt Nam';
+COMMENT ON COLUMN BML_WARDS.ID IS 'ID duy nhất của xã (UUID)';
+COMMENT ON COLUMN BML_WARDS.WARD_CODE IS 'Mã xã (5 chữ số)';
+COMMENT ON COLUMN BML_WARDS.WARD_NAME IS 'Tên xã phường thị trấn';
+COMMENT ON COLUMN BML_WARDS.PROVINCE_ID IS 'ID của tỉnh (Foreign Key)';
+COMMENT ON COLUMN BML_WARDS.SHORT_NAME IS 'Tên viết tắt của xã';
+COMMENT ON COLUMN BML_WARDS.SORT_ORDER IS 'Thứ tự sắp xếp';
+COMMENT ON COLUMN BML_WARDS.IS_ACTIVE IS 'Trạng thái hoạt động (1: Active, 0: Inactive)';
+COMMENT ON COLUMN BML_WARDS.CREATED_AT IS 'Ngày tạo';
+COMMENT ON COLUMN BML_WARDS.UPDATED_AT IS 'Ngày cập nhật cuối';
+COMMENT ON COLUMN BML_WARDS.DELETED_AT IS 'Ngày xóa mềm';
+COMMENT ON COLUMN BML_WARDS.CREATED_BY IS 'Người tạo';
+COMMENT ON COLUMN BML_WARDS.UPDATED_BY IS 'Người cập nhật cuối';
+COMMENT ON COLUMN BML_WARDS.VERSION IS 'Phiên bản (optimistic locking)';
+
+-- ========== SAMPLE DATA ==========
+-- Insert sample data for wards of Hanoi (01)
+INSERT INTO BML_WARDS (ID, WARD_CODE, WARD_NAME, PROVINCE_ID, SHORT_NAME, SORT_ORDER, IS_ACTIVE, CREATED_BY, UPDATED_BY) VALUES
+('550e8400-e29b-41d4-a716-446655440101', '01001', 'Phường Phúc Xá', '550e8400-e29b-41d4-a716-446655440001', 'PX', 1, 1, 'system', 'system'),
+('550e8400-e29b-41d4-a716-446655440102', '01002', 'Phường Trúc Bạch', '550e8400-e29b-41d4-a716-446655440001', 'TB', 2, 1, 'system', 'system'),
+('550e8400-e29b-41d4-a716-446655440103', '01003', 'Phường Vĩnh Phú', '550e8400-e29b-41d4-a716-446655440001', 'VP', 3, 1, 'system', 'system'),
+('550e8400-e29b-41d4-a716-446655440104', '01004', 'Phường Cống Vị', '550e8400-e29b-41d4-a716-446655440001', 'CV', 4, 1, 'system', 'system'),
+('550e8400-e29b-41d4-a716-446655440105', '01005', 'Phường Liễu Giai', '550e8400-e29b-41d4-a716-446655440001', 'LG', 5, 1, 'system', 'system'),
+('550e8400-e29b-41d4-a716-446655440106', '01006', 'Phường Nguyễn Trung Trực', '550e8400-e29b-41d4-a716-446655440001', 'NTT', 6, 1, 'system', 'system'),
+('550e8400-e29b-41d4-a716-446655440107', '01007', 'Phường Quán Thánh', '550e8400-e29b-41d4-a716-446655440001', 'QT', 7, 1, 'system', 'system'),
+('550e8400-e29b-41d4-a716-446655440108', '01008', 'Phường Ngọc Hà', '550e8400-e29b-41d4-a716-446655440001', 'NH', 8, 1, 'system', 'system'),
+('550e8400-e29b-41d4-a716-446655440109', '01009', 'Phường Đội Cấn', '550e8400-e29b-41d4-a716-446655440001', 'ĐC', 9, 1, 'system', 'system'),
+('550e8400-e29b-41d4-a716-446655440110', '01010', 'Phường Ngọc Khánh', '550e8400-e29b-41d4-a716-446655440001', 'NK', 10, 1, 'system', 'system');
+
+-- Insert sample data for wards of Ho Chi Minh City (50)
+INSERT INTO BML_WARDS (ID, WARD_CODE, WARD_NAME, PROVINCE_ID, SHORT_NAME, SORT_ORDER, IS_ACTIVE, CREATED_BY, UPDATED_BY) VALUES
+('550e8400-e29b-41d4-a716-446655440501', '50001', 'Phường Bến Nghé', '550e8400-e29b-41d4-a716-446655440050', 'BN', 1, 1, 'system', 'system'),
+('550e8400-e29b-41d4-a716-446655440502', '50002', 'Phường Bến Thành', '550e8400-e29b-41d4-a716-446655440050', 'BT', 2, 1, 'system', 'system'),
+('550e8400-e29b-41d4-a716-446655440503', '50003', 'Phường Cầu Kho', '550e8400-e29b-41d4-a716-446655440050', 'CK', 3, 1, 'system', 'system'),
+('550e8400-e29b-41d4-a716-446655440504', '50004', 'Phường Cầu Ông Lãnh', '550e8400-e29b-41d4-a716-446655440050', 'COL', 4, 1, 'system', 'system'),
+('550e8400-e29b-41d4-a716-446655440505', '50005', 'Phường Cô Giang', '550e8400-e29b-41d4-a716-446655440050', 'CG', 5, 1, 'system', 'system'),
+('550e8400-e29b-41d4-a716-446655440506', '50006', 'Phường Đa Kao', '550e8400-e29b-41d4-a716-446655440050', 'ĐK', 6, 1, 'system', 'system'),
+('550e8400-e29b-41d4-a716-446655440507', '50007', 'Phường Nguyễn Thái Bình', '550e8400-e29b-41d4-a716-446655440050', 'NTB', 7, 1, 'system', 'system'),
+('550e8400-e29b-41d4-a716-446655440508', '50008', 'Phường Phạm Ngũ Lão', '550e8400-e29b-41d4-a716-446655440050', 'PNL', 8, 1, 'system', 'system'),
+('550e8400-e29b-41d4-a716-446655440509', '50009', 'Phường Tân Định', '550e8400-e29b-41d4-a716-446655440050', 'TĐ', 9, 1, 'system', 'system'),
+('550e8400-e29b-41d4-a716-446655440510', '50010', 'Phường Đa Kao', '550e8400-e29b-41d4-a716-446655440050', 'ĐK', 10, 1, 'system', 'system');
+
+-- Commit transaction
+COMMIT;
+
+-- ========== VERIFICATION ==========
+-- Verify table creation
+SELECT 'BML_WARDS table created successfully' AS STATUS FROM DUAL;
+
+-- Verify data insertion
+SELECT COUNT(*) AS TOTAL_WARDS FROM BML_WARDS;
+
+-- Verify sample data
+SELECT WARD_CODE, WARD_NAME, SHORT_NAME, SORT_ORDER, IS_ACTIVE 
+FROM BML_WARDS 
+ORDER BY PROVINCE_ID, SORT_ORDER 
+FETCH FIRST 10 ROWS ONLY;
+
+-- Verify foreign key relationship
+SELECT w.WARD_CODE, w.WARD_NAME, p.PROVINCE_NAME 
+FROM BML_WARDS w 
+JOIN BML_PROVINCES p ON w.PROVINCE_ID = p.ID 
+ORDER BY p.PROVINCE_CODE, w.SORT_ORDER 
+FETCH FIRST 10 ROWS ONLY;
+
+-- ========== END OF SCRIPT ==========

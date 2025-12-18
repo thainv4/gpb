@@ -1,0 +1,16 @@
+-- database/migrations/011_add_deleted_at_to_user_rooms.sql
+-- Thêm cột DELETED_AT vào bảng BML_USER_ROOMS
+
+-- Thêm cột DELETED_AT
+ALTER TABLE BML_USER_ROOMS ADD DELETED_AT TIMESTAMP NULL;
+
+-- Thêm comment cho cột
+COMMENT ON COLUMN BML_USER_ROOMS.DELETED_AT IS 'TIMESTAMP WHEN THE RECORD WAS SOFT-DELETED';
+
+-- Tạo index cho DELETED_AT để tối ưu query
+CREATE INDEX IDX_UR_DELETED_AT ON BML_USER_ROOMS(DELETED_AT);
+
+-- Cập nhật comment cho bảng
+COMMENT ON TABLE BML_USER_ROOMS IS 'BẢNG PHÂN QUYỀN PHÒNG CHO USER - ĐÃ CẬP NHẬT DELETED_AT';
+
+PROMPT 'Cột DELETED_AT đã được thêm vào bảng BML_USER_ROOMS thành công!';

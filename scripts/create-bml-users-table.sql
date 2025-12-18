@@ -1,0 +1,102 @@
+-- =====================================================
+-- Script: Create BML_USERS table for LIS GPB Backend
+-- Database: Oracle 12c
+-- Prefix: BML_
+-- =====================================================
+
+-- Drop table if exists (for development only)
+-- DROP TABLE BML_USERS CASCADE CONSTRAINTS;
+
+-- Create BML_USERS table
+CREATE TABLE BML_USERS (
+    ID VARCHAR2(36) NOT NULL,
+    USERNAME VARCHAR2(50) NOT NULL,
+    EMAIL VARCHAR2(100) NOT NULL,
+    PASSWORD_HASH VARCHAR2(255) NOT NULL,
+    FIRST_NAME VARCHAR2(50) NOT NULL,
+    LAST_NAME VARCHAR2(50) NOT NULL,
+    PHONE_NUMBER VARCHAR2(20),
+    DATE_OF_BIRTH TIMESTAMP,
+    ADDRESS VARCHAR2(2000),
+    IS_ACTIVE NUMBER(1) DEFAULT 1 NOT NULL,
+    CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    UPDATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    DELETED_AT TIMESTAMP,
+    CREATED_BY VARCHAR2(50),
+    UPDATED_BY VARCHAR2(50),
+    VERSION NUMBER(10) DEFAULT 1 NOT NULL,
+    
+    CONSTRAINT PK_BML_USERS PRIMARY KEY (ID),
+    CONSTRAINT UK_BML_USERS_USERNAME UNIQUE (USERNAME),
+    CONSTRAINT UK_BML_USERS_EMAIL UNIQUE (EMAIL),
+    CONSTRAINT CK_BML_USERS_IS_ACTIVE CHECK (IS_ACTIVE IN (0, 1))
+);
+
+-- Create indexes for better performance
+CREATE INDEX IDX_BML_USERS_USERNAME ON BML_USERS(USERNAME);
+CREATE INDEX IDX_BML_USERS_EMAIL ON BML_USERS(EMAIL);
+CREATE INDEX IDX_BML_USERS_IS_ACTIVE ON BML_USERS(IS_ACTIVE);
+CREATE INDEX IDX_BML_USERS_CREATED_AT ON BML_USERS(CREATED_AT);
+CREATE INDEX IDX_BML_USERS_DELETED_AT ON BML_USERS(DELETED_AT);
+
+-- Create trigger to update UPDATED_AT automatically
+CREATE OR REPLACE TRIGGER TR_BML_USERS_UPDATE
+    BEFORE UPDATE ON BML_USERS
+    FOR EACH ROW
+BEGIN
+    :NEW.UPDATED_AT := CURRENT_TIMESTAMP;
+    :NEW.VERSION := :OLD.VERSION + 1;
+END;
+/
+
+-- Insert sample data for testing
+INSERT INTO BML_USERS (
+    ID, USERNAME, EMAIL, PASSWORD_HASH, FIRST_NAME, LAST_NAME, 
+    IS_ACTIVE, CREATED_AT, UPDATED_AT, CREATED_BY, UPDATED_BY, VERSION
+) VALUES (
+    '550e8400-e29b-41d4-a716-446655440000',
+    'admin',
+    'admin@lisgpb.com',
+    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/8KzKz2K', -- password: admin123
+    'System',
+    'Administrator',
+    1,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP,
+    'system',
+    'system',
+    1
+);
+
+INSERT INTO BML_USERS (
+    ID, USERNAME, EMAIL, PASSWORD_HASH, FIRST_NAME, LAST_NAME, 
+    IS_ACTIVE, CREATED_AT, UPDATED_AT, CREATED_BY, UPDATED_BY, VERSION
+) VALUES (
+    '550e8400-e29b-41d4-a716-446655440001',
+    'john_doe',
+    'john.doe@example.com',
+    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/8KzKz2K', -- password: SecurePass123!
+    'John',
+    'Doe',
+    1,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP,
+    'system',
+    'system',
+    1
+);
+
+-- Commit the transaction
+COMMIT;
+
+-- Display table structure
+DESC BML_USERS;
+
+-- Display sample data
+SELECT ID, USERNAME, EMAIL, FIRST_NAME, LAST_NAME, IS_ACTIVE, CREATED_AT 
+FROM BML_USERS 
+ORDER BY CREATED_AT;
+
+-- =====================================================
+-- Script completed successfully!
+-- =====================================================
