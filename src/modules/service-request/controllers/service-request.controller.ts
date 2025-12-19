@@ -1,8 +1,7 @@
-import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus, UseGuards, BadRequestException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { Controller, Get, Post, Patch, Body, Param, Query, HttpCode, HttpStatus, UseGuards, BadRequestException } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { ServiceRequestService } from '../services/service-request.service';
 import { StoredServiceRequestService } from '../services/stored-service-request.service';
-import { GetServiceRequestDto } from '../dto/commands/get-service-request.dto';
 import { StoreServiceRequestDto } from '../dto/commands/store-service-request.dto';
 import { EnterResultDto } from '../dto/commands/enter-result.dto';
 import { ReviewResultDto } from '../dto/commands/review-result.dto';
@@ -145,7 +144,22 @@ export class ServiceRequestController {
         return ResponseBuilder.success(result);
     }
 
-    @Put('stored/:storedReqId/services/:serviceId/result')
+    @Get('stored/:storedReqId/services/:serviceId/result')
+    @ApiOperation({ summary: 'Lấy kết quả xét nghiệm' })
+    @ApiParam({ name: 'storedReqId', description: 'ID của Service Request đã lưu' })
+    @ApiParam({ name: 'serviceId', description: 'ID của Service/Test' })
+    @ApiResponse({ status: 200, description: 'Lấy kết quả thành công', type: EnterResultDto })
+    @ApiResponse({ status: 404, description: 'Service Request hoặc Service không tìm thấy' })
+    @ApiResponse({ status: 400, description: 'Service không thuộc Service Request này' })
+    async getResult(
+        @Param('storedReqId') storedReqId: string,
+        @Param('serviceId') serviceId: string,
+    ) {
+        const result = await this.storedServiceRequestService.getResult(storedReqId, serviceId);
+        return ResponseBuilder.success(result);
+    }
+
+    @Patch('stored/:storedReqId/services/:serviceId/result')
     @ApiOperation({ summary: 'Nhập/cập nhật kết quả xét nghiệm' })
     @ApiParam({ name: 'storedReqId', description: 'ID của Service Request đã lưu' })
     @ApiParam({ name: 'serviceId', description: 'ID của Service/Test' })

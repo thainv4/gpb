@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsOptional, IsNumber, IsIn, IsUUID, MaxLength, ValidateIf } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsNumber, IsIn, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -19,6 +19,12 @@ export class EnterResultDto {
     @IsOptional()
     @IsString()
     resultText?: string;
+
+    @ApiPropertyOptional({ description: 'Tên kết quả xét nghiệm', example: 'Kết quả xét nghiệm máu', maxLength: 200 })
+    @IsOptional()
+    @IsString()
+    @MaxLength(200, { message: 'Tên kết quả không được quá 200 ký tự' })
+    resultName?: string;
 
     @ApiProperty({
         description: 'Trạng thái kết quả',

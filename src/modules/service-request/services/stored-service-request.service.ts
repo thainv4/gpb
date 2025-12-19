@@ -446,6 +446,7 @@ export class StoredServiceRequestService {
             shortName: service.shortName,
             description: service.description,
             resultText: service.resultText,
+            resultName: service.resultName,
             resultValue: service.resultValue,
             resultValueText: service.resultValueText,
             resultStatus: service.resultStatus,
@@ -511,6 +512,9 @@ export class StoredServiceRequestService {
             if (dto.resultText !== undefined) {
                 service.resultText = dto.resultText;
             }
+            if (dto.resultName !== undefined) {
+                service.resultName = dto.resultName;
+            }
             service.resultStatus = dto.resultStatus;
 
             // Auto-calculate IS_NORMAL
@@ -551,6 +555,44 @@ export class StoredServiceRequestService {
                 resultEnteredByUserId: savedService.resultEnteredByUserId!,
             };
         });
+    }
+
+    /**
+     * Lấy kết quả xét nghiệm
+     */
+    async getResult(
+        storedReqId: string,
+        serviceId: string
+    ): Promise<EnterResultDto> {
+        // Validate stored request exists
+        const storedRequest = await this.storedRepo.findById(storedReqId);
+        if (!storedRequest) {
+            throw new NotFoundException(`Stored Service Request với ID ${storedReqId} không tìm thấy`);
+        }
+
+        // Find service
+        const service = await this.serviceRepo.findById(serviceId);
+        if (!service) {
+            throw new NotFoundException(`Service với ID ${serviceId} không tìm thấy`);
+        }
+
+        // Validate service belongs to stored request
+        if (service.storedServiceRequestId !== storedReqId) {
+            throw new BadRequestException('Service không thuộc Service Request này');
+        }
+
+        // Map to EnterResultDto
+        const result: EnterResultDto = {
+            resultValue: service.resultValue ?? undefined,
+            resultValueText: service.resultValueText ?? undefined,
+            resultText: service.resultText ?? undefined,
+            resultName: service.resultName ?? undefined,
+            resultStatus: service.resultStatus ?? 'PENDING',
+            resultNotes: service.resultNotes ?? undefined,
+            resultMetadata: service.resultMetadata ?? undefined,
+        };
+
+        return result;
     }
 
     /**

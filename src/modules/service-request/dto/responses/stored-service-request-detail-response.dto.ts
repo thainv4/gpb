@@ -63,6 +63,9 @@ export class StoredServiceResponseDto {
     @ApiPropertyOptional({ description: 'Kết quả xét nghiệm (CLOB)' })
     resultText?: string | null;
 
+    @ApiPropertyOptional({ description: 'Tên kết quả xét nghiệm' })
+    resultName?: string | null;
+
     // Result Value & Status
     @ApiPropertyOptional({ description: 'Giá trị kết quả (số)' })
     resultValue?: number | null;

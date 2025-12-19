@@ -68,6 +68,9 @@ export class StoredServiceRequestService extends BaseEntity {
     @Column({ name: 'RESULT_TEXT', type: 'clob', nullable: true })
     resultText?: string | null; // Kết quả xét nghiệm (3-5 trang A4)
 
+    @Column({ name: 'RESULT_NAME', type: 'varchar2', length: 200, nullable: true })
+    resultName?: string | null; // Tên kết quả xét nghiệm
+
     // Result Value & Status
     @Column({ name: 'RESULT_VALUE', type: 'number', precision: 15, scale: 4, nullable: true })
     resultValue?: number | null;

@@ -131,7 +131,7 @@ export class SampleReceptionService extends BaseService {
 
         // 4. Tạo mã với format mới: {CODE_PREFIX}{DATE_FORMAT}.{SEQUENCE_NUMBER}
         const paddedSequence = nextSequence.toString().padStart(sampleType.codeWidth, '0');
-        return `${sampleType.codePrefix}${dateStr}.${paddedSequence}`;
+        return `${sampleType.codePrefix}${dateStr}${paddedSequence}`;
     }
 
     async generateCodePreview(generateDto: GenerateCodeDto): Promise<GenerateCodeResponseDto> {
@@ -147,7 +147,7 @@ export class SampleReceptionService extends BaseService {
         const dateStr = this.formatDateByResetPeriod(targetDate, sampleType.resetPeriod);
         const nextSequence = await this.getNextSequenceNumber(sampleType.id, targetDate, sampleType.resetPeriod);
         const paddedSequence = nextSequence.toString().padStart(sampleType.codeWidth, '0');
-        const receptionCode = `${sampleType.codePrefix}${dateStr}.${paddedSequence}`;
+        const receptionCode = `${sampleType.codePrefix}${dateStr}${paddedSequence}`;
 
         return {
             receptionCode,
@@ -208,17 +208,21 @@ export class SampleReceptionService extends BaseService {
     }
 
     private formatDateByResetPeriod(date: Date, resetPeriod: string): string {
+        const year = date.getFullYear().toString().slice(-2); // Lấy 2 số cuối của năm (YY)
+        const month = (date.getMonth() + 1).toString().padStart(2, '0'); // MM
+        const day = date.getDate().toString().padStart(2, '0'); // DD
+
         switch (resetPeriod) {
             case 'DAILY':
-                return date.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+                return `${year}${month}${day}`; // YYMMDD (ví dụ: 251211 cho 11/12/2025)
             case 'MONTHLY':
-                return date.toISOString().slice(0, 7).replace(/-/g, ''); // YYYYMM
+                return `${year}${month}`; // YYMM (ví dụ: 2512 cho tháng 12/2025)
             case 'YEARLY':
-                return date.toISOString().slice(0, 4); // YYYY
+                return year; // YY (ví dụ: 25 cho năm 2025)
             case 'NEVER':
                 return ''; // Không có phần ngày
             default:
-                return date.toISOString().slice(0, 7).replace(/-/g, ''); // Default: YYYYMM
+                return `${year}${month}`; // Default: YYMM
         }
     }
 
