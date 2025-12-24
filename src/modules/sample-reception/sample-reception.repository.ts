@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, Like, Between } from 'typeorm';
+import { Repository, IsNull, Between, EntityManager } from 'typeorm';
 import { SampleReception } from './entities/sample-reception.entity';
 import { ISampleReceptionRepository } from './interfaces/sample-reception.repository.interface';
 
@@ -110,12 +110,17 @@ export class SampleReceptionRepository implements ISampleReceptionRepository {
         });
     }
 
-    async getNextSequenceNumber(sampleTypeId: string, date: Date, resetPeriod?: string): Promise<number> {
+    async getNextSequenceNumber(
+        sampleTypeId: string, 
+        date: Date, 
+        resetPeriod?: string,
+        manager?: EntityManager
+    ): Promise<number> {
         let whereCondition = '';
         let parameters: any = { sampleTypeId };
 
         switch (resetPeriod) {
-            case 'DAILY':
+            case 'DAILY': {
                 const startOfDay = new Date(date);
                 startOfDay.setHours(0, 0, 0, 0);
                 const endOfDay = new Date(date);
@@ -123,31 +128,42 @@ export class SampleReceptionRepository implements ISampleReceptionRepository {
                 whereCondition = 'sampleReception.receptionDate BETWEEN :startOfDay AND :endOfDay';
                 parameters = { ...parameters, startOfDay, endOfDay };
                 break;
-            case 'MONTHLY':
+            }
+            case 'MONTHLY': {
                 const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
                 const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
                 whereCondition = 'sampleReception.receptionDate BETWEEN :startOfMonth AND :endOfMonth';
                 parameters = { ...parameters, startOfMonth, endOfMonth };
                 break;
-            case 'YEARLY':
+            }
+            case 'YEARLY': {
                 const startOfYear = new Date(date.getFullYear(), 0, 1);
                 const endOfYear = new Date(date.getFullYear(), 11, 31, 23, 59, 59, 999);
                 whereCondition = 'sampleReception.receptionDate BETWEEN :startOfYear AND :endOfYear';
                 parameters = { ...parameters, startOfYear, endOfYear };
                 break;
+            }
             case 'NEVER':
                 whereCondition = '1=1'; // Đếm tất cả records
                 break;
-            default:
+            default: {
                 // Default: MONTHLY
                 const startOfMonthDefault = new Date(date.getFullYear(), date.getMonth(), 1);
                 const endOfMonthDefault = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
                 whereCondition = 'sampleReception.receptionDate BETWEEN :startOfMonth AND :endOfMonth';
                 parameters = { ...parameters, startOfMonth: startOfMonthDefault, endOfMonth: endOfMonthDefault };
                 break;
+            }
         }
 
-        const result = await this.sampleReceptionRepository
+        // Sử dụng manager từ transaction hoặc repository mặc định
+        const repository = manager 
+            ? manager.getRepository(SampleReception)
+            : this.sampleReceptionRepository;
+
+        // LƯU Ý: Oracle không cho phép FOR UPDATE với aggregate functions (MAX)
+        // Không dùng lock ở đây, lock sẽ được dùng khi verify uniqueness
+        const result = await repository
             .createQueryBuilder('sampleReception')
             .select('MAX(sampleReception.sequenceNumber)', 'maxSequence')
             .where('sampleReception.sampleTypeId = :sampleTypeId', { sampleTypeId })
@@ -156,6 +172,88 @@ export class SampleReceptionRepository implements ISampleReceptionRepository {
             .getRawOne();
 
         return (result?.maxSequence || 0) + 1;
+    }
+
+    async getNextUniqueSequenceNumber(
+        sampleTypeId: string,
+        codePrefix: string,
+        dateStr: string,
+        codeWidth: number,
+        date: Date,
+        resetPeriod: string,
+        manager: EntityManager
+    ): Promise<{ sequenceNumber: number; receptionCode: string }> {
+        // BƯỚC 1: Lấy base sequence number theo sampleTypeId
+        const baseSequence = await this.getNextSequenceNumber(
+            sampleTypeId, 
+            date, 
+            resetPeriod,
+            manager
+        );
+        
+        // BƯỚC 2: Tìm MAX sequence number TOÀN BẢNG cho cùng prefix và date
+        // Đây là sequence cao nhất đã được dùng bởi BẤT KỲ SampleType nào
+        // LƯU Ý: Oracle không cho phép FOR UPDATE với aggregate functions (MAX)
+        // Nên không dùng lock ở đây, sẽ lock khi verify uniqueness
+        const pattern = `${codePrefix}${dateStr}%`;
+        const prefixLength = codePrefix.length;
+        const dateLength = dateStr.length;
+        const startPos = prefixLength + dateLength + 1; // Vị trí bắt đầu của sequence trong code
+        
+        // Query để tìm MAX sequence number từ receptionCode
+        // Không dùng lock vì Oracle không cho phép FOR UPDATE với MAX()
+        const maxSequenceResult = await manager
+            .createQueryBuilder()
+            .select(`MAX(TO_NUMBER(SUBSTR(RECEPTION_CODE, ${startPos}, ${codeWidth})))`, 'MAX_SEQ')
+            .from('BML_SAMPLE_RECEPTIONS', 'reception')
+            .where('reception.RECEPTION_CODE LIKE :pattern', { pattern })
+            .andWhere('reception.DELETED_AT IS NULL')
+            .getRawOne();
+        
+        // Nếu không có code nào tồn tại → Dùng baseSequence
+        const maxUsedSequence = maxSequenceResult?.MAX_SEQ 
+            ? Number.parseInt(String(maxSequenceResult.MAX_SEQ), 10) 
+            : 0;
+        
+        // BƯỚC 3: Chọn sequence = MAX(baseSequence, maxUsedSequence + 1)
+        // Đảm bảo sequence >= baseSequence và > maxUsedSequence
+        let nextSequence = Math.max(baseSequence, maxUsedSequence + 1);
+        
+        // BƯỚC 4: Verify uniqueness (có thể vẫn bị trùng nếu có gap hoặc race condition)
+        let attempts = 0;
+        const maxAttempts = 100;
+        
+        while (attempts < maxAttempts) {
+            const paddedSequence = nextSequence.toString().padStart(codeWidth, '0');
+            const receptionCode = `${codePrefix}${dateStr}${paddedSequence}`;
+            
+            // Check uniqueness với query builder và pessimistic lock
+            // Dùng query builder thay vì findOne vì Oracle không cho phép FOR UPDATE với findOne
+            const existing = await manager
+                .createQueryBuilder(SampleReception, 'reception')
+                .where('reception.receptionCode = :receptionCode', { receptionCode })
+                .andWhere('reception.deletedAt IS NULL')
+                .setLock('pessimistic_write')
+                .getOne();
+            
+            if (!existing) {
+                // Tìm thấy code unique!
+                return { 
+                    sequenceNumber: nextSequence, 
+                    receptionCode 
+                };
+            }
+            
+            // Nếu trùng, tăng sequence và thử lại
+            nextSequence++;
+            attempts++;
+        }
+        
+        // Nếu vượt quá maxAttempts → Throw error
+        throw new Error(
+            `Unable to generate unique reception code after ${maxAttempts} attempts. ` +
+            `Base sequence: ${baseSequence}, Max used: ${maxUsedSequence}, Last attempted: ${nextSequence}`
+        );
     }
 
     async findByReceptionCode(receptionCode: string): Promise<SampleReception | null> {

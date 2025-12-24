@@ -4,8 +4,6 @@ import { SampleReceptionService } from './sample-reception.service';
 import { CreateSampleReceptionDto } from './dto/commands/create-sample-reception.dto';
 import { GetSampleReceptionsDto } from './dto/queries/get-sample-receptions.dto';
 import { GenerateCodeDto } from './dto/queries/generate-code.dto';
-import { SampleReceptionResponseDto } from './dto/responses/sample-reception-response.dto';
-import { GenerateCodeResponseDto } from './dto/responses/generate-code-response.dto';
 import { DualAuthGuard } from '../auth/guards/dual-auth.guard';
 import { ResponseBuilder } from '../../common/builders/response.builder';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';

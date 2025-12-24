@@ -42,37 +42,83 @@ export class SampleReceptionService extends BaseService {
     async createSampleReception(createDto: CreateSampleReceptionDto, currentUser: CurrentUser): Promise<string> {
         this.currentUserContext.setCurrentUser(currentUser);
 
-        return this.transactionWithAudit(async (manager) => {
-            // 1. Tìm SampleType theo code
-            const sampleType = await this.sampleTypeRepository.findByCode(createDto.sampleTypeCode);
-            if (!sampleType) {
-                throw AppError.notFound('Sample type not found');
-            }
+        const maxRetries = 3;
+        let retryCount = 0;
 
-            // 2. Sinh mã tiếp nhận với cấu hình từ Sample Type
-            const receptionCode = await this.generateReceptionCode(sampleType.typeCode, sampleType.id);
+        while (retryCount < maxRetries) {
+            try {
+                return await this.transactionWithAudit(async (manager) => {
+                    // 1. Tìm SampleType theo code
+                    const sampleType = await this.sampleTypeRepository.findByCode(createDto.sampleTypeCode);
+                    if (!sampleType) {
+                        throw AppError.notFound('Sample type not found');
+                    }
 
-            // 3. Kiểm tra trùng lặp nếu không cho phép
-            if (!sampleType.allowDuplicate) {
-                const existingReception = await this.sampleReceptionRepository.findByReceptionCode(receptionCode);
-                if (existingReception) {
-                    throw AppError.conflict('Reception code already exists');
+                    const targetDate = new Date();
+
+                    // 2. Format date string
+                    const dateStr = this.formatDateByResetPeriod(targetDate, sampleType.resetPeriod);
+
+                    // 3. Tìm sequence number và code UNIQUE TOÀN BẢNG
+                    // Method này sẽ tự động tăng sequence nếu code bị trùng với SampleType khác
+                    const { sequenceNumber, receptionCode } = 
+                        await this.sampleReceptionRepository.getNextUniqueSequenceNumber(
+                            sampleType.id,
+                            sampleType.codePrefix,
+                            dateStr,
+                            sampleType.codeWidth,
+                            targetDate,
+                            sampleType.resetPeriod,
+                            manager  // Pass manager để dùng trong transaction với lock
+                        );
+
+                    // 4. Kiểm tra allowDuplicate (nếu cần)
+                    if (!sampleType.allowDuplicate) {
+                        // Code đã được check unique trong getNextUniqueSequenceNumber
+                        // Nhưng có thể check lại để chắc chắn
+                        const existing = await manager
+                            .createQueryBuilder(SampleReception, 'reception')
+                            .where('reception.receptionCode = :receptionCode', { receptionCode })
+                            .andWhere('reception.deletedAt IS NULL')
+                            .setLock('pessimistic_write')
+                            .getOne();
+                        if (existing) {
+                            throw AppError.conflict('Reception code already exists');
+                        }
+                    }
+
+                    // 5. Tạo record với sequence và code đã unique
+                    const reception = new SampleReception();
+                    reception.receptionCode = receptionCode;  // Code đã unique toàn bảng
+                    reception.sampleTypeId = sampleType.id;
+                    reception.receptionDate = targetDate;
+                    reception.sequenceNumber = sequenceNumber;  // Sequence có thể > base sequence nếu bị conflict
+                    reception.createdBy = currentUser.id;
+                    reception.updatedBy = currentUser.id;
+
+                    const savedReception = await manager.save(SampleReception, reception);
+                    return savedReception.id;
+                });
+            } catch (error: any) {
+                // Nếu là unique constraint violation hoặc conflict, retry
+                if (error?.code === '23505' || error?.code === '23000' || 
+                    error?.message?.includes('unique constraint') ||
+                    error?.message?.includes('Reception code already exists') ||
+                    error?.message?.includes('Unable to generate unique reception code')) {
+                    retryCount++;
+                    if (retryCount >= maxRetries) {
+                        throw AppError.conflict('Failed to generate unique reception code after retries');
+                    }
+                    // Wait before retry (exponential backoff)
+                    await new Promise(resolve => setTimeout(resolve, 100 * retryCount));
+                    continue;
                 }
+                // Nếu là lỗi khác, throw ngay
+                throw error;
             }
+        }
 
-            // 4. Tạo record
-            const reception = new SampleReception();
-            reception.receptionCode = receptionCode;
-            reception.sampleTypeId = sampleType.id;
-            reception.receptionDate = new Date();
-            reception.sequenceNumber = await this.getNextSequenceNumber(sampleType.id, new Date(), sampleType.resetPeriod);
-
-            reception.createdBy = currentUser.id;
-            reception.updatedBy = currentUser.id;
-
-            const savedReception = await manager.save(SampleReception, reception);
-            return savedReception.id;
-        });
+        throw AppError.conflict('Failed to generate unique reception code');
     }
 
     async deleteSampleReception(id: string): Promise<void> {
@@ -201,10 +247,15 @@ export class SampleReceptionService extends BaseService {
 
     // ========== PRIVATE METHODS ==========
 
-    private async getNextSequenceNumber(sampleTypeId: string, date?: Date, resetPeriod?: string): Promise<number> {
+    private async getNextSequenceNumber(
+        sampleTypeId: string, 
+        date?: Date, 
+        resetPeriod?: string,
+        manager?: any
+    ): Promise<number> {
         const targetDate = date || new Date();
         // Use repository method that properly handles sequence number generation based on reset period
-        return await this.sampleReceptionRepository.getNextSequenceNumber(sampleTypeId, targetDate, resetPeriod);
+        return await this.sampleReceptionRepository.getNextSequenceNumber(sampleTypeId, targetDate, resetPeriod, manager);
     }
 
     private formatDateByResetPeriod(date: Date, resetPeriod: string): string {

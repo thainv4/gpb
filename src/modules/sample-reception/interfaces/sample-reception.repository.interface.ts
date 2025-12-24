@@ -1,3 +1,4 @@
+import { EntityManager } from 'typeorm';
 import { SampleReception } from '../entities/sample-reception.entity';
 
 export interface ISampleReceptionRepository {
@@ -10,6 +11,15 @@ export interface ISampleReceptionRepository {
     countByDateAndType(sampleTypeCode: string, date: Date): Promise<number>;
     findTodayReceptions(): Promise<SampleReception[]>;
     findByDateRange(startDate: Date, endDate: Date): Promise<SampleReception[]>;
-    getNextSequenceNumber(sampleTypeId: string, date: Date, resetPeriod?: string): Promise<number>;
+    getNextSequenceNumber(sampleTypeId: string, date: Date, resetPeriod?: string, manager?: EntityManager): Promise<number>;
+    getNextUniqueSequenceNumber(
+        sampleTypeId: string,
+        codePrefix: string,
+        dateStr: string,
+        codeWidth: number,
+        date: Date,
+        resetPeriod: string,
+        manager: EntityManager
+    ): Promise<{ sequenceNumber: number; receptionCode: string }>;
     findByReceptionCode(receptionCode: string): Promise<SampleReception | null>;
 }
