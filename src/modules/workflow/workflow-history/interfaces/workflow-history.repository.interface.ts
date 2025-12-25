@@ -16,6 +16,7 @@ export interface IWorkflowHistoryRepository {
         fromDate?: Date,
         toDate?: Date,
         isCurrent?: number,
+        hisServiceReqCode?: string,
         limit?: number,
         offset?: number,
         order?: 'ASC' | 'DESC',

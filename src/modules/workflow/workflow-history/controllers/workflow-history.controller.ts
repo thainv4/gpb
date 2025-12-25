@@ -1,12 +1,12 @@
 import { Controller, Get, Post, Put, Body, Param, Query, UseGuards, BadRequestException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiParam, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiParam, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { WorkflowHistoryService } from '../services/workflow-history.service';
 import { StartWorkflowDto } from '../dto/commands/start-workflow.dto';
 import { TransitionStateDto } from '../dto/commands/transition-state.dto';
 import { UpdateCurrentStateDto } from '../dto/commands/update-current-state.dto';
 import { GetWorkflowHistoryDto } from '../dto/queries/get-workflow-history.dto';
 import { GetWorkflowHistoryByRoomStateDto } from '../dto/queries/get-workflow-history-by-room-state.dto';
-import { WorkflowHistoryResponseDto, GetWorkflowHistoryResult } from '../dto/responses/workflow-history-response.dto';
+import { WorkflowHistoryResponseDto } from '../dto/responses/workflow-history-response.dto';
 import { ResponseBuilder } from '../../../../common/builders/response.builder';
 import { DualAuthGuard } from '../../../auth/guards/dual-auth.guard';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
@@ -173,6 +173,7 @@ export class WorkflowHistoryController {
                 fromDate: query.fromDate,
                 toDate: query.toDate,
                 isCurrent: query.isCurrent,
+                hisServiceReqCode: query.hisServiceReqCode || 'all',
             },
         });
     }

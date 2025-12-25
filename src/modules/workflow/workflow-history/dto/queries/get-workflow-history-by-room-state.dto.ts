@@ -24,6 +24,15 @@ export class GetWorkflowHistoryByRoomStateDto {
     stateId?: string;
 
     @ApiPropertyOptional({ 
+        description: 'Mã service request từ HIS (để trống để lấy tất cả)', 
+        example: 'SR2024120001',
+        default: ''
+    })
+    @IsOptional()
+    @IsString()
+    hisServiceReqCode?: string = '';
+
+    @ApiPropertyOptional({ 
         description: 'Loại room field để filter (actionRoomId, currentRoomId, transitionedByRoomId)', 
         enum: ['actionRoomId', 'currentRoomId', 'transitionedByRoomId'],
         default: 'currentRoomId'

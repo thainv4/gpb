@@ -162,6 +162,7 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
         fromDate?: Date,
         toDate?: Date,
         isCurrent?: number,
+        hisServiceReqCode?: string,
         limit: number = 10,
         offset: number = 0,
         order: 'ASC' | 'DESC' = 'DESC',
@@ -175,6 +176,20 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
                 // .leftJoinAndSelect('wh.fromState', 'fromState')
                 .where(`wh.${roomType} = :roomId`, { roomId })
                 .andWhere('wh.deletedAt IS NULL');
+
+            // Filter theo hisServiceReqCode nếu được cung cấp và không phải chuỗi rỗng
+            // Dùng WHERE EXISTS để tránh vấn đề với string reference entity
+            if (hisServiceReqCode && hisServiceReqCode.trim() !== '') {
+                queryBuilder.andWhere(
+                    `EXISTS (
+                        SELECT 1 FROM BML_STORED_SERVICE_REQUESTS ssr 
+                        WHERE ssr.ID = wh.STORED_SERVICE_REQ_ID 
+                        AND ssr.HIS_SERVICE_REQ_CODE = :hisServiceReqCode
+                        AND ssr.DELETED_AT IS NULL
+                    )`,
+                    { hisServiceReqCode }
+                );
+            }
 
             // Chỉ filter theo state nếu stateId được cung cấp
             if (stateId) {

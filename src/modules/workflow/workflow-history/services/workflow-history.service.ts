@@ -296,6 +296,7 @@ export class WorkflowHistoryService {
             fromDate,
             toDate,
             dto.isCurrent,
+            dto.hisServiceReqCode || '',
             dto.limit || 10,
             dto.offset || 0,
             dto.order || 'DESC',
