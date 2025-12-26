@@ -1,0 +1,153 @@
+module.exports = {
+  apps: [
+    {
+      name: 'lis-gpb-backend',
+      script: 'dist/main.js',
+      instances: 1,
+      exec_mode: 'cluster',
+      watch: false,
+      max_memory_restart: '1G',
+      env: {
+        NODE_ENV: 'development',
+        PORT: 8000,
+        // Database Oracle
+        DB_TYPE: 'oracle',
+        DB_HOST: '192.168.7.248',
+        DB_PORT: 1521,
+        DB_USERNAME: 'HIS_RS',
+        DB_PASSWORD: 'HIS_RS',
+        DB_SERVICE_NAME: 'orclstb',
+        // JWT
+        JWT_SECRET: 'your-super-secret-key-here',
+        JWT_ACCESS_EXPIRES_IN: '15m',
+        JWT_REFRESH_EXPIRES_IN: '7d',
+        // Redis
+        REDIS_HOST: 'localhost',
+        REDIS_PORT: 6379,
+        REDIS_PASSWORD: '',
+        // API
+        API_VERSION: 'v1',
+        API_PREFIX: '/api/v1',
+        CORS_ORIGIN: 'http://localhost:3000',
+        // Rate Limiting
+        RATE_LIMIT_WINDOW_MS: 60000,
+        RATE_LIMIT_MAX_REQUESTS: 100,
+        // EMR
+        EMR_ENDPOINT_CREATE: 'http://192.168.7.236:1415',
+      },
+      env_production: {
+        NODE_ENV: 'production',
+        PORT: 8000,
+        // Database Oracle
+        DB_TYPE: 'oracle',
+        DB_HOST: '192.168.7.248',
+        DB_PORT: 1521,
+        DB_USERNAME: 'HIS_RS',
+        DB_PASSWORD: 'HIS_RS',
+        DB_SERVICE_NAME: 'orclprd',
+        // JWT
+        JWT_SECRET: 'your-super-secret-production-key-change-this',
+        JWT_ACCESS_EXPIRES_IN: '15m',
+        JWT_REFRESH_EXPIRES_IN: '7d',
+        // Redis
+        REDIS_HOST: 'localhost',
+        REDIS_PORT: 6379,
+        REDIS_PASSWORD: '',
+        // API
+        API_VERSION: 'v1',
+        API_PREFIX: '/api/v1',
+        CORS_ORIGIN: 'https://your-production-domain.com',
+        // Rate Limiting
+        RATE_LIMIT_WINDOW_MS: 60000,
+        RATE_LIMIT_MAX_REQUESTS: 100,
+        // EMR
+        EMR_ENDPOINT_CREATE: 'http://192.168.7.236:1415',
+      },
+      env_staging: {
+        NODE_ENV: 'staging',
+        PORT: 8000,
+        // Database Oracle
+        DB_TYPE: 'oracle',
+        DB_HOST: '192.168.7.248',
+        DB_PORT: 1521,
+        DB_USERNAME: 'HIS_RS',
+        DB_PASSWORD: 'HIS_RS',
+        DB_SERVICE_NAME: 'orclstg',
+        // JWT
+        JWT_SECRET: 'your-super-secret-staging-key-change-this',
+        JWT_ACCESS_EXPIRES_IN: '15m',
+        JWT_REFRESH_EXPIRES_IN: '7d',
+        // Redis
+        REDIS_HOST: 'localhost',
+        REDIS_PORT: 6379,
+        REDIS_PASSWORD: '',
+        // API
+        API_VERSION: 'v1',
+        API_PREFIX: '/api/v1',
+        CORS_ORIGIN: 'https://staging.your-domain.com',
+        // Rate Limiting
+        RATE_LIMIT_WINDOW_MS: 60000,
+        RATE_LIMIT_MAX_REQUESTS: 100,
+        // EMR
+        EMR_ENDPOINT_CREATE: 'http://192.168.7.236:1415',
+      },
+      error_file: './logs/pm2-error.log',
+      out_file: './logs/pm2-out.log',
+      log_file: './logs/pm2-combined.log',
+      time: true,
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: '10s',
+      listen_timeout: 10000,
+      kill_timeout: 5000,
+      wait_ready: true,
+      shutdown_with_message: true,
+      // Cron restart (optional)
+      // cron_restart: '0 0 * * *', // Restart every day at midnight
+    },
+    {
+      name: 'lis-gpb-backend-dev',
+      script: 'npm',
+      args: 'run start:dev',
+      watch: false,
+      instances: 1,
+      exec_mode: 'fork',
+      autorestart: true,
+      max_restarts: 5,
+      min_uptime: '5s',
+      env: {
+        NODE_ENV: 'development',
+        PORT: 8000,
+        // Database Oracle
+        DB_TYPE: 'oracle',
+        DB_HOST: '192.168.7.248',
+        DB_PORT: 1521,
+        DB_USERNAME: 'HIS_RS',
+        DB_PASSWORD: 'HIS_RS',
+        DB_SERVICE_NAME: 'orclstb',
+        // JWT
+        JWT_SECRET: 'your-super-secret-key-here',
+        JWT_ACCESS_EXPIRES_IN: '15m',
+        JWT_REFRESH_EXPIRES_IN: '7d',
+        // Redis
+        REDIS_HOST: 'localhost',
+        REDIS_PORT: 6379,
+        REDIS_PASSWORD: '',
+        // API
+        API_VERSION: 'v1',
+        API_PREFIX: '/api/v1',
+        CORS_ORIGIN: 'http://localhost:3000',
+        // Rate Limiting
+        RATE_LIMIT_WINDOW_MS: 60000,
+        RATE_LIMIT_MAX_REQUESTS: 100,
+        // EMR
+        EMR_ENDPOINT_CREATE: 'http://192.168.7.236:1415',
+      },
+      error_file: './logs/pm2-dev-error.log',
+      out_file: './logs/pm2-dev-out.log',
+      log_file: './logs/pm2-dev-combined.log',
+      time: true,
+    },
+  ],
+};
+

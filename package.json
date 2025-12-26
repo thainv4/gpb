@@ -16,7 +16,21 @@
         "test:cov": "jest --coverage",
         "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
         "test:e2e": "jest --config ./test/jest-e2e.json",
-        "type-check": "tsc --noEmit"
+        "type-check": "tsc --noEmit",
+        "pm2:start": "pm2 start ecosystem.config.js --only lis-gpb-backend --env production",
+        "pm2:start:dev": "pm2 start ecosystem.config.js --only lis-gpb-backend-dev",
+        "pm2:start:staging": "pm2 start ecosystem.config.js --only lis-gpb-backend --env staging",
+        "pm2:stop": "pm2 stop lis-gpb-backend",
+        "pm2:stop:dev": "pm2 stop lis-gpb-backend-dev",
+        "pm2:restart": "pm2 restart lis-gpb-backend",
+        "pm2:reload": "pm2 reload lis-gpb-backend",
+        "pm2:logs": "pm2 logs lis-gpb-backend",
+        "pm2:monit": "pm2 monit",
+        "pm2:list": "pm2 list",
+        "pm2:delete": "pm2 delete lis-gpb-backend",
+        "pm2:save": "pm2 save",
+        "deploy": "powershell -ExecutionPolicy Bypass -File ./scripts/deploy.ps1",
+        "deploy:staging": "powershell -ExecutionPolicy Bypass -File ./scripts/deploy.ps1 -Env staging"
     },
     "dependencies": {
         "@nestjs/axios": "^4.0.1",
