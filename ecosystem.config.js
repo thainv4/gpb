@@ -10,85 +10,67 @@ module.exports = {
       env: {
         NODE_ENV: 'development',
         PORT: 8000,
-        // Database Oracle
         DB_TYPE: 'oracle',
         DB_HOST: '192.168.7.248',
         DB_PORT: 1521,
         DB_USERNAME: 'HIS_RS',
         DB_PASSWORD: 'HIS_RS',
         DB_SERVICE_NAME: 'orclstb',
-        // JWT
         JWT_SECRET: 'your-super-secret-key-here',
         JWT_ACCESS_EXPIRES_IN: '15m',
         JWT_REFRESH_EXPIRES_IN: '7d',
-        // Redis
         REDIS_HOST: 'localhost',
         REDIS_PORT: 6379,
         REDIS_PASSWORD: '',
-        // API
         API_VERSION: 'v1',
         API_PREFIX: '/api/v1',
         CORS_ORIGIN: 'http://localhost:3000',
-        // Rate Limiting
         RATE_LIMIT_WINDOW_MS: 60000,
         RATE_LIMIT_MAX_REQUESTS: 100,
-        // EMR
         EMR_ENDPOINT_CREATE: 'http://192.168.7.236:1415',
       },
       env_production: {
         NODE_ENV: 'production',
         PORT: 8000,
-        // Database Oracle
         DB_TYPE: 'oracle',
         DB_HOST: '192.168.7.248',
         DB_PORT: 1521,
         DB_USERNAME: 'HIS_RS',
         DB_PASSWORD: 'HIS_RS',
-        DB_SERVICE_NAME: 'orclprd',
-        // JWT
+        DB_SERVICE_NAME: 'orclstb',
         JWT_SECRET: 'your-super-secret-production-key-change-this',
         JWT_ACCESS_EXPIRES_IN: '15m',
         JWT_REFRESH_EXPIRES_IN: '7d',
-        // Redis
         REDIS_HOST: 'localhost',
         REDIS_PORT: 6379,
         REDIS_PASSWORD: '',
-        // API
         API_VERSION: 'v1',
         API_PREFIX: '/api/v1',
         CORS_ORIGIN: 'https://your-production-domain.com',
-        // Rate Limiting
         RATE_LIMIT_WINDOW_MS: 60000,
         RATE_LIMIT_MAX_REQUESTS: 100,
-        // EMR
         EMR_ENDPOINT_CREATE: 'http://192.168.7.236:1415',
       },
       env_staging: {
         NODE_ENV: 'staging',
         PORT: 8000,
-        // Database Oracle
         DB_TYPE: 'oracle',
         DB_HOST: '192.168.7.248',
         DB_PORT: 1521,
         DB_USERNAME: 'HIS_RS',
         DB_PASSWORD: 'HIS_RS',
-        DB_SERVICE_NAME: 'orclstg',
-        // JWT
+        DB_SERVICE_NAME: 'orclstb',
         JWT_SECRET: 'your-super-secret-staging-key-change-this',
         JWT_ACCESS_EXPIRES_IN: '15m',
         JWT_REFRESH_EXPIRES_IN: '7d',
-        // Redis
         REDIS_HOST: 'localhost',
         REDIS_PORT: 6379,
         REDIS_PASSWORD: '',
-        // API
         API_VERSION: 'v1',
         API_PREFIX: '/api/v1',
         CORS_ORIGIN: 'https://staging.your-domain.com',
-        // Rate Limiting
         RATE_LIMIT_WINDOW_MS: 60000,
         RATE_LIMIT_MAX_REQUESTS: 100,
-        // EMR
         EMR_ENDPOINT_CREATE: 'http://192.168.7.236:1415',
       },
       error_file: './logs/pm2-error.log',
@@ -102,13 +84,13 @@ module.exports = {
       kill_timeout: 5000,
       wait_ready: true,
       shutdown_with_message: true,
-      // Cron restart (optional)
-      // cron_restart: '0 0 * * *', // Restart every day at midnight
     },
     {
       name: 'lis-gpb-backend-dev',
       script: 'npm',
       args: 'run start:dev',
+      cwd: './',
+      interpreter: 'none',
       watch: false,
       instances: 1,
       exec_mode: 'fork',
@@ -118,29 +100,23 @@ module.exports = {
       env: {
         NODE_ENV: 'development',
         PORT: 8000,
-        // Database Oracle
         DB_TYPE: 'oracle',
         DB_HOST: '192.168.7.248',
         DB_PORT: 1521,
         DB_USERNAME: 'HIS_RS',
         DB_PASSWORD: 'HIS_RS',
         DB_SERVICE_NAME: 'orclstb',
-        // JWT
         JWT_SECRET: 'your-super-secret-key-here',
         JWT_ACCESS_EXPIRES_IN: '15m',
         JWT_REFRESH_EXPIRES_IN: '7d',
-        // Redis
         REDIS_HOST: 'localhost',
         REDIS_PORT: 6379,
         REDIS_PASSWORD: '',
-        // API
         API_VERSION: 'v1',
         API_PREFIX: '/api/v1',
         CORS_ORIGIN: 'http://localhost:3000',
-        // Rate Limiting
         RATE_LIMIT_WINDOW_MS: 60000,
         RATE_LIMIT_MAX_REQUESTS: 100,
-        // EMR
         EMR_ENDPOINT_CREATE: 'http://192.168.7.236:1415',
       },
       error_file: './logs/pm2-dev-error.log',
@@ -150,4 +126,3 @@ module.exports = {
     },
   ],
 };
-
