@@ -142,6 +142,7 @@ export class WorkflowHistoryController {
         summary: 'Lấy danh sách workflow history theo Room ID và State ID',
         description: `
             Filter workflow history theo phòng và trạng thái với các tùy chọn:
+            - Room ID: Để trống để lấy tất cả phòng
             - Room Type: actionRoomId, currentRoomId, transitionedByRoomId
             - State Type: toStateId, fromStateId
             - State ID: Để trống hoặc chuỗi rỗng để lấy tất cả states
@@ -165,7 +166,7 @@ export class WorkflowHistoryController {
                 hasPrev: result.offset > 0,
             },
             filters: {
-                roomId: query.roomId,
+                roomId: query.roomId || 'all',
                 stateId: query.stateId || 'all',
                 roomType: query.roomType || 'currentRoomId',
                 stateType: query.stateType || 'toStateId',

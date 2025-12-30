@@ -154,7 +154,7 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
     }
 
     async findByRoomAndState(
-        roomId: string,
+        roomId: string | undefined,
         stateId: string | undefined,
         roomType: 'actionRoomId' | 'currentRoomId' | 'transitionedByRoomId',
         stateType: 'toStateId' | 'fromStateId',
@@ -174,8 +174,12 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
                 // Tạm thời comment join State để test
                 // .leftJoinAndSelect('wh.toState', 'toState')
                 // .leftJoinAndSelect('wh.fromState', 'fromState')
-                .where(`wh.${roomType} = :roomId`, { roomId })
-                .andWhere('wh.deletedAt IS NULL');
+                .where('wh.deletedAt IS NULL');
+
+            // Chỉ filter theo room nếu roomId được cung cấp
+            if (roomId) {
+                queryBuilder.andWhere(`wh.${roomType} = :roomId`, { roomId });
+            }
 
             // Filter theo hisServiceReqCode nếu được cung cấp và không phải chuỗi rỗng
             // Dùng WHERE EXISTS để tránh vấn đề với string reference entity

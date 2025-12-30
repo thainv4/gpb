@@ -8,7 +8,7 @@ export interface IWorkflowHistoryRepository {
     findAll(query: GetWorkflowHistoryDto): Promise<{ items: WorkflowHistory[]; total: number }>;
     findCurrentStatesByServiceReq(storedServiceReqId: string): Promise<WorkflowHistory[]>;
     findByRoomAndState(
-        roomId: string,
+        roomId: string | undefined,
         stateId: string | undefined,
         roomType: 'actionRoomId' | 'currentRoomId' | 'transitionedByRoomId',
         stateType: 'toStateId' | 'fromStateId',

@@ -3,15 +3,15 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 export class GetWorkflowHistoryByRoomStateDto {
-    @ApiProperty({ 
-        description: 'ID của phòng', 
+    @ApiPropertyOptional({ 
+        description: 'ID của phòng (để trống để lấy tất cả phòng)', 
         example: 'b7ad73ac-2f7a-42c0-bd15-be55887aea49' 
     })
-    @IsNotEmpty({ message: 'Room ID là bắt buộc' })
-    @Matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, { 
-        message: 'Room ID phải là UUID hợp lệ' 
+    @IsOptional()
+    @Matches(/^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/i, { 
+        message: 'Room ID phải là UUID hợp lệ hoặc để trống' 
     })
-    roomId: string;
+    roomId?: string;
 
     @ApiPropertyOptional({ 
         description: 'ID của workflow state (để trống hoặc chuỗi rỗng để lấy tất cả)', 
