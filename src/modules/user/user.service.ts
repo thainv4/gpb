@@ -57,6 +57,7 @@ export class UserService extends BaseService {
             user.fullName = createUserDto.fullName;
             user.phoneNumber = createUserDto.phoneNumber;
             user.address = createUserDto.address;
+            user.role = createUserDto.role || 'user'; // Default to 'user' if not provided
 
             // ✅ Automatic audit fields - no manual assignment needed!
             this.setAuditFields(user, false); // false = create operation
@@ -150,6 +151,7 @@ export class UserService extends BaseService {
             email: user.email,
             fullName: user.fullName,
             isActive: user.isActive,
+            role: user.role,
             phoneNumber: user.phoneNumber,
             dateOfBirth: user.dateOfBirth,
             address: user.address,

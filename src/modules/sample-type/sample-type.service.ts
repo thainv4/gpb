@@ -39,10 +39,13 @@ export class SampleTypeService extends BaseService {
         this.currentUserContext.setCurrentUser(currentUser);
 
         return this.transactionWithAudit(async (manager) => {
-            // Check if type code already exists
-            const existingByCode = await this.sampleTypeRepository.existsByCode(createDto.typeCode);
+            // Tự động generate typeCode với format BP000001, BP000002, ...
+            const generatedTypeCode = await this.generateNextTypeCode('BP');
+            
+            // Check if generated type code already exists (safety check)
+            const existingByCode = await this.sampleTypeRepository.existsByCode(generatedTypeCode);
             if (existingByCode) {
-                throw AppError.conflict('Sample type with this code already exists');
+                throw AppError.conflict('Generated type code already exists. Please try again.');
             }
 
             // Check if type name already exists
@@ -52,7 +55,7 @@ export class SampleTypeService extends BaseService {
             }
 
             const sampleType = new SampleType();
-            sampleType.typeCode = createDto.typeCode;
+            sampleType.typeCode = generatedTypeCode; // Sử dụng generated code
             sampleType.typeName = createDto.typeName;
             sampleType.shortName = createDto.shortName;
             sampleType.description = createDto.description;
@@ -62,8 +65,8 @@ export class SampleTypeService extends BaseService {
             sampleType.allowDuplicate = createDto.allowDuplicate || false;
             sampleType.resetPeriod = createDto.resetPeriod || 'MONTHLY';
 
-            sampleType.createdBy = currentUser.id;
-            sampleType.updatedBy = currentUser.id;
+            // ✅ Automatic audit fields - no manual assignment needed!
+            this.setAuditFields(sampleType, false); // false = create operation
 
             const savedSampleType = await manager.save(SampleType, sampleType);
             return savedSampleType.id;
@@ -157,6 +160,20 @@ export class SampleTypeService extends BaseService {
     }
 
     // ========== PRIVATE METHODS ==========
+
+    /**
+     * Generate next typeCode với format BP000001, BP000002, ...
+     * @param prefix Tiền tố (mặc định: 'BP')
+     * @returns typeCode mới (ví dụ: 'BP000001')
+     */
+    private async generateNextTypeCode(prefix: string = 'BP'): Promise<string> {
+        const maxNumber = await this.sampleTypeRepository.getMaxTypeCodeNumber(prefix);
+        const nextNumber = maxNumber + 1;
+        
+        // Format: BP000001, BP000002, ... (6 chữ số)
+        const paddedNumber = nextNumber.toString().padStart(6, '0');
+        return `${prefix}${paddedNumber}`;
+    }
 
     private mapSampleTypeToResponseDto(sampleType: SampleType): SampleTypeResponseDto {
         return {

@@ -10,4 +10,5 @@ export interface ISampleTypeRepository {
     findWithPagination(limit: number, offset: number, search?: string): Promise<[SampleType[], number]>;
     findActiveWithSorting(): Promise<SampleType[]>;
     getNextSortOrder(): Promise<number>;
+    getMaxTypeCodeNumber(prefix: string): Promise<number>;
 }

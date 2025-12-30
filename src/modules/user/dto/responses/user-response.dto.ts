@@ -32,6 +32,13 @@ export class UserResponseDto {
     isActive: boolean;
 
     @ApiProperty({
+        description: 'Role of the user',
+        example: 'user',
+        enum: ['admin', 'user']
+    })
+    role: 'admin' | 'user';
+
+    @ApiProperty({
         description: 'Phone number of the user',
         example: '+1234567890',
         required: false

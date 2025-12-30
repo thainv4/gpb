@@ -31,6 +31,12 @@ export class RoomResponseDto {
     })
     departmentId: string;
 
+    @ApiPropertyOptional({
+        description: 'Tên khoa',
+        example: 'Khoa Nội tổng hợp',
+    })
+    departmentName?: string;
+
     @ApiProperty({
         description: 'ID nhóm phòng',
         example: 'group-001',

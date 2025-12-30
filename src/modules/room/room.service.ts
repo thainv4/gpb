@@ -295,6 +295,7 @@ export class RoomService extends BaseService {
             roomName: room.roomName,
             roomAddress: room.roomAddress,
             departmentId: room.departmentId,
+            departmentName: room.department?.departmentName,
             roomGroupId: room.roomGroupId,
             description: room.description,
             isActive: room.isActive,

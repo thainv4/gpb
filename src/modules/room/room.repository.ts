@@ -15,6 +15,7 @@ export class RoomRepository implements IRoomRepository {
     async findById(id: string): Promise<Room | null> {
         return this.roomRepository.findOne({
             where: { id, deletedAt: IsNull() },
+            relations: ['department'],
         });
     }
 
@@ -30,6 +31,7 @@ export class RoomRepository implements IRoomRepository {
     async findAll(limit: number = 10, offset: number = 0): Promise<[Room[], number]> {
         return this.roomRepository.findAndCount({
             where: { deletedAt: IsNull() },
+            relations: ['department'],
             take: limit,
             skip: offset,
             order: { sortOrder: 'ASC', createdAt: 'DESC' },
@@ -39,6 +41,7 @@ export class RoomRepository implements IRoomRepository {
     async findByDepartmentId(departmentId: string, limit: number = 10, offset: number = 0): Promise<[Room[], number]> {
         return this.roomRepository.findAndCount({
             where: { departmentId, deletedAt: IsNull() },
+            relations: ['department'],
             take: limit,
             skip: offset,
             order: { sortOrder: 'ASC', createdAt: 'DESC' },
@@ -48,6 +51,7 @@ export class RoomRepository implements IRoomRepository {
     async findByRoomGroupId(roomGroupId: string, limit: number = 10, offset: number = 0): Promise<[Room[], number]> {
         return this.roomRepository.findAndCount({
             where: { roomGroupId, deletedAt: IsNull() },
+            relations: ['department'],
             take: limit,
             skip: offset,
             order: { sortOrder: 'ASC', createdAt: 'DESC' },
@@ -57,6 +61,7 @@ export class RoomRepository implements IRoomRepository {
     async findActive(limit: number = 10, offset: number = 0): Promise<[Room[], number]> {
         return this.roomRepository.findAndCount({
             where: { isActive: true, deletedAt: IsNull() },
+            relations: ['department'],
             take: limit,
             skip: offset,
             order: { sortOrder: 'ASC', createdAt: 'DESC' },
@@ -70,6 +75,7 @@ export class RoomRepository implements IRoomRepository {
                 roomCode: Like(`%${roomCode}%`),
                 deletedAt: IsNull()
             },
+            relations: ['department'],
             order: { sortOrder: 'ASC', createdAt: 'DESC' },
         });
     }
@@ -80,6 +86,7 @@ export class RoomRepository implements IRoomRepository {
                 roomName: Like(`%${roomName}%`),
                 deletedAt: IsNull()
             },
+            relations: ['department'],
             order: { sortOrder: 'ASC', createdAt: 'DESC' },
         });
     }
@@ -90,6 +97,7 @@ export class RoomRepository implements IRoomRepository {
                 roomAddress: Like(`%${address}%`),
                 deletedAt: IsNull()
             },
+            relations: ['department'],
             order: { sortOrder: 'ASC', createdAt: 'DESC' },
         });
     }
@@ -100,6 +108,7 @@ export class RoomRepository implements IRoomRepository {
                 description: Like(`%${description}%`),
                 deletedAt: IsNull()
             },
+            relations: ['department'],
             order: { sortOrder: 'ASC', createdAt: 'DESC' },
         });
     }
@@ -177,6 +186,7 @@ export class RoomRepository implements IRoomRepository {
     async findByIds(ids: string[]): Promise<Room[]> {
         return this.roomRepository.find({
             where: { id: In(ids), deletedAt: IsNull() },
+            relations: ['department'],
             order: { sortOrder: 'ASC', createdAt: 'DESC' },
         });
     }
@@ -184,6 +194,7 @@ export class RoomRepository implements IRoomRepository {
     async findByDepartmentIds(departmentIds: string[]): Promise<Room[]> {
         return this.roomRepository.find({
             where: { departmentId: In(departmentIds), deletedAt: IsNull() },
+            relations: ['department'],
             order: { sortOrder: 'ASC', createdAt: 'DESC' },
         });
     }
@@ -191,6 +202,7 @@ export class RoomRepository implements IRoomRepository {
     async findByRoomGroupIds(roomGroupIds: string[]): Promise<Room[]> {
         return this.roomRepository.find({
             where: { roomGroupId: In(roomGroupIds), deletedAt: IsNull() },
+            relations: ['department'],
             order: { sortOrder: 'ASC', createdAt: 'DESC' },
         });
     }
