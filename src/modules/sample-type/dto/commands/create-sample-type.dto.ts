@@ -2,13 +2,6 @@ import { IsString, IsNotEmpty, IsOptional, IsNumber, MinLength, MaxLength, IsBoo
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateSampleTypeDto {
-    @ApiProperty({ description: 'Mã loại mẫu', example: 'BLOOD' })
-    @IsString()
-    @IsNotEmpty()
-    @MinLength(2)
-    @MaxLength(50)
-    typeCode: string;
-
     @ApiProperty({ description: 'Tên loại mẫu', example: 'Mẫu máu' })
     @IsString()
     @IsNotEmpty()

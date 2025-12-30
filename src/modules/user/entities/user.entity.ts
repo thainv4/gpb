@@ -18,6 +18,14 @@ export class User extends BaseEntity {
     @Column({ name: 'IS_ACTIVE', default: true })
     isActive: boolean;
 
+    @Column({ 
+        name: 'ROLE', 
+        type: 'varchar2', 
+        length: 20, 
+        default: 'user' 
+    })
+    role: 'admin' | 'user';
+
     @Column({ name: 'PHONE_NUMBER', nullable: true })
     phoneNumber?: string;
 

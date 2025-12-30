@@ -80,4 +80,29 @@ export class SampleTypeRepository implements ISampleTypeRepository {
 
         return (result?.maxOrder || 0) + 1;
     }
+
+    async getMaxTypeCodeNumber(prefix: string): Promise<number> {
+        // Tìm tất cả typeCode bắt đầu với prefix
+        const sampleTypes = await this.sampleTypeRepository
+            .createQueryBuilder('sampleType')
+            .select('sampleType.typeCode', 'typeCode')
+            .where('sampleType.typeCode LIKE :prefix', { prefix: `${prefix}%` })
+            .andWhere('sampleType.deletedAt IS NULL')
+            .getRawMany();
+
+        // Extract số từ typeCode (ví dụ: BP000001 -> 1, BP000025 -> 25)
+        let maxNumber = 0;
+        for (const row of sampleTypes) {
+            const typeCode = row.typeCode;
+            if (typeCode && typeCode.startsWith(prefix)) {
+                const numberPart = typeCode.substring(prefix.length);
+                const number = parseInt(numberPart, 10);
+                if (!isNaN(number) && number > maxNumber) {
+                    maxNumber = number;
+                }
+            }
+        }
+
+        return maxNumber;
+    }
 }

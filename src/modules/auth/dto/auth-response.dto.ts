@@ -42,6 +42,13 @@ export class UserInfoDto {
         example: true
     })
     isActive: boolean;
+
+    @ApiProperty({
+        description: 'Role of the user',
+        example: 'user',
+        enum: ['admin', 'user']
+    })
+    role: 'admin' | 'user';
 }
 
 export class HisUserInfo {
