@@ -8,6 +8,7 @@ import { EnterResultDto } from '../dto/commands/enter-result.dto';
 import { ReviewResultDto } from '../dto/commands/review-result.dto';
 import { ApproveResultDto } from '../dto/commands/approve-result.dto';
 import { QcResultDto } from '../dto/commands/qc-result.dto';
+import { UpdateReceptionCodeDto } from '../dto/commands/update-reception-code.dto';
 import { StoredServiceRequestResponseDto } from '../dto/responses/stored-service-request-response.dto';
 import { StoredServiceRequestDetailResponseDto, StoredServiceResponseDto, WorkflowCurrentStateDto } from '../dto/responses/stored-service-request-detail-response.dto';
 import { CurrentUser } from '../../../common/interfaces/current-user.interface';
@@ -766,6 +767,33 @@ export class StoredServiceRequestService {
                 updatedService.updatedBy = currentUser.id;
                 await manager.save(StoredServiceRequestServiceEntity, updatedService);
             }
+        });
+    }
+
+    /**
+     * Cập nhật reception code cho stored service
+     */
+    async updateReceptionCode(
+        serviceId: string,
+        dto: UpdateReceptionCodeDto,
+        currentUser: CurrentUser
+    ): Promise<void> {
+        return this.dataSource.transaction(async (manager) => {
+            // 1. Tìm stored service
+            const storedService = await this.serviceRepo.findById(serviceId);
+            
+            if (!storedService) {
+                throw new NotFoundException(
+                    `Không tìm thấy stored service với ID: ${serviceId}`
+                );
+            }
+
+            // 2. Cập nhật reception code
+            storedService.receptionCode = dto.receptionCode;
+            storedService.updatedBy = currentUser.id;
+
+            // 3. Lưu vào database
+            await manager.save(StoredServiceRequestServiceEntity, storedService);
         });
     }
 }

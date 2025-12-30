@@ -8,6 +8,7 @@ import { ReviewResultDto } from '../dto/commands/review-result.dto';
 import { ApproveResultDto } from '../dto/commands/approve-result.dto';
 import { QcResultDto } from '../dto/commands/qc-result.dto';
 import { UpdateDocumentIdDto } from '../dto/commands/update-document-id.dto';
+import { UpdateReceptionCodeDto } from '../dto/commands/update-reception-code.dto';
 import { GetServiceRequestsDto } from '../dto/queries/get-service-requests.dto';
 import { SearchServiceRequestsDto } from '../dto/queries/search-service-requests.dto';
 import { ServiceRequestResponseDto } from '../dto/responses/service-request-response.dto';
@@ -254,5 +255,52 @@ export class ServiceRequestController {
         }
         await this.storedServiceRequestService.updateDocumentId(serviceId, dto.documentId, currentUser);
         return ResponseBuilder.success({ message: 'Document ID đã được cập nhật thành công' });
+    }
+
+    @Patch('stored/services/:serviceId/reception-code')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ 
+        summary: 'Cập nhật reception code của stored service',
+        description: 'Chỉnh sửa mã tiếp nhận (reception code) cho một stored service cụ thể'
+    })
+    @ApiParam({ 
+        name: 'serviceId', 
+        description: 'ID của stored service',
+        example: 'uuid-service-001'
+    })
+    @ApiResponse({ 
+        status: 200, 
+        description: 'Cập nhật reception code thành công' 
+    })
+    @ApiResponse({ 
+        status: 404, 
+        description: 'Không tìm thấy stored service' 
+    })
+    @ApiResponse({ 
+        status: 400, 
+        description: 'Dữ liệu không hợp lệ' 
+    })
+    async updateReceptionCode(
+        @Param('serviceId') serviceId: string,
+        @Body() dto: UpdateReceptionCodeDto,
+        @CurrentUser() currentUser: ICurrentUser | null
+    ) {
+        if (!currentUser) {
+            throw new BadRequestException(
+                'JWT authentication required. HIS token is not supported for write operations.'
+            );
+        }
+
+        await this.storedServiceRequestService.updateReceptionCode(
+            serviceId,
+            dto,
+            currentUser
+        );
+
+        return ResponseBuilder.success({ 
+            message: 'Reception code đã được cập nhật thành công',
+            serviceId: serviceId,
+            receptionCode: dto.receptionCode
+        });
     }
 }
