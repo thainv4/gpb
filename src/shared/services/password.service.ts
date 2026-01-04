@@ -42,13 +42,6 @@ export class PasswordService {
             score += 10;
         }
 
-        // Uppercase check
-        if (!/[A-Z]/.test(password)) {
-            errors.push('Password must contain at least one uppercase letter');
-        } else {
-            score += 15;
-        }
-
         // Lowercase check
         if (!/[a-z]/.test(password)) {
             errors.push('Password must contain at least one lowercase letter');
@@ -59,13 +52,6 @@ export class PasswordService {
         // Number check
         if (!/[0-9]/.test(password)) {
             errors.push('Password must contain at least one number');
-        } else {
-            score += 15;
-        }
-
-        // Special character check
-        if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-            errors.push('Password must contain at least one special character');
         } else {
             score += 15;
         }

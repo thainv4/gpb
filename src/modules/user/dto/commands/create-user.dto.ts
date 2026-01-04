@@ -14,13 +14,13 @@ export class CreateUserDto {
     @MaxLength(50)
     username: string;
 
-    @ApiProperty({
+    @ApiPropertyOptional({
         description: 'Email address of the user',
         example: 'john.doe@example.com'
     })
+    @IsOptional()
     @IsEmail()
-    @IsNotEmpty()
-    email: string;
+    email?: string;
 
     @ApiProperty({
         description: 'Password for the user account',

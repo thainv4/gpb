@@ -6,8 +6,8 @@ export class User extends BaseEntity {
     @Column({ name: 'USERNAME', unique: true })
     username: string;
 
-    @Column({ name: 'EMAIL', unique: true })
-    email: string;
+    @Column({ name: 'EMAIL', unique: true, nullable: true })
+    email?: string;
 
     @Column({ name: 'PASSWORD_HASH' })
     passwordHash: string;

@@ -43,10 +43,12 @@ export class UserService extends BaseService {
         this.currentUserContext.setCurrentUser(currentUser);
         
         return this.transactionWithAudit(async (manager) => {
-            // Check if user already exists
-            const existingUser = await this.userRepository.findByEmail(createUserDto.email);
-            if (existingUser) {
-                throw new ConflictException('User with this email already exists');
+            // Check if user already exists by email (only if email is provided)
+            if (createUserDto.email) {
+                const existingUser = await this.userRepository.findByEmail(createUserDto.email);
+                if (existingUser) {
+                    throw new ConflictException('User with this email already exists');
+                }
             }
 
             // Create user
