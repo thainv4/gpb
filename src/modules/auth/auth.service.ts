@@ -141,10 +141,12 @@ export class AuthService {
                 throw AppError.passwordStrengthError(passwordValidation.errors);
             }
 
-            // 2. Check if user already exists
-            const existingUser = await this.userRepository.findByEmail(registerDto.email);
-            if (existingUser) {
-                throw new ConflictException('User with this email already exists');
+            // 2. Check if user already exists by email (only if email is provided)
+            if (registerDto.email) {
+                const existingUser = await this.userRepository.findByEmail(registerDto.email);
+                if (existingUser) {
+                    throw new ConflictException('User with this email already exists');
+                }
             }
 
             // 3. Check if employee code is unique (if provided)

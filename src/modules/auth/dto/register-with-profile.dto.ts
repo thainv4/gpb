@@ -15,14 +15,14 @@ export class RegisterWithProfileDto {
     @MaxLength(50)
     username: string;
 
-    @ApiProperty({
+    @ApiPropertyOptional({
         description: 'Email address of the user',
         example: 'john.doe@example.com',
         format: 'email'
     })
+    @IsOptional()
     @IsEmail()
-    @IsNotEmpty()
-    email: string;
+    email?: string;
 
     @ApiProperty({
         description: 'Password for the user account',
