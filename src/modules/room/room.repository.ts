@@ -48,15 +48,6 @@ export class RoomRepository implements IRoomRepository {
         });
     }
 
-    async findByRoomGroupId(roomGroupId: string, limit: number = 10, offset: number = 0): Promise<[Room[], number]> {
-        return this.roomRepository.findAndCount({
-            where: { roomGroupId, deletedAt: IsNull() },
-            relations: ['department'],
-            take: limit,
-            skip: offset,
-            order: { sortOrder: 'ASC', createdAt: 'DESC' },
-        });
-    }
 
     async findActive(limit: number = 10, offset: number = 0): Promise<[Room[], number]> {
         return this.roomRepository.findAndCount({
@@ -164,11 +155,6 @@ export class RoomRepository implements IRoomRepository {
         });
     }
 
-    async countByRoomGroup(roomGroupId: string): Promise<number> {
-        return this.roomRepository.count({
-            where: { roomGroupId, deletedAt: IsNull() },
-        });
-    }
 
     async countActive(): Promise<number> {
         return this.roomRepository.count({
@@ -199,11 +185,4 @@ export class RoomRepository implements IRoomRepository {
         });
     }
 
-    async findByRoomGroupIds(roomGroupIds: string[]): Promise<Room[]> {
-        return this.roomRepository.find({
-            where: { roomGroupId: In(roomGroupIds), deletedAt: IsNull() },
-            relations: ['department'],
-            order: { sortOrder: 'ASC', createdAt: 'DESC' },
-        });
-    }
 }

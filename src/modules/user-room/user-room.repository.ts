@@ -14,14 +14,14 @@ export class UserRoomRepository implements IUserRoomRepository {
     async findById(id: string): Promise<UserRoom | null> {
         return this.userRoomRepository.findOne({
             where: { id, deletedAt: IsNull() },
-            relations: ['user', 'room', 'room.department', 'room.roomGroup'],
+            relations: ['user', 'room', 'room.department'],
         });
     }
 
     async findByUserId(userId: string): Promise<UserRoom[]> {
         return this.userRoomRepository.find({
             where: { userId, deletedAt: IsNull() },
-            relations: ['user', 'room', 'room.department', 'room.roomGroup'],
+            relations: ['user', 'room', 'room.department'],
             order: { createdAt: 'DESC' },
         });
     }
@@ -29,7 +29,7 @@ export class UserRoomRepository implements IUserRoomRepository {
     async findByRoomId(roomId: string): Promise<UserRoom[]> {
         return this.userRoomRepository.find({
             where: { roomId, deletedAt: IsNull() },
-            relations: ['user', 'room', 'room.department', 'room.roomGroup'],
+            relations: ['user', 'room', 'room.department'],
             order: { createdAt: 'DESC' },
         });
     }
@@ -37,7 +37,7 @@ export class UserRoomRepository implements IUserRoomRepository {
     async findByUserAndRoom(userId: string, roomId: string): Promise<UserRoom | null> {
         return this.userRoomRepository.findOne({
             where: { userId, roomId, deletedAt: IsNull() },
-            relations: ['user', 'room', 'room.department', 'room.roomGroup'],
+            relations: ['user', 'room', 'room.department'],
         });
     }
 
@@ -67,7 +67,7 @@ export class UserRoomRepository implements IUserRoomRepository {
     async findActiveByUserId(userId: string): Promise<UserRoom[]> {
         return this.userRoomRepository.find({
             where: { userId, isActive: true, deletedAt: IsNull() },
-            relations: ['user', 'room', 'room.department', 'room.roomGroup'],
+            relations: ['user', 'room', 'room.department'],
             order: { createdAt: 'DESC' },
         });
     }
@@ -77,7 +77,6 @@ export class UserRoomRepository implements IUserRoomRepository {
             .createQueryBuilder('userRoom')
             .leftJoinAndSelect('userRoom.room', 'room')
             .leftJoinAndSelect('room.department', 'department')
-            .leftJoinAndSelect('room.roomGroup', 'roomGroup')
             .leftJoinAndSelect('department.branch', 'branch')
             .where('userRoom.userId = :userId', { userId })
             .andWhere('userRoom.deletedAt IS NULL')

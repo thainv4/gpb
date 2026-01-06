@@ -40,14 +40,6 @@ export class CreateRoomDto {
     @IsNotEmpty()
     departmentId: string;
 
-    @ApiProperty({
-        description: 'ID nhóm phòng',
-        example: 'group-001',
-    })
-    @IsString()
-    @IsNotEmpty()
-    roomGroupId: string;
-
     @ApiPropertyOptional({
         description: 'Mô tả phòng',
         example: 'Phòng khám nội tổng hợp',

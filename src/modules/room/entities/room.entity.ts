@@ -1,13 +1,11 @@
 import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { Department } from '../../department/entities/department.entity';
-import { RoomGroup } from '../../room-group/entities/room-group.entity';
 
 @Entity('BML_ROOMS')
 @Index('IDX_BML_ROOMS_CODE', ['roomCode'])
 @Index('IDX_BML_ROOMS_NAME', ['roomName'])
 @Index('IDX_BML_ROOMS_DEPT', ['departmentId'])
-@Index('IDX_BML_ROOMS_GROUP', ['roomGroupId'])
 @Index('IDX_BML_ROOMS_ACTIVE', ['isActive'])
 export class Room extends BaseEntity {
     // ========== BUSINESS FIELDS ==========
@@ -23,9 +21,6 @@ export class Room extends BaseEntity {
     @Column({ name: 'DEPARTMENT_ID', type: 'varchar2', length: 36 })
     departmentId: string;       // ID khoa (Foreign Key)
 
-    @Column({ name: 'ROOM_GROUP_ID', type: 'varchar2', length: 36 })
-    roomGroupId: string;        // ID nhóm phòng (Foreign Key)
-
     @Column({ name: 'DESCRIPTION', type: 'clob', nullable: true })
     description?: string;        // Mô tả phòng
 
@@ -39,10 +34,6 @@ export class Room extends BaseEntity {
     @ManyToOne(() => Department)
     @JoinColumn({ name: 'DEPARTMENT_ID' })
     department: Department;
-
-    @ManyToOne(() => RoomGroup)
-    @JoinColumn({ name: 'ROOM_GROUP_ID' })
-    roomGroup: RoomGroup;
 
     // ========== BUSINESS METHODS ==========
     getDisplayName(): string {

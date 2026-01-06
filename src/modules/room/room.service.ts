@@ -7,7 +7,6 @@ import { UpdateRoomDto } from './dto/commands/update-room.dto';
 import { GetRoomsDto } from './dto/queries/get-rooms.dto';
 import { SearchRoomsDto } from './dto/queries/search-rooms.dto';
 import { GetRoomsByDepartmentDto } from './dto/queries/get-rooms-by-department.dto';
-import { GetRoomsByGroupDto } from './dto/queries/get-rooms-by-group.dto';
 import { RoomResponseDto } from './dto/responses/room-response.dto';
 import { RoomsListResponseDto, RoomPaginationDto } from './dto/responses/rooms-list-response.dto';
 import { BaseService } from '../../common/services/base.service';
@@ -70,7 +69,6 @@ export class RoomService extends BaseService {
             room.roomName = createRoomDto.roomName;
             room.roomAddress = createRoomDto.roomAddress;
             room.departmentId = createRoomDto.departmentId;
-            room.roomGroupId = createRoomDto.roomGroupId;
             room.description = createRoomDto.description;
             room.isActive = createRoomDto.isActive ?? true;
             room.sortOrder = createRoomDto.sortOrder ?? 0;
@@ -142,15 +140,13 @@ export class RoomService extends BaseService {
     }
 
     async getRooms(query: GetRoomsDto): Promise<GetRoomsResult> {
-        const { limit = 10, offset = 0, isActive, departmentId, roomGroupId } = query;
+        const { limit = 10, offset = 0, isActive, departmentId } = query;
 
         let rooms: Room[];
         let total: number;
 
         if (departmentId) {
             [rooms, total] = await this.roomRepository.findByDepartmentId(departmentId, limit, offset);
-        } else if (roomGroupId) {
-            [rooms, total] = await this.roomRepository.findByRoomGroupId(roomGroupId, limit, offset);
         } else if (isActive !== undefined) {
             if (isActive) {
                 [rooms, total] = await this.roomRepository.findActive(limit, offset);
@@ -170,7 +166,7 @@ export class RoomService extends BaseService {
     }
 
     async searchRooms(searchDto: SearchRoomsDto): Promise<GetRoomsResult> {
-        const { searchTerm, limit = 10, offset = 0, isActive, departmentId, roomGroupId } = searchDto;
+        const { searchTerm, limit = 10, offset = 0, isActive, departmentId } = searchDto;
 
         // Search in different fields
         const [byCode, byName, byAddress, byDescription] = await Promise.all([
@@ -195,10 +191,6 @@ export class RoomService extends BaseService {
 
         if (departmentId) {
             filteredRooms = filteredRooms.filter(room => room.departmentId === departmentId);
-        }
-
-        if (roomGroupId) {
-            filteredRooms = filteredRooms.filter(room => room.roomGroupId === roomGroupId);
         }
 
         // Apply pagination
@@ -231,23 +223,6 @@ export class RoomService extends BaseService {
         };
     }
 
-    async getRoomsByGroup(query: GetRoomsByGroupDto): Promise<GetRoomsResult> {
-        const { roomGroupId, limit = 10, offset = 0, isActive } = query;
-
-        let [rooms, total] = await this.roomRepository.findByRoomGroupId(roomGroupId, limit, offset);
-
-        if (isActive !== undefined) {
-            rooms = rooms.filter(room => room.isActive === isActive);
-            total = rooms.length;
-        }
-
-        return {
-            rooms: rooms.map(room => this.mapRoomToResponseDto(room)),
-            total,
-            limit,
-            offset,
-        };
-    }
 
     // ========== STATISTICS ==========
 
@@ -256,13 +231,11 @@ export class RoomService extends BaseService {
         active: number;
         inactive: number;
         byDepartment: { [key: string]: number };
-        byRoomGroup: { [key: string]: number };
     }> {
-        const [total, active, byDepartment, byRoomGroup] = await Promise.all([
+        const [total, active, byDepartment] = await Promise.all([
             this.roomRepository.countTotal(),
             this.roomRepository.countActive(),
             this.getRoomStatsByDepartment(),
-            this.getRoomStatsByRoomGroup(),
         ]);
 
         return {
@@ -270,17 +243,10 @@ export class RoomService extends BaseService {
             active,
             inactive: total - active,
             byDepartment,
-            byRoomGroup,
         };
     }
 
     private async getRoomStatsByDepartment(): Promise<{ [key: string]: number }> {
-        // This would need to be implemented in repository
-        // For now, return empty object
-        return {};
-    }
-
-    private async getRoomStatsByRoomGroup(): Promise<{ [key: string]: number }> {
         // This would need to be implemented in repository
         // For now, return empty object
         return {};
@@ -296,7 +262,6 @@ export class RoomService extends BaseService {
             roomAddress: room.roomAddress,
             departmentId: room.departmentId,
             departmentName: room.department?.departmentName,
-            roomGroupId: room.roomGroupId,
             description: room.description,
             isActive: room.isActive,
             sortOrder: room.sortOrder,
@@ -306,11 +271,6 @@ export class RoomService extends BaseService {
                 id: room.department.id,
                 departmentCode: room.department.departmentCode,
                 departmentName: room.department.departmentName,
-            } : undefined,
-            roomGroup: room.roomGroup ? {
-                id: room.roomGroup.id,
-                roomGroupCode: room.roomGroup.roomGroupCode,
-                roomGroupName: room.roomGroup.roomGroupName,
             } : undefined,
         };
     }

@@ -48,15 +48,6 @@ export class GetRoomsDto {
     departmentId?: string;
 
     @ApiPropertyOptional({
-        description: 'Lọc theo nhóm phòng',
-        example: 'group-001',
-    })
-    @IsOptional()
-    @IsString()
-    @IsUUID()
-    roomGroupId?: string;
-
-    @ApiPropertyOptional({
         description: 'Sắp xếp theo trường',
         example: 'sortOrder',
         enum: ['sortOrder', 'roomCode', 'roomName', 'createdAt', 'updatedAt'],
