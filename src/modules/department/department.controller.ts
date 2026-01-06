@@ -1,28 +1,28 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { DepartmentService } from './department.service';
 import { CreateDepartmentDto } from './dto/commands/create-department.dto';
 import { UpdateDepartmentDto } from './dto/commands/update-department.dto';
-import { DeleteDepartmentDto } from './dto/commands/delete-department.dto';
 import { GetDepartmentsDto } from './dto/queries/get-departments.dto';
-import { GetDepartmentByIdDto } from './dto/queries/get-department-by-id.dto';
 import { SearchDepartmentsDto } from './dto/queries/search-departments.dto';
 import { DepartmentResponseDto } from './dto/responses/department-response.dto';
 import { DepartmentsListResponseDto } from './dto/responses/departments-list-response.dto';
 import { DualAuthGuard } from '../auth/guards/dual-auth.guard';
 import { ResponseBuilder } from '../../common/builders/response.builder';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { PublicGuard } from '../../common/guards/public.guard';
 
 @ApiTags('Departments')
 @Controller('departments')
-@UseGuards(DualAuthGuard)
-@ApiBearerAuth('JWT-auth')
+@UseGuards(PublicGuard)
 export class DepartmentController {
     constructor(private readonly departmentService: DepartmentService) { }
 
     // ========== COMMAND ENDPOINTS ==========
 
     @Post()
+    @UseGuards(DualAuthGuard)
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({ summary: 'Tạo khoa mới', description: 'Tạo một khoa mới với mã, tên và các thông tin liên quan.' })
     @ApiBody({ type: CreateDepartmentDto })
     @ApiResponse({
@@ -55,6 +55,8 @@ export class DepartmentController {
     }
 
     @Put(':id')
+    @UseGuards(DualAuthGuard)
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({ summary: 'Cập nhật khoa', description: 'Cập nhật thông tin của một khoa hiện có.' })
     @ApiParam({ name: 'id', description: 'ID của khoa cần cập nhật' })
     @ApiBody({ type: UpdateDepartmentDto })
@@ -90,6 +92,8 @@ export class DepartmentController {
     }
 
     @Delete(':id')
+    @UseGuards(DualAuthGuard)
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({ summary: 'Xóa khoa', description: 'Xóa mềm hoặc xóa cứng một khoa.' })
     @ApiParam({ name: 'id', description: 'ID của khoa cần xóa' })
     @ApiQuery({ name: 'hardDelete', type: 'boolean', required: false, description: 'Xóa cứng khỏi DB nếu true (mặc định là xóa mềm)' })
@@ -124,16 +128,20 @@ export class DepartmentController {
     // ========== QUERY ENDPOINTS ==========
 
     @Get()
-    @ApiOperation({ summary: 'Lấy danh sách khoa', description: 'Lấy danh sách tất cả các khoa có phân trang, tìm kiếm và lọc.' })
+    @ApiOperation({ 
+        summary: 'Lấy danh sách khoa', 
+        description: 'Lấy danh sách tất cả các khoa có phân trang, tìm kiếm và lọc. This endpoint is public and does not require authentication.' 
+    })
     @ApiQuery({ type: GetDepartmentsDto })
     @ApiResponse({ status: 200, description: 'Danh sách khoa được trả về thành công', type: DepartmentsListResponseDto })
-    @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
     async getDepartments(@Query() query: GetDepartmentsDto) {
         const result = await this.departmentService.getDepartments(query);
         return ResponseBuilder.success(result);
     }
 
     @Get('search')
+    @UseGuards(DualAuthGuard)
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({ summary: 'Tìm kiếm khoa', description: 'Tìm kiếm khoa theo từ khóa (mã, tên, trưởng khoa, điều dưỡng trưởng).' })
     @ApiQuery({ type: SearchDepartmentsDto })
     @ApiResponse({ status: 200, description: 'Kết quả tìm kiếm khoa được trả về thành công', type: DepartmentsListResponseDto })
@@ -144,6 +152,8 @@ export class DepartmentController {
     }
 
     @Get('by-branch/:branchId')
+    @UseGuards(DualAuthGuard)
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({ summary: 'Lấy khoa theo chi nhánh', description: 'Lấy danh sách khoa của một chi nhánh cụ thể.' })
     @ApiParam({ name: 'branchId', description: 'ID của chi nhánh' })
     @ApiResponse({ status: 200, description: 'Danh sách khoa theo chi nhánh được trả về thành công', type: [DepartmentResponseDto] })
@@ -154,6 +164,8 @@ export class DepartmentController {
     }
 
     @Get('by-type/:typeId')
+    @UseGuards(DualAuthGuard)
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({ summary: 'Lấy khoa theo loại khoa', description: 'Lấy danh sách khoa của một loại khoa cụ thể.' })
     @ApiParam({ name: 'typeId', description: 'ID của loại khoa' })
     @ApiResponse({ status: 200, description: 'Danh sách khoa theo loại khoa được trả về thành công', type: [DepartmentResponseDto] })
@@ -164,6 +176,8 @@ export class DepartmentController {
     }
 
     @Get('hierarchy')
+    @UseGuards(DualAuthGuard)
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({ summary: 'Lấy cây phân cấp khoa', description: 'Lấy danh sách các khoa gốc (không có khoa cha) để xây dựng cây phân cấp.' })
     @ApiResponse({ status: 200, description: 'Cây phân cấp khoa được trả về thành công', type: [DepartmentResponseDto] })
     @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
@@ -173,6 +187,8 @@ export class DepartmentController {
     }
 
     @Get(':id/children')
+    @UseGuards(DualAuthGuard)
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({ summary: 'Lấy khoa con', description: 'Lấy danh sách khoa con của một khoa cụ thể.' })
     @ApiParam({ name: 'id', description: 'ID của khoa cha' })
     @ApiResponse({ status: 200, description: 'Danh sách khoa con được trả về thành công', type: [DepartmentResponseDto] })
@@ -184,6 +200,8 @@ export class DepartmentController {
     }
 
     @Get('with-stats')
+    @UseGuards(DualAuthGuard)
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({ summary: 'Lấy danh sách khoa với thống kê', description: 'Lấy danh sách khoa kèm theo các thống kê liên quan (sử dụng DataLoader để tối ưu performance).' })
     @ApiQuery({ type: GetDepartmentsDto })
     @ApiResponse({ status: 200, description: 'Danh sách khoa với thống kê được trả về thành công', type: DepartmentsListResponseDto })
@@ -194,6 +212,8 @@ export class DepartmentController {
     }
 
     @Get(':id')
+    @UseGuards(DualAuthGuard)
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({ summary: 'Lấy chi tiết khoa', description: 'Lấy thông tin chi tiết của một khoa bằng ID.' })
     @ApiParam({ name: 'id', description: 'ID của khoa' })
     @ApiQuery({ name: 'includeDeleted', type: 'boolean', required: false, description: 'Bao gồm cả các bản ghi đã xóa mềm' })
@@ -211,6 +231,8 @@ export class DepartmentController {
     // ========== STATISTICS ENDPOINTS ==========
 
     @Get('stats/overview')
+    @UseGuards(DualAuthGuard)
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({ summary: 'Thống kê tổng quan khoa', description: 'Lấy thống kê tổng quan về số lượng khoa.' })
     @ApiResponse({
         status: 200,
@@ -238,6 +260,8 @@ export class DepartmentController {
     }
 
     @Get('stats/by-branch/:branchId')
+    @UseGuards(DualAuthGuard)
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({ summary: 'Thống kê khoa theo chi nhánh', description: 'Lấy thống kê khoa của một chi nhánh cụ thể.' })
     @ApiParam({ name: 'branchId', description: 'ID của chi nhánh' })
     @ApiResponse({
@@ -267,6 +291,8 @@ export class DepartmentController {
     }
 
     @Get('stats/by-type/:typeId')
+    @UseGuards(DualAuthGuard)
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({ summary: 'Thống kê khoa theo loại khoa', description: 'Lấy thống kê khoa của một loại khoa cụ thể.' })
     @ApiParam({ name: 'typeId', description: 'ID của loại khoa' })
     @ApiResponse({
@@ -298,6 +324,8 @@ export class DepartmentController {
     // ========== UTILITY ENDPOINTS ==========
 
     @Post('reorder')
+    @UseGuards(DualAuthGuard)
+    @ApiBearerAuth('JWT-auth')
     @ApiOperation({ summary: 'Sắp xếp lại thứ tự khoa', description: 'Sắp xếp lại thứ tự hiển thị của các khoa.' })
     @ApiBody({
         schema: {

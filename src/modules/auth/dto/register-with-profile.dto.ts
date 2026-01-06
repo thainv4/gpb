@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsNotEmpty, MinLength, MaxLength, IsOptional, IsDateString, IsIn, IsUrl, Matches, Length, IsUUID } from 'class-validator';
+import { IsString, IsEmail, IsNotEmpty, MinLength, MaxLength, IsOptional, IsDateString, IsIn, Matches, Length } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class RegisterWithProfileDto {
@@ -26,12 +26,10 @@ export class RegisterWithProfileDto {
 
     @ApiProperty({
         description: 'Password for the user account',
-        example: 'SecurePass123!',
-        minLength: 8
+        example: 'SecurePass123!'
     })
     @IsString()
     @IsNotEmpty()
-    @MinLength(8)
     password: string;
 
     @ApiProperty({
@@ -47,20 +45,6 @@ export class RegisterWithProfileDto {
     fullName: string;
 
     // Profile fields
-    @ApiPropertyOptional({ description: 'ID tỉnh/thành phố' })
-    @IsOptional()
-    provinceId?: string;
-
-    @ApiPropertyOptional({ description: 'ID xã/phường' })
-    @IsOptional()
-    wardId?: string;
-
-    @ApiPropertyOptional({ description: 'Địa chỉ chi tiết', example: '123 Đường ABC' })
-    @IsString()
-    @IsOptional()
-    @Length(1, 500)
-    address?: string;
-
     @ApiPropertyOptional({ description: 'ID khoa/phòng ban' })
     @IsOptional()
     departmentId?: string;
@@ -95,13 +79,6 @@ export class RegisterWithProfileDto {
     @IsIn(['MALE', 'FEMALE', 'OTHER'])
     gender?: string;
 
-    @ApiPropertyOptional({ description: 'URL ảnh đại diện', example: 'https://example.com/avatar.jpg' })
-    @IsString()
-    @IsOptional()
-    @IsUrl()
-    @Length(1, 500)
-    avatar?: string;
-
     @ApiPropertyOptional({ description: 'Username cho hệ thống tích hợp', example: 'admin_his' })
     @IsString()
     @IsOptional()
@@ -111,7 +88,6 @@ export class RegisterWithProfileDto {
     @ApiPropertyOptional({ description: 'Password cho hệ thống tích hợp', example: 'his_password_123' })
     @IsString()
     @IsOptional()
-    @Length(6, 100)
     mappedPassword?: string;
 }
 

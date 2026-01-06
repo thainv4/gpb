@@ -131,7 +131,7 @@ export class AuthService {
 
     async registerWithProfile(
         registerDto: RegisterWithProfileDto,
-        currentUser: CurrentUser,
+        currentUser: CurrentUser | null,
     ): Promise<AuthResponseDto> {
         // Sử dụng transaction để đảm bảo atomicity
         return this.dataSource.transaction(async (manager) => {
@@ -169,28 +169,32 @@ export class AuthService {
             user.email = registerDto.email;
             user.passwordHash = hashedPassword;
             user.fullName = registerDto.fullName;
-            user.createdBy = currentUser.id;
-            user.updatedBy = currentUser.id;
+            
+            // Set audit fields only if currentUser is provided
+            if (currentUser) {
+                user.createdBy = currentUser.id;
+                user.updatedBy = currentUser.id;
+            }
 
             const savedUser = await manager.save(User, user);
 
             // 6. Create profile (trong cùng transaction)
             const profile = new Profile();
             profile.userId = savedUser.id;
-            profile.provinceId = registerDto.provinceId;
-            profile.wardId = registerDto.wardId;
-            profile.address = registerDto.address;
             profile.departmentId = registerDto.departmentId;
             profile.position = registerDto.position;
             profile.employeeCode = registerDto.employeeCode;
             profile.phoneNumber = registerDto.phoneNumber;
             profile.dateOfBirth = registerDto.dateOfBirth ? new Date(registerDto.dateOfBirth) : undefined;
             profile.gender = registerDto.gender;
-            profile.avatar = registerDto.avatar;
             profile.mappedUsername = registerDto.mappedUsername;
             profile.mappedPassword = registerDto.mappedPassword;
-            profile.createdBy = currentUser.id;
-            profile.updatedBy = currentUser.id;
+            
+            // Set audit fields only if currentUser is provided
+            if (currentUser) {
+                profile.createdBy = currentUser.id;
+                profile.updatedBy = currentUser.id;
+            }
 
             await manager.save(Profile, profile);
 

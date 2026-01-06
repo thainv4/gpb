@@ -31,34 +31,20 @@ export class PasswordService {
      */
     validatePasswordStrength(password: string): PasswordValidationResult {
         const errors: string[] = [];
-        let score = 0;
+        let score = 50; // Default score, no requirements
 
-        // Length check
-        if (password.length < 8) {
-            errors.push('Password must be at least 8 characters long');
-        } else if (password.length >= 12) {
-            score += 20;
+        // No length, uppercase, lowercase, number, or special character requirements
+        // Only check for empty password
+        if (password.length === 0) {
+            errors.push('Password cannot be empty');
+            score = 0;
         } else {
-            score += 10;
-        }
-
-        // Lowercase check
-        if (!/[a-z]/.test(password)) {
-            errors.push('Password must contain at least one lowercase letter');
-        } else {
-            score += 15;
-        }
-
-        // Number check
-        if (!/[0-9]/.test(password)) {
-            errors.push('Password must contain at least one number');
-        } else {
-            score += 15;
-        }
-
-        // Additional complexity checks
-        if (password.length >= 16) {
-            score += 10;
+            // Give some score based on length (optional, not required)
+            if (password.length >= 12) {
+                score += 20;
+            } else if (password.length >= 8) {
+                score += 10;
+            }
         }
 
         // Check for common patterns (only if password is weak overall)
