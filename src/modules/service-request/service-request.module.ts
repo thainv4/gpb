@@ -20,6 +20,7 @@ import { UnitOfMeasureModule } from '../unit-of-measure/unit-of-measure.module';
 import { WorkflowHistoryModule } from '../workflow/workflow-history/workflow-history.module';
 import { WorkflowModule } from '../workflow/workflow.module';
 import { AuthModule } from '../auth/auth.module';
+import { SampleReceptionModule } from '../sample-reception/sample-reception.module';
 
 @Module({
     imports: [
@@ -28,6 +29,7 @@ import { AuthModule } from '../auth/auth.module';
         WorkflowHistoryModule, // Import để inject WorkflowHistoryService
         WorkflowModule, // Import để inject IWorkflowStateRepository
         AuthModule, // Import để sử dụng DualAuthGuard
+        SampleReceptionModule, // Import để inject ISampleReceptionRepository
         TypeOrmModule.forFeature(
             [ServiceRequestView],
             'hisConnection' // Use HIS database connection

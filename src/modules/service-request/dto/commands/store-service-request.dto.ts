@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsOptional, IsUUID, IsBoolean, IsDateString, MaxLength, Matches } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsBoolean, IsDateString, MaxLength, Matches } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class StoreServiceRequestDto {
@@ -34,6 +34,15 @@ export class StoreServiceRequestDto {
     @IsString()
     @MaxLength(50, { message: 'Mã tiếp nhận mẫu không được quá 50 ký tự' })
     receptionCode: string;
+
+    @ApiProperty({
+        description: 'Tên loại mẫu',
+        example: 'Mẫu máu'
+    })
+    @IsNotEmpty({ message: 'Tên loại mẫu là bắt buộc' })
+    @IsString()
+    @MaxLength(200, { message: 'Tên loại mẫu không được quá 200 ký tự' })
+    sampleTypeName: string;
 
     @ApiProperty({
         description: 'Thời gian lấy mẫu (ISO string)',

@@ -3,6 +3,7 @@ import { DataSource } from 'typeorm';
 import { SampleReception } from './entities/sample-reception.entity';
 import { ISampleReceptionRepository } from './interfaces/sample-reception.repository.interface';
 import { CreateSampleReceptionDto } from './dto/commands/create-sample-reception.dto';
+import { CreateSampleReceptionByPrefixDto } from './dto/commands/create-sample-reception-by-prefix.dto';
 import { GetSampleReceptionsDto } from './dto/queries/get-sample-receptions.dto';
 import { GenerateCodeDto } from './dto/queries/generate-code.dto';
 import { SampleReceptionResponseDto } from './dto/responses/sample-reception-response.dto';
@@ -114,6 +115,89 @@ export class SampleReceptionService extends BaseService {
                     continue;
                 }
                 // Nếu là lỗi khác, throw ngay
+                throw error;
+            }
+        }
+
+        throw AppError.conflict('Failed to generate unique reception code');
+    }
+
+    async createSampleReceptionByPrefix(createDto: CreateSampleReceptionByPrefixDto, currentUser: CurrentUser): Promise<string> {
+        this.currentUserContext.setCurrentUser(currentUser);
+
+        const maxRetries = 3;
+        let retryCount = 0;
+
+        // Set defaults
+        const codeWidth = createDto.codeWidth || 4;
+        const resetPeriod = createDto.resetPeriod || 'MONTHLY';
+        const allowDuplicate = createDto.allowDuplicate || false;
+
+        while (retryCount < maxRetries) {
+            try {
+                return await this.transactionWithAudit(async (manager) => {
+                    // Validate sampleTypeId nếu có
+                    if (createDto.sampleTypeId) {
+                        const sampleType = await this.sampleTypeRepository.findById(createDto.sampleTypeId);
+                        if (!sampleType) {
+                            throw AppError.notFound('Sample type not found');
+                        }
+                    }
+
+                    const targetDate = new Date();
+
+                    // Format date string
+                    const dateStr = this.formatDateByResetPeriod(targetDate, resetPeriod);
+
+                    // Tìm sequence number và code UNIQUE TOÀN BẢNG (không cần sampleTypeId)
+                    const { sequenceNumber, receptionCode } = 
+                        await this.sampleReceptionRepository.getNextUniqueSequenceNumberByPrefix(
+                            createDto.prefix,
+                            dateStr,
+                            codeWidth,
+                            targetDate,
+                            resetPeriod,
+                            manager
+                        );
+
+                    // Kiểm tra allowDuplicate (nếu cần)
+                    if (!allowDuplicate) {
+                        const existing = await manager
+                            .createQueryBuilder(SampleReception, 'reception')
+                            .where('reception.receptionCode = :receptionCode', { receptionCode })
+                            .andWhere('reception.deletedAt IS NULL')
+                            .setLock('pessimistic_write')
+                            .getOne();
+                        if (existing) {
+                            throw AppError.conflict('Reception code already exists');
+                        }
+                    }
+
+                    // Tạo record với sequence và code đã unique
+                    const reception = new SampleReception();
+                    reception.receptionCode = receptionCode;
+                    reception.sampleTypeId = createDto.sampleTypeId || undefined; // Lưu sampleTypeId nếu có
+                    reception.receptionDate = targetDate;
+                    reception.sequenceNumber = sequenceNumber;
+                    reception.createdBy = currentUser.id;
+                    reception.updatedBy = currentUser.id;
+
+                    const savedReception = await manager.save(SampleReception, reception);
+                    return savedReception.id;
+                });
+            } catch (error: any) {
+                // Nếu là unique constraint violation hoặc conflict, retry
+                if (error?.code === '23505' || error?.code === '23000' || 
+                    error?.message?.includes('unique constraint') ||
+                    error?.message?.includes('Reception code already exists') ||
+                    error?.message?.includes('Unable to generate unique reception code')) {
+                    retryCount++;
+                    if (retryCount >= maxRetries) {
+                        throw AppError.conflict('Failed to generate unique reception code after retries');
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 100 * retryCount));
+                    continue;
+                }
                 throw error;
             }
         }

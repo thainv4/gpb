@@ -256,6 +256,73 @@ export class SampleReceptionRepository implements ISampleReceptionRepository {
         );
     }
 
+    async getNextUniqueSequenceNumberByPrefix(
+        codePrefix: string,
+        dateStr: string,
+        codeWidth: number,
+        date: Date,
+        resetPeriod: string,
+        manager: EntityManager
+    ): Promise<{ sequenceNumber: number; receptionCode: string }> {
+        // Tìm MAX sequence number TOÀN BẢNG cho cùng prefix và date
+        const pattern = `${codePrefix}${dateStr}%`;
+        const prefixLength = codePrefix.length;
+        const dateLength = dateStr.length;
+        const startPos = prefixLength + dateLength + 1; // Vị trí bắt đầu của sequence trong code
+        
+        // Query để tìm MAX sequence number từ receptionCode
+        const maxSequenceResult = await manager
+            .createQueryBuilder()
+            .select(`MAX(TO_NUMBER(SUBSTR(RECEPTION_CODE, ${startPos}, ${codeWidth})))`, 'MAX_SEQ')
+            .from('BML_SAMPLE_RECEPTIONS', 'reception')
+            .where('reception.RECEPTION_CODE LIKE :pattern', { pattern })
+            .andWhere('reception.DELETED_AT IS NULL')
+            .getRawOne();
+        
+        // Nếu không có code nào tồn tại → Bắt đầu từ 1
+        const maxUsedSequence = maxSequenceResult?.MAX_SEQ 
+            ? Number.parseInt(String(maxSequenceResult.MAX_SEQ), 10) 
+            : 0;
+        
+        // Bắt đầu từ maxUsedSequence + 1
+        let nextSequence = maxUsedSequence + 1;
+        
+        // Verify uniqueness
+        let attempts = 0;
+        const maxAttempts = 100;
+        
+        while (attempts < maxAttempts) {
+            const paddedSequence = nextSequence.toString().padStart(codeWidth, '0');
+            const receptionCode = `${codePrefix}${dateStr}${paddedSequence}`;
+            
+            // Check uniqueness với query builder và pessimistic lock
+            const existing = await manager
+                .createQueryBuilder(SampleReception, 'reception')
+                .where('reception.receptionCode = :receptionCode', { receptionCode })
+                .andWhere('reception.deletedAt IS NULL')
+                .setLock('pessimistic_write')
+                .getOne();
+            
+            if (!existing) {
+                // Tìm thấy code unique!
+                return { 
+                    sequenceNumber: nextSequence, 
+                    receptionCode 
+                };
+            }
+            
+            // Nếu trùng, tăng sequence và thử lại
+            nextSequence++;
+            attempts++;
+        }
+        
+        // Nếu vượt quá maxAttempts → Throw error
+        throw new Error(
+            `Unable to generate unique reception code after ${maxAttempts} attempts. ` +
+            `Max used: ${maxUsedSequence}, Last attempted: ${nextSequence}`
+        );
+    }
+
     async findByReceptionCode(receptionCode: string): Promise<SampleReception | null> {
         return this.sampleReceptionRepository.findOne({
             where: {
