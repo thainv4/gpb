@@ -1,13 +1,14 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsNumber } from 'class-validator';
 
 export class UpdateDocumentIdDto {
-    @ApiProperty({ 
-        description: 'ID văn bản EMR (từ bảng EMR_DOCUMENT)', 
-        example: 123 
+    @ApiPropertyOptional({ 
+        description: 'ID văn bản EMR (từ bảng EMR_DOCUMENT). Có thể null để hủy chữ ký số.', 
+        example: 123,
+        nullable: true
     })
-    @IsNotEmpty()
+    @IsOptional()
     @IsNumber()
-    documentId: number;
+    documentId?: number | null;
 }
 

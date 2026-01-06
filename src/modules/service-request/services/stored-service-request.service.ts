@@ -779,7 +779,7 @@ export class StoredServiceRequestService {
         });
     }
 
-    async updateDocumentId(serviceId: string, documentId: number, currentUser: CurrentUser): Promise<void> {
+    async updateDocumentId(serviceId: string, documentId: number | null, currentUser: CurrentUser): Promise<void> {
         return this.dataSource.transaction(async (manager) => {
             // Kiểm tra service có tồn tại không
             const service = await this.serviceRepo.findById(serviceId);

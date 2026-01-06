@@ -28,7 +28,7 @@ export class StoredServiceRequestServiceRepository implements IStoredServiceRequ
         return this.repo.save(entity);
     }
 
-    async updateDocumentId(id: string, documentId: number): Promise<void> {
+    async updateDocumentId(id: string, documentId: number | null): Promise<void> {
         await this.repo.update(
             { id, deletedAt: IsNull() },
             { documentId }

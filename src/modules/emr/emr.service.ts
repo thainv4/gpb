@@ -6,6 +6,7 @@ import { CreateAndSignHsmDto } from './dto/commands/create-and-sign-hsm.dto';
 import { EmrApiResponseDto } from './dto/responses/create-and-sign-hsm-response.dto';
 import { GetEmrSignerResponseDto } from './dto/responses/get-emr-signer-response.dto';
 import { GetEmrSignerDto } from './dto/queries/get-emr-signer.dto';
+import { DeleteEmrDocumentResponseDto } from './dto/responses/delete-emr-document-response.dto';
 import { ProfileService } from '../profile/profile.service';
 
 @Injectable()
@@ -237,6 +238,83 @@ export class EmrService {
             // Re-throw BadRequestException (like missing mapped username)
             if (error instanceof BadRequestException) {
                 throw error;
+            }
+
+            throw new HttpException(
+                {
+                    message: 'Failed to communicate with EMR system',
+                    error: errorMessage,
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    async deleteEmrDocument(
+        documentId: number,
+        tokenCode: string,
+        applicationCode: string,
+    ): Promise<DeleteEmrDocumentResponseDto> {
+        try {
+            this.logger.log(`Calling EMR Delete API for DocumentId: ${documentId}`);
+
+            // Sử dụng EMR_ENDPOINT hoặc default URL
+            const emrEndpoint = this.configService.get<string>('EMR_ENDPOINT') || 'http://192.168.7.236:1415';
+            const apiUrl = `${emrEndpoint}/api/EmrDocument/Delete`;
+
+            const requestBody = {
+                ApiData: documentId,
+            };
+
+            this.logger.debug(`EMR API URL: ${apiUrl}`);
+            this.logger.debug(`Request body: ${JSON.stringify(requestBody)}`);
+
+            const response = await firstValueFrom(
+                this.httpService.post<DeleteEmrDocumentResponseDto>(
+                    apiUrl,
+                    requestBody,
+                    {
+                        headers: {
+                            'TokenCode': tokenCode,
+                            'ApplicationCode': applicationCode,
+                            'Content-Type': 'application/json',
+                        },
+                        timeout: 30000,
+                    }
+                )
+            );
+
+            this.logger.log(`EMR Delete API call successful for DocumentId: ${documentId}`);
+            
+            return response.data;
+
+        } catch (error: any) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            
+            this.logger.error(
+                `Failed to delete EMR document: ${documentId}`,
+                errorMessage
+            );
+
+            if (error.response) {
+                let status = error.response.status;
+                const data = error.response.data;
+
+                if (!status || status < 100 || status > 599) {
+                    this.logger.error(`Invalid status code from EMR API: ${status}, using 500`);
+                    status = HttpStatus.INTERNAL_SERVER_ERROR;
+                }
+
+                this.logger.error(`EMR API Error - Status: ${status}`, JSON.stringify(data));
+
+                throw new HttpException(
+                    {
+                        message: 'EMR API request failed',
+                        error: data?.Param?.Message || data?.Param?.Messages?.join(', ') || data?.message || errorMessage,
+                        statusCode: status,
+                    },
+                    status
+                );
             }
 
             throw new HttpException(

@@ -5,6 +5,8 @@ import { CreateAndSignHsmDto } from './dto/commands/create-and-sign-hsm.dto';
 import { EmrApiResponseDto } from './dto/responses/create-and-sign-hsm-response.dto';
 import { GetEmrSignerDto } from './dto/queries/get-emr-signer.dto';
 import { GetEmrSignerResponseDto } from './dto/responses/get-emr-signer-response.dto';
+import { DeleteEmrDocumentDto } from './dto/commands/delete-emr-document.dto';
+import { DeleteEmrDocumentResponseDto } from './dto/responses/delete-emr-document-response.dto';
 import { DualAuthGuard } from '../auth/guards/dual-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ResponseBuilder } from '../../common/builders/response.builder';
@@ -159,6 +161,68 @@ export class EmrController {
 
         const result = await this.emrService.getEmrSigner(userId, query, tokenCode, applicationCode);
         return ResponseBuilder.success(result);
+    }
+
+    @Post('delete-document')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Xóa văn bản EMR',
+        description: 'API proxy để gọi EMR EmrDocument/Delete. Xóa văn bản EMR bằng documentId. ' +
+            'Hỗ trợ 2 cách authentication: (1) JWT Bearer token + TokenCode/ApplicationCode headers, ' +
+            'hoặc (2) Chỉ TokenCode/ApplicationCode headers (HIS token trực tiếp).',
+    })
+    @ApiHeader({
+        name: 'Authorization',
+        description: 'JWT Bearer token (optional - nếu không có sẽ dùng HIS TokenCode)',
+        required: false,
+    })
+    @ApiHeader({
+        name: 'TokenCode',
+        description: 'HIS token code (required nếu không có JWT token)',
+        required: false,
+    })
+    @ApiHeader({
+        name: 'ApplicationCode',
+        description: 'Mã ứng dụng được quy định cho phần mềm HIS (required nếu dùng HIS token)',
+        required: false,
+    })
+    @ApiBody({ type: DeleteEmrDocumentDto })
+    @ApiResponse({
+        status: 200,
+        description: 'Xóa văn bản EMR thành công',
+        type: DeleteEmrDocumentResponseDto,
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - Dữ liệu đầu vào không hợp lệ hoặc EMR API trả về lỗi',
+    })
+    async deleteEmrDocument(
+        @Body() deleteEmrDocumentDto: DeleteEmrDocumentDto,
+        @Request() req: any,
+    ): Promise<DeleteEmrDocumentResponseDto> {
+        let tokenCode: string;
+        let applicationCode: string;
+
+        if (req.authType === 'HIS') {
+            tokenCode = req.hisTokenCode;
+            applicationCode = req.applicationCode;
+        } else {
+            tokenCode = req.headers['tokencode'] || req.headers['TokenCode'];
+            applicationCode = req.headers['applicationcode'] || req.headers['ApplicationCode'];
+
+            if (!tokenCode || !applicationCode) {
+                throw new BadRequestException(
+                    'TokenCode and ApplicationCode headers are required when using JWT authentication. ' +
+                    'Alternatively, you can use HIS TokenCode header for direct HIS authentication.'
+                );
+            }
+        }
+
+        return this.emrService.deleteEmrDocument(
+            deleteEmrDocumentDto.documentId,
+            tokenCode,
+            applicationCode,
+        );
     }
 }
 

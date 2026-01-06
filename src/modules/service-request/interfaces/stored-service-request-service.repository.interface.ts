@@ -4,6 +4,6 @@ export interface IStoredServiceRequestServiceRepository {
     findById(id: string): Promise<StoredServiceRequestService | null>;
     findByParentServiceId(parentServiceId: string): Promise<StoredServiceRequestService[]>;
     save(entity: StoredServiceRequestService): Promise<StoredServiceRequestService>;
-    updateDocumentId(id: string, documentId: number): Promise<void>;
+    updateDocumentId(id: string, documentId: number | null): Promise<void>;
 }
 
