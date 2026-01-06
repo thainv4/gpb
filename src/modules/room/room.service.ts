@@ -146,7 +146,8 @@ export class RoomService extends BaseService {
         let total: number;
 
         if (departmentId) {
-            [rooms, total] = await this.roomRepository.findByDepartmentId(departmentId, limit, offset);
+            // Truyền isActive vào repository để filter trong query
+            [rooms, total] = await this.roomRepository.findByDepartmentId(departmentId, limit, offset, isActive);
         } else if (isActive !== undefined) {
             if (isActive) {
                 [rooms, total] = await this.roomRepository.findActive(limit, offset);
@@ -208,12 +209,13 @@ export class RoomService extends BaseService {
     async getRoomsByDepartment(query: GetRoomsByDepartmentDto): Promise<GetRoomsResult> {
         const { departmentId, limit = 10, offset = 0, isActive } = query;
 
-        let [rooms, total] = await this.roomRepository.findByDepartmentId(departmentId, limit, offset);
-
-        if (isActive !== undefined) {
-            rooms = rooms.filter(room => room.isActive === isActive);
-            total = rooms.length;
-        }
+        // Truyền isActive vào repository để filter trong query
+        const [rooms, total] = await this.roomRepository.findByDepartmentId(
+            departmentId, 
+            limit, 
+            offset,
+            isActive
+        );
 
         return {
             rooms: rooms.map(room => this.mapRoomToResponseDto(room)),

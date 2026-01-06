@@ -38,14 +38,23 @@ export class RoomRepository implements IRoomRepository {
         });
     }
 
-    async findByDepartmentId(departmentId: string, limit: number = 10, offset: number = 0): Promise<[Room[], number]> {
-        return this.roomRepository.findAndCount({
-            where: { departmentId, deletedAt: IsNull() },
-            relations: ['department'],
-            take: limit,
-            skip: offset,
-            order: { sortOrder: 'ASC', createdAt: 'DESC' },
-        });
+    async findByDepartmentId(departmentId: string, limit: number = 10, offset: number = 0, isActive?: boolean): Promise<[Room[], number]> {
+        const queryBuilder = this.roomRepository
+            .createQueryBuilder('room')
+            .leftJoinAndSelect('room.department', 'department')
+            .where('room.departmentId = :departmentId', { departmentId })
+            .andWhere('room.deletedAt IS NULL')
+            .orderBy('room.sortOrder', 'ASC')
+            .addOrderBy('room.createdAt', 'DESC')
+            .take(limit)
+            .skip(offset);
+        
+        if (isActive !== undefined) {
+            // Oracle uses NUMBER(1) for boolean, convert boolean to number
+            queryBuilder.andWhere('room.isActive = :isActive', { isActive: isActive ? 1 : 0 });
+        }
+        
+        return queryBuilder.getManyAndCount();
     }
 
 

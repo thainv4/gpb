@@ -8,7 +8,7 @@ export interface IRoomRepository {
 
     // ========== QUERY OPERATIONS ==========
     findAll(limit?: number, offset?: number): Promise<[Room[], number]>;
-    findByDepartmentId(departmentId: string, limit?: number, offset?: number): Promise<[Room[], number]>;
+    findByDepartmentId(departmentId: string, limit?: number, offset?: number, isActive?: boolean): Promise<[Room[], number]>;
     findActive(limit?: number, offset?: number): Promise<[Room[], number]>;
 
     // ========== SEARCH OPERATIONS ==========
