@@ -32,15 +32,6 @@ export class UpdateRoomDto {
     departmentId?: string;
 
     @ApiPropertyOptional({
-        description: 'ID nhóm phòng',
-        example: 'group-001',
-    })
-    @IsString()
-    @IsOptional()
-    @IsUUID()
-    roomGroupId?: string;
-
-    @ApiPropertyOptional({
         description: 'Mô tả phòng',
         example: 'Phòng khám nội tổng hợp',
     })

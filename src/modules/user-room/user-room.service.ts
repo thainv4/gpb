@@ -159,8 +159,6 @@ export class UserRoomService extends BaseService {
             departmentId: userRoom.room?.department?.id || '',
             departmentName: userRoom.room?.department?.departmentName || '',
             departmentCode: userRoom.room?.department?.departmentCode || '',
-            roomGroupId: userRoom.room?.roomGroup?.id || '',
-            roomGroupName: userRoom.room?.roomGroup?.roomGroupName || '',
             branchId: userRoom.room?.department?.branch?.id || '',
             branchName: userRoom.room?.department?.branch?.branchName || '',
             isActive: userRoom.isActive,

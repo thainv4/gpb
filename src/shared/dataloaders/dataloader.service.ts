@@ -5,13 +5,11 @@ import { Province } from '../../modules/province/entities/province.entity';
 import { Ward } from '../../modules/ward/entities/ward.entity';
 import { Branch } from '../../modules/branch/entities/branch.entity';
 import { Department } from '../../modules/department/entities/department.entity';
-import { RoomGroup } from '../../modules/room-group/entities/room-group.entity';
 import { IUserRepository } from '../../modules/user/interfaces/user.repository.interface';
 import { IProvinceRepository } from '../../modules/province/interfaces/province.repository.interface';
 import { IWardRepository } from '../../modules/ward/interfaces/ward.repository.interface';
 import { IBranchRepository } from '../../modules/branch/interfaces/branch.repository.interface';
 import { IDepartmentRepository } from '../../modules/department/interfaces/department.repository.interface';
-import { IRoomGroupRepository } from '../../modules/room-group/interfaces/room-group.repository.interface';
 
 export interface DataLoaders {
     userLoader: DataLoader<string, User>;
@@ -19,7 +17,6 @@ export interface DataLoaders {
     wardLoader: DataLoader<string, Ward>;
     branchLoader: DataLoader<string, Branch>;
     departmentLoader: DataLoader<string, Department>;
-    roomGroupLoader: DataLoader<string, RoomGroup>;
     wardsByProvinceLoader: DataLoader<string, Ward[]>;
     branchesByProvinceLoader: DataLoader<string, Branch[]>;
     branchesByWardLoader: DataLoader<string, Branch[]>;
@@ -41,8 +38,6 @@ export class DataLoaderService {
         private readonly branchRepository: IBranchRepository,
         @Inject('IDepartmentRepository')
         private readonly departmentRepository: IDepartmentRepository,
-        @Inject('IRoomGroupRepository')
-        private readonly roomGroupRepository: IRoomGroupRepository,
     ) { }
 
     /**
@@ -169,18 +164,6 @@ export class DataLoaderService {
     }
 
     /**
-     * Create RoomGroup DataLoader
-     * Batch loads room groups by IDs
-     */
-    createRoomGroupLoader(): DataLoader<string, RoomGroup> {
-        return new DataLoader<string, RoomGroup>(async (roomGroupIds: readonly string[]) => {
-            const roomGroups = await this.roomGroupRepository.findByIds([...roomGroupIds]);
-            const roomGroupMap = new Map(roomGroups.map(roomGroup => [roomGroup.id, roomGroup]));
-            return roomGroupIds.map(id => roomGroupMap.get(id) || null);
-        });
-    }
-
-    /**
      * Create Departments by Branch DataLoader
      * Batch loads departments grouped by branch ID
      */
@@ -252,7 +235,6 @@ export class DataLoaderService {
             wardLoader: this.createWardLoader(),
             branchLoader: this.createBranchLoader(),
             departmentLoader: this.createDepartmentLoader(),
-            roomGroupLoader: this.createRoomGroupLoader(),
             wardsByProvinceLoader: this.createWardsByProvinceLoader(),
             branchesByProvinceLoader: this.createBranchesByProvinceLoader(),
             branchesByWardLoader: this.createBranchesByWardLoader(),

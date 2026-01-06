@@ -6,7 +6,6 @@ import { UpdateRoomDto } from './dto/commands/update-room.dto';
 import { GetRoomsDto } from './dto/queries/get-rooms.dto';
 import { SearchRoomsDto } from './dto/queries/search-rooms.dto';
 import { GetRoomsByDepartmentDto } from './dto/queries/get-rooms-by-department.dto';
-import { GetRoomsByGroupDto } from './dto/queries/get-rooms-by-group.dto';
 import { RoomResponseDto } from './dto/responses/room-response.dto';
 import { RoomsListResponseDto } from './dto/responses/rooms-list-response.dto';
 import { DualAuthGuard } from '../auth/guards/dual-auth.guard';
@@ -123,7 +122,6 @@ export class RoomController {
     @ApiQuery({ name: 'offset', required: false, description: 'Vị trí bắt đầu', example: 0 })
     @ApiQuery({ name: 'isActive', required: false, description: 'Lọc theo trạng thái hoạt động', example: true })
     @ApiQuery({ name: 'departmentId', required: false, description: 'Lọc theo khoa', example: 'dept-001' })
-    @ApiQuery({ name: 'roomGroupId', required: false, description: 'Lọc theo nhóm phòng', example: 'group-001' })
     @ApiResponse({
         status: 200,
         description: 'Danh sách phòng',
@@ -145,7 +143,6 @@ export class RoomController {
     @ApiQuery({ name: 'offset', required: false, description: 'Vị trí bắt đầu', example: 0 })
     @ApiQuery({ name: 'isActive', required: false, description: 'Lọc theo trạng thái hoạt động', example: true })
     @ApiQuery({ name: 'departmentId', required: false, description: 'Lọc theo khoa', example: 'dept-001' })
-    @ApiQuery({ name: 'roomGroupId', required: false, description: 'Lọc theo nhóm phòng', example: 'group-001' })
     @ApiResponse({
         status: 200,
         description: 'Kết quả tìm kiếm phòng',
@@ -180,29 +177,6 @@ export class RoomController {
         return ResponseBuilder.success(result);
     }
 
-    @Get('by-group/:roomGroupId')
-    @ApiOperation({
-        summary: 'Lấy phòng theo nhóm phòng',
-        description: 'Lấy danh sách phòng thuộc một nhóm phòng cụ thể.'
-    })
-    @ApiParam({ name: 'roomGroupId', description: 'ID nhóm phòng' })
-    @ApiQuery({ name: 'limit', required: false, description: 'Số lượng bản ghi trả về', example: 10 })
-    @ApiQuery({ name: 'offset', required: false, description: 'Vị trí bắt đầu', example: 0 })
-    @ApiQuery({ name: 'isActive', required: false, description: 'Lọc theo trạng thái hoạt động', example: true })
-    @ApiResponse({
-        status: 200,
-        description: 'Danh sách phòng theo nhóm phòng',
-        type: RoomsListResponseDto,
-    })
-    @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
-    async getRoomsByGroup(
-        @Param('roomGroupId') roomGroupId: string,
-        @Query() query: Omit<GetRoomsByGroupDto, 'roomGroupId'>
-    ) {
-        const result = await this.roomService.getRoomsByGroup({ roomGroupId, ...query });
-        return ResponseBuilder.success(result);
-    }
-
     @Get('stats')
     @ApiOperation({
         summary: 'Thống kê phòng',
@@ -217,8 +191,7 @@ export class RoomController {
                 total: { type: 'number', example: 100 },
                 active: { type: 'number', example: 95 },
                 inactive: { type: 'number', example: 5 },
-                byDepartment: { type: 'object' },
-                byRoomGroup: { type: 'object' }
+                byDepartment: { type: 'object' }
             }
         }
     })

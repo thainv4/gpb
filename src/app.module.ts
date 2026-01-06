@@ -17,7 +17,6 @@ import { WardModule } from './modules/ward/ward.module';
 import { BranchModule } from './modules/branch/branch.module';
 import { DepartmentTypeModule } from './modules/department-type/department-type.module';
 import { DepartmentModule } from './modules/department/department.module';
-import { RoomGroupModule } from './modules/room-group/room-group.module';
 import { RoomModule } from './modules/room/room.module';
 import { SampleTypeModule } from './modules/sample-type/sample-type.module';
 import { SampleReceptionModule } from './modules/sample-reception/sample-reception.module';
@@ -75,7 +74,6 @@ import { ServicesModule } from './shared/services/services.module';
         BranchModule,
         DepartmentTypeModule,
         DepartmentModule,
-        RoomGroupModule,
         RoomModule,
         SampleTypeModule,
         SampleReceptionModule,

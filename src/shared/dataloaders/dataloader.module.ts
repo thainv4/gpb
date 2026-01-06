@@ -6,17 +6,15 @@ import { Province } from '../../modules/province/entities/province.entity';
 import { Ward } from '../../modules/ward/entities/ward.entity';
 import { Branch } from '../../modules/branch/entities/branch.entity';
 import { Department } from '../../modules/department/entities/department.entity';
-import { RoomGroup } from '../../modules/room-group/entities/room-group.entity';
 import { UserRepository } from '../../modules/user/user.repository';
 import { ProvinceRepository } from '../../modules/province/province.repository';
 import { WardRepository } from '../../modules/ward/ward.repository';
 import { BranchRepository } from '../../modules/branch/branch.repository';
 import { DepartmentRepository } from '../../modules/department/department.repository';
-import { RoomGroupRepository } from '../../modules/room-group/room-group.repository';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([User, Province, Ward, Branch, Department, RoomGroup]),
+        TypeOrmModule.forFeature([User, Province, Ward, Branch, Department]),
     ],
     providers: [
         DataLoaderService,
@@ -39,10 +37,6 @@ import { RoomGroupRepository } from '../../modules/room-group/room-group.reposit
         {
             provide: 'IDepartmentRepository',
             useClass: DepartmentRepository,
-        },
-        {
-            provide: 'IRoomGroupRepository',
-            useClass: RoomGroupRepository,
         },
     ],
     exports: [DataLoaderService],

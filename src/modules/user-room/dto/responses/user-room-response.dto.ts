@@ -37,12 +37,6 @@ export class UserRoomResponseDto {
     @ApiProperty({ description: 'Mã khoa' })
     departmentCode: string;
 
-    @ApiProperty({ description: 'ID nhóm phòng' })
-    roomGroupId: string;
-
-    @ApiProperty({ description: 'Tên nhóm phòng' })
-    roomGroupName: string;
-
     @ApiProperty({ description: 'ID cơ sở' })
     branchId: string;
 

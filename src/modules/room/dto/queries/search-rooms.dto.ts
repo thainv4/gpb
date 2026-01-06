@@ -52,12 +52,4 @@ export class SearchRoomsDto {
     @IsOptional()
     @IsString()
     departmentId?: string;
-
-    @ApiPropertyOptional({
-        description: 'Lọc theo nhóm phòng',
-        example: 'group-001',
-    })
-    @IsOptional()
-    @IsString()
-    roomGroupId?: string;
 }
