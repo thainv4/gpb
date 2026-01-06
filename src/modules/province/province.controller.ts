@@ -11,6 +11,7 @@ import { ProvinceResponseDto } from './dto/responses/province-response.dto';
 import { ProvincesListResponseDto } from './dto/responses/provinces-list-response.dto';
 import { DualAuthGuard } from '../auth/guards/dual-auth.guard';
 import { ResponseBuilder } from '../../common/builders/response.builder';
+import { PublicGuard } from '../../common/guards/public.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('Provinces')
@@ -142,9 +143,10 @@ export class ProvinceController {
     // ========== QUERY ENDPOINTS (Read Operations) ==========
 
     @Get()
+    @UseGuards(PublicGuard)
     @ApiOperation({
         summary: 'Lấy danh sách tỉnh',
-        description: 'Lấy danh sách tất cả các tỉnh thành với phân trang và bộ lọc'
+        description: 'Lấy danh sách tất cả các tỉnh thành với phân trang và bộ lọc. This endpoint is public and does not require authentication.'
     })
     @ApiQuery({ name: 'limit', description: 'Số lượng bản ghi trả về', required: false, type: 'number', example: 10 })
     @ApiQuery({ name: 'offset', description: 'Vị trí bắt đầu', required: false, type: 'number', example: 0 })
@@ -157,7 +159,6 @@ export class ProvinceController {
         description: 'Danh sách tỉnh được trả về thành công',
         type: ProvincesListResponseDto
     })
-    @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
     async getProvinces(@Query() getProvincesDto: GetProvincesDto) {
         const result = await this.provinceService.getProvinces(getProvincesDto);
         return ResponseBuilder.success(result);

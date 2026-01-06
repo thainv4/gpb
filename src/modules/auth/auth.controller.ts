@@ -66,11 +66,9 @@ export class AuthController {
     }
 
     @Post('register-with-profile')
-    @UseGuards(DualAuthGuard)
-    @ApiBearerAuth('JWT-auth')
     @ApiOperation({
-        summary: 'User registration with profile (Admin only)',
-        description: 'Register a new user account and create profile in a single atomic transaction. Both user and profile will be created together, or both will fail together.'
+        summary: 'User registration with profile',
+        description: 'Register a new user account and create profile in a single atomic transaction. Both user and profile will be created together, or both will fail together. This endpoint is public and does not require authentication.'
     })
     @ApiBody({ type: RegisterWithProfileDto })
     @ApiResponse({
@@ -100,16 +98,11 @@ export class AuthController {
         }
     })
     @ApiResponse({ status: 400, description: 'Bad request - validation failed' })
-    @ApiResponse({ status: 401, description: 'Unauthorized - Admin authentication required' })
     @ApiResponse({ status: 409, description: 'User already exists or employee code already exists' })
     async registerWithProfile(
         @Body() registerDto: RegisterWithProfileDto,
-        @CurrentUser() currentUser: ICurrentUser | null,
     ) {
-        if (!currentUser) {
-            throw new BadRequestException('Admin authentication required for user registration with profile');
-        }
-        const result = await this.authService.registerWithProfile(registerDto, currentUser);
+        const result = await this.authService.registerWithProfile(registerDto, null);
         return ResponseBuilder.success(result, 201);
     }
 
