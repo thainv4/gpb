@@ -124,7 +124,9 @@ export class RoomService extends BaseService {
                 throw new NotFoundException('Room not found');
             }
 
-            await this.roomRepository.delete(id);
+            // Set isActive to false instead of soft delete
+            room.isActive = false;
+            await manager.save(Room, room);
         });
     }
 

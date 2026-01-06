@@ -81,6 +81,7 @@ export class UserRoomRepository implements IUserRoomRepository {
             .where('userRoom.userId = :userId', { userId })
             .andWhere('userRoom.deletedAt IS NULL')
             .andWhere('userRoom.isActive = :isActive', { isActive: true })
+            .andWhere('room.isActive = :roomIsActive', { roomIsActive: 1 })
             .orderBy('userRoom.createdAt', 'DESC')
             .getMany();
     }
