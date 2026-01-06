@@ -1,4 +1,4 @@
-import { Injectable, Inject, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { UserRoom } from './entities/user-room.entity';
 import { IUserRoomRepository } from './interfaces/user-room.repository.interface';
@@ -8,7 +8,6 @@ import { GetUserRoomsDto } from './dto/queries/get-user-rooms.dto';
 import { UserRoomResponseDto } from './dto/responses/user-room-response.dto';
 import { GetUserRoomsResult } from './dto/responses/user-rooms-list-response.dto';
 import { DataLoaderService } from '../../shared/dataloaders/dataloader.service';
-import { AppError } from '../../common/errors/app.error';
 import { BaseService } from '../../common/services/base.service';
 import { CurrentUserContextService } from '../../common/services/current-user-context.service';
 import { CurrentUser } from '../../common/interfaces/current-user.interface';
@@ -72,7 +71,8 @@ export class UserRoomService extends BaseService {
                 throw new NotFoundException('Phân quyền phòng không tồn tại');
             }
 
-            await this.userRoomRepository.delete(userRoom.id);
+            // Hard delete - xóa hoàn toàn bản ghi
+            await manager.remove(UserRoom, userRoom);
         });
     }
 
