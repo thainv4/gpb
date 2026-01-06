@@ -123,6 +123,12 @@ export class StoredServiceResponseDto {
     @ApiPropertyOptional({ description: 'Mã tiếp nhận mẫu' })
     receptionCode?: string | null;
 
+    @ApiPropertyOptional({ description: 'Tên loại mẫu' })
+    sampleTypeName?: string | null;
+
+    @ApiPropertyOptional({ description: 'ID loại mẫu' })
+    sampleTypeId?: string | null;
+
     @ApiPropertyOptional({ description: 'Thời gian lấy mẫu' })
     sampleCollectionTime?: Date | null;
 

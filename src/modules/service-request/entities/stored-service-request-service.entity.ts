@@ -128,6 +128,9 @@ export class StoredServiceRequestService extends BaseEntity {
     @Column({ name: 'RECEPTION_CODE', type: 'varchar2', length: 50, nullable: true })
     receptionCode?: string | null;
 
+    @Column({ name: 'SAMPLE_TYPE_NAME', type: 'varchar2', length: 200, nullable: true })
+    sampleTypeName?: string | null;
+
     @Column({ name: 'SAMPLE_COLL_TIME', type: 'timestamp', nullable: true })
     sampleCollectionTime?: Date | null;
 

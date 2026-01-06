@@ -300,7 +300,8 @@ export class ServiceRequestController {
         return ResponseBuilder.success({ 
             message: 'Reception code đã được cập nhật thành công',
             serviceId: serviceId,
-            receptionCode: dto.receptionCode
+            receptionCode: dto.receptionCode,
+            sampleTypeName: dto.sampleTypeName
         });
     }
 }

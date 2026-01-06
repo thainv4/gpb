@@ -1,13 +1,22 @@
-import { IsNotEmpty, IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateReceptionCodeDto {
-    @ApiProperty({ 
+    @ApiPropertyOptional({ 
         description: 'Mã tiếp nhận mới',
         example: 'RCP20251229001'
     })
+    @IsOptional()
     @IsString()
-    @IsNotEmpty({ message: 'Reception code không được để trống' })
-    receptionCode: string;
+    receptionCode?: string | null;
+
+    @ApiPropertyOptional({ 
+        description: 'Tên loại mẫu',
+        example: 'Mẫu máu'
+    })
+    @IsOptional()
+    @IsString()
+    @MaxLength(200, { message: 'Tên loại mẫu không được quá 200 ký tự' })
+    sampleTypeName?: string | null;
 }
 

@@ -21,5 +21,13 @@ export interface ISampleReceptionRepository {
         resetPeriod: string,
         manager: EntityManager
     ): Promise<{ sequenceNumber: number; receptionCode: string }>;
+    getNextUniqueSequenceNumberByPrefix(
+        codePrefix: string,
+        dateStr: string,
+        codeWidth: number,
+        date: Date,
+        resetPeriod: string,
+        manager: EntityManager
+    ): Promise<{ sequenceNumber: number; receptionCode: string }>;
     findByReceptionCode(receptionCode: string): Promise<SampleReception | null>;
 }

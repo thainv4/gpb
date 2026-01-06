@@ -2,6 +2,7 @@ import { Injectable, Inject, ConflictException, NotFoundException, BadRequestExc
 import { DataSource } from 'typeorm';
 import { IStoredServiceRequestRepository } from '../interfaces/stored-service-request.repository.interface';
 import { IStoredServiceRequestServiceRepository } from '../interfaces/stored-service-request-service.repository.interface';
+import { ISampleReceptionRepository } from '../../sample-reception/interfaces/sample-reception.repository.interface';
 import { ServiceRequestService } from './service-request.service';
 import { StoreServiceRequestDto } from '../dto/commands/store-service-request.dto';
 import { EnterResultDto } from '../dto/commands/enter-result.dto';
@@ -25,6 +26,8 @@ export class StoredServiceRequestService {
         private readonly storedRepo: IStoredServiceRequestRepository,
         @Inject('IStoredServiceRequestServiceRepository')
         private readonly serviceRepo: IStoredServiceRequestServiceRepository,
+        @Inject('ISampleReceptionRepository')
+        private readonly sampleReceptionRepository: ISampleReceptionRepository,
         private readonly serviceRequestService: ServiceRequestService,
         private readonly workflowHistoryService: WorkflowHistoryService,
         @Inject('IWorkflowStateRepository')
@@ -126,6 +129,9 @@ export class StoredServiceRequestService {
 
             const savedRequest = await manager.save(StoredServiceRequest, storedRequest);
 
+            // 3.5. Lấy sampleTypeName từ request body
+            const sampleTypeName = dto.sampleTypeName || null;
+
             // 4. Lưu Services (parents và children)
             let servicesCount = 0;
             for (const service of enrichedData.services) {
@@ -152,6 +158,7 @@ export class StoredServiceRequestService {
 
                 // Sample Collection Info (NEW)
                 storedService.receptionCode = dto.receptionCode;
+                storedService.sampleTypeName = sampleTypeName;
                 storedService.sampleCollectionTime = new Date(dto.sampleCollectionTime);
                 storedService.collectedByUserId = dto.collectedByUserId ?? null;
 
@@ -192,6 +199,7 @@ export class StoredServiceRequestService {
 
                         // Sample Collection Info (NEW) - same as parent
                         storedTest.receptionCode = dto.receptionCode;
+                        storedTest.sampleTypeName = sampleTypeName;
                         storedTest.sampleCollectionTime = new Date(dto.sampleCollectionTime);
                         storedTest.collectedByUserId = dto.collectedByUserId ?? null;
 
@@ -312,25 +320,25 @@ export class StoredServiceRequestService {
         const servicesMap = new Map<string, StoredServiceResponseDto>();
 
         // First pass: Map all services
-        storedRequest.services?.forEach((service) => {
+        for (const service of storedRequest.services || []) {
             if (service.isChildService === 0) {
                 // Parent service
-                servicesMap.set(service.id, this.mapServiceToDto(service));
+                servicesMap.set(service.id, await this.mapServiceToDto(service));
             }
-        });
+        }
 
         // Second pass: Add children to parents
-        storedRequest.services?.forEach((service) => {
+        for (const service of storedRequest.services || []) {
             if (service.isChildService === 1 && service.parentServiceId) {
                 const parent = servicesMap.get(service.parentServiceId);
                 if (parent) {
                     if (!parent.serviceTests) {
                         parent.serviceTests = [];
                     }
-                    parent.serviceTests.push(this.mapServiceToDto(service));
+                    parent.serviceTests.push(await this.mapServiceToDto(service));
                 }
             }
-        });
+        }
 
         // Convert map to array (only parent services)
         const services = Array.from(servicesMap.values());
@@ -419,13 +427,34 @@ export class StoredServiceRequestService {
             service.children = children;
         }
         
-        return this.mapServiceToDto(service);
+        return await this.mapServiceToDto(service);
     }
 
     /**
      * Map Service Entity to DTO
      */
-    private mapServiceToDto(service: StoredServiceRequestServiceEntity): StoredServiceResponseDto {
+    private async mapServiceToDto(service: StoredServiceRequestServiceEntity): Promise<StoredServiceResponseDto> {
+        // Lấy sampleTypeId từ SampleReception nếu có receptionCode
+        let sampleTypeId: string | null = null;
+        if (service.receptionCode) {
+            try {
+                const sampleReception = await this.sampleReceptionRepository.findByCode(service.receptionCode);
+                if (sampleReception?.sampleTypeId) {
+                    sampleTypeId = sampleReception.sampleTypeId;
+                }
+            } catch (error) {
+                // Ignore errors, sampleTypeId will be null
+            }
+        }
+
+        // Map children services nếu có
+        let serviceTests: StoredServiceResponseDto[] | undefined = undefined;
+        if (service.isChildService === 0 && service.children?.length > 0) {
+            serviceTests = await Promise.all(
+                service.children.map(child => this.mapServiceToDto(child))
+            );
+        }
+
         return {
             id: service.id,
             parentServiceId: service.parentServiceId,
@@ -465,14 +494,14 @@ export class StoredServiceRequestService {
             qcCheckedByUserId: service.qcCheckedByUserId,
             qcCheckedAt: service.qcCheckedAt,
             receptionCode: service.receptionCode,
+            sampleTypeName: service.sampleTypeName,
+            sampleTypeId: sampleTypeId,
             sampleCollectionTime: service.sampleCollectionTime,
             collectedByUserId: service.collectedByUserId,
             documentId: service.documentId,
             testId: service.testId,
             isActive: service.isActive,
-            serviceTests: service.isChildService === 0 && service.children?.length > 0
-                ? service.children.map(child => this.mapServiceToDto(child))
-                : undefined,
+            serviceTests: serviceTests,
         };
     }
 
@@ -788,8 +817,13 @@ export class StoredServiceRequestService {
                 );
             }
 
-            // 2. Cập nhật reception code
-            storedService.receptionCode = dto.receptionCode;
+            // 2. Cập nhật reception code và sampleTypeName (chỉ khi có giá trị)
+            if (dto.receptionCode !== undefined) {
+                storedService.receptionCode = dto.receptionCode;
+            }
+            if (dto.sampleTypeName !== undefined) {
+                storedService.sampleTypeName = dto.sampleTypeName;
+            }
             storedService.updatedBy = currentUser.id;
 
             // 3. Lưu vào database

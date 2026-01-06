@@ -7,8 +7,8 @@ export class SampleReception extends BaseEntity {
     @Column({ name: 'RECEPTION_CODE', unique: true })
     receptionCode: string; // BLOOD.20241024.0001
 
-    @Column({ name: 'SAMPLE_TYPE_ID', type: 'varchar2', length: 36 })
-    sampleTypeId: string;
+    @Column({ name: 'SAMPLE_TYPE_ID', type: 'varchar2', length: 36, nullable: true })
+    sampleTypeId?: string;
 
     @Column({ name: 'RECEPTION_DATE', type: 'date' })
     receptionDate: Date;
@@ -17,9 +17,9 @@ export class SampleReception extends BaseEntity {
     sequenceNumber: number; // 1, 2, 3...
 
     // Relationships
-    @ManyToOne(() => SampleType)
+    @ManyToOne(() => SampleType, { nullable: true })
     @JoinColumn({ name: 'SAMPLE_TYPE_ID' })
-    sampleType: SampleType;
+    sampleType?: SampleType;
 
     // Business methods
     getFormattedCode(): string {

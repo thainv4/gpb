@@ -2,6 +2,7 @@ import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, HttpStatu
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { SampleReceptionService } from './sample-reception.service';
 import { CreateSampleReceptionDto } from './dto/commands/create-sample-reception.dto';
+import { CreateSampleReceptionByPrefixDto } from './dto/commands/create-sample-reception-by-prefix.dto';
 import { GetSampleReceptionsDto } from './dto/queries/get-sample-receptions.dto';
 import { GenerateCodeDto } from './dto/queries/generate-code.dto';
 import { DualAuthGuard } from '../auth/guards/dual-auth.guard';
@@ -47,6 +48,45 @@ export class SampleReceptionController {
         @CurrentUser() currentUser: ICurrentUser
     ) {
         const receptionId = await this.sampleReceptionService.createSampleReception(createDto, currentUser);
+
+        // Lấy mã tiếp nhận vừa tạo để trả về
+        const reception = await this.sampleReceptionService.getSampleReceptionById(receptionId);
+
+        return ResponseBuilder.success({
+            id: receptionId,
+            receptionCode: reception.receptionCode
+        }, HttpStatus.CREATED);
+    }
+
+    @Post('by-prefix')
+    @ApiOperation({
+        summary: 'Tạo mã tiếp nhận mẫu mới bằng tiền tố (không liên quan đến sample type)',
+        description: 'Tạo mã tiếp nhận mẫu mới với format: {TIỀN_TỐ}.{YYYYMMDD}.{SỐ_THỨ_TỰ}. Prefix hoàn toàn độc lập, không cần sample type.'
+    })
+    @ApiBody({ type: CreateSampleReceptionByPrefixDto })
+    @ApiResponse({
+        status: 201,
+        description: 'Mã tiếp nhận được tạo thành công',
+        schema: {
+            type: 'object',
+            properties: {
+                success: { type: 'boolean' },
+                status_code: { type: 'number' },
+                data: {
+                    type: 'object',
+                    properties: {
+                        id: { type: 'string' },
+                        receptionCode: { type: 'string', example: 'BLOOD.20241024.0001' }
+                    }
+                }
+            }
+        }
+    })
+    async createSampleReceptionByPrefix(
+        @Body() createDto: CreateSampleReceptionByPrefixDto,
+        @CurrentUser() currentUser: ICurrentUser
+    ) {
+        const receptionId = await this.sampleReceptionService.createSampleReceptionByPrefix(createDto, currentUser);
 
         // Lấy mã tiếp nhận vừa tạo để trả về
         const reception = await this.sampleReceptionService.getSampleReceptionById(receptionId);
