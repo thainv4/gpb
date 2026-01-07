@@ -22,6 +22,9 @@ export class WorkflowStateResponseDto extends BaseResponseDto {
 
     @ApiProperty({ description: 'Trạng thái active/inactive', example: 1 })
     isActive: number;
+
+    @ApiProperty({ description: 'Trạng thái selected', example: 0 })
+    isSelected: number;
 }
 
 export interface GetWorkflowStatesResult {

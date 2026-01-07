@@ -5,6 +5,7 @@ import { BaseEntity } from '../../../common/entities/base.entity';
 @Index('IDX_WF_STATES_CODE', ['stateCode'])
 @Index('IDX_WF_STATES_ORDER', ['stateOrder'])
 @Index('IDX_WF_STATES_ACTIVE', ['isActive'])
+@Index('IDX_WF_STATES_SELECTED', ['isSelected'])
 export class WorkflowState extends BaseEntity {
     @Column({ name: 'STATE_CODE', type: 'varchar2', length: 50, unique: true })
     stateCode: string;
@@ -27,6 +28,9 @@ export class WorkflowState extends BaseEntity {
     @Column({ name: 'IS_ACTIVE', type: 'number', default: 1 })
     isActive: number;
 
+    @Column({ name: 'IS_SELECTED', type: 'number', default: 1 })
+    isSelected: number; // 0 = không được chọn, 1 = được chọn
+
     // Business methods
     canBeSkipped(): boolean {
         return this.canSkip === 1;
@@ -38,6 +42,10 @@ export class WorkflowState extends BaseEntity {
 
     isStateActive(): boolean {
         return this.isActive === 1 && !this.deletedAt;
+    }
+
+    isStateSelected(): boolean {
+        return this.isSelected === 1;
     }
 }
 

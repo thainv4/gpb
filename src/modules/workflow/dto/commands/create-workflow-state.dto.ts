@@ -46,5 +46,11 @@ export class CreateWorkflowStateDto {
     @IsNumber({}, { message: 'Is active phải là số' })
     @IsIn([0, 1], { message: 'Is active phải là 0 hoặc 1' })
     isActive?: number = 1;
+
+    @ApiPropertyOptional({ description: 'Trạng thái selected (0 = không được chọn, 1 = được chọn)', example: 0, default: 0 })
+    @IsOptional()
+    @IsNumber({}, { message: 'Is selected phải là số' })
+    @IsIn([0, 1], { message: 'Is selected phải là 0 hoặc 1' })
+    isSelected?: number = 0;
 }
 

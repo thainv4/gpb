@@ -42,6 +42,11 @@ export class WorkflowStateRepository implements IWorkflowStateRepository {
             queryBuilder.andWhere('state.isActive = :isActive', { isActive: query.isActive });
         }
 
+        // IsSelected filter
+        if (query.isSelected !== undefined) {
+            queryBuilder.andWhere('state.isSelected = :isSelected', { isSelected: query.isSelected });
+        }
+
         // Order by
         const orderBy = query.orderBy || 'stateOrder';
         const order = query.order || 'ASC';
