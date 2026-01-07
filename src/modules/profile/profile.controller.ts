@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { ProfileService } from './profile.service';
 import { CreateProfileDto } from './dto/commands/create-profile.dto';
@@ -34,7 +34,7 @@ export class ProfileController {
         return ResponseBuilder.success(createdProfile, 201);
     }
 
-    @Put('user/:userId')
+    @Patch('user/:userId')
     @ApiOperation({ summary: 'Cập nhật profile theo user ID', description: 'Cập nhật thông tin profile của người dùng' })
     @ApiResponse({ status: 200, description: 'Profile đã được cập nhật thành công' })
     @ApiParam({ name: 'userId', description: 'ID của người dùng' })
