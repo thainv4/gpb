@@ -41,6 +41,7 @@ export class WorkflowStateService {
             entity.canSkip = dto.canSkip ?? 0;
             entity.requiresApproval = dto.requiresApproval ?? 0;
             entity.isActive = dto.isActive ?? 1;
+            entity.isSelected = dto.isSelected ?? 0;
             entity.createdBy = currentUser.id;
             entity.updatedBy = currentUser.id;
 
@@ -83,6 +84,9 @@ export class WorkflowStateService {
             }
             if (dto.isActive !== undefined) {
                 entity.isActive = dto.isActive;
+            }
+            if (dto.isSelected !== undefined) {
+                entity.isSelected = dto.isSelected;
             }
 
             entity.updatedBy = currentUser.id;
@@ -152,6 +156,7 @@ export class WorkflowStateService {
             canSkip: entity.canSkip,
             requiresApproval: entity.requiresApproval,
             isActive: entity.isActive,
+            isSelected: entity.isSelected,
             createdAt: entity.createdAt,
             updatedAt: entity.updatedAt,
             deletedAt: entity.deletedAt,

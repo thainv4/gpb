@@ -30,6 +30,13 @@ export class GetWorkflowStatesDto {
     @IsIn([0, 1], { message: 'Is active phải là 0 hoặc 1' })
     isActive?: number;
 
+    @ApiPropertyOptional({ description: 'Lọc theo trạng thái selected (0/1)', example: 1 })
+    @IsOptional()
+    @Type(() => Number)
+    @IsNumber({}, { message: 'Is selected phải là số' })
+    @IsIn([0, 1], { message: 'Is selected phải là 0 hoặc 1' })
+    isSelected?: number;
+
     @ApiPropertyOptional({ description: 'Sắp xếp theo thứ tự (ASC/DESC)', example: 'ASC', enum: ['ASC', 'DESC'] })
     @IsOptional()
     @IsString()
