@@ -532,6 +532,11 @@ export class StoredServiceRequestService {
                 throw new BadRequestException('Service không thuộc Service Request này');
             }
 
+            // Check if documentId is not null - if so, block this API
+            if (service.documentId !== null && service.documentId !== undefined) {
+                throw new BadRequestException('Không thể nhập cập nhật kết quả xét nghiệm vì dịch vụ đã được ký số.');
+            }
+
             // Update result fields
             if (dto.resultValue !== undefined) {
                 service.resultValue = dto.resultValue;
@@ -609,6 +614,11 @@ export class StoredServiceRequestService {
         // Validate service belongs to stored request
         if (service.storedServiceRequestId !== storedReqId) {
             throw new BadRequestException('Service không thuộc Service Request này');
+        }
+
+        // Check if documentId is not null - if so, block this API
+        if (service.documentId !== null && service.documentId !== undefined) {
+            throw new BadRequestException('Không thể lấy kết quả xét nghiệm vì dịch vụ đã được ký số.');
         }
 
         // Map to EnterResultDto

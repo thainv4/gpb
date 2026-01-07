@@ -40,6 +40,13 @@ export class StoredServiceRequestRepository implements IStoredServiceRequestRepo
         });
     }
 
+    async findByTreatmentCode(treatmentCode: string): Promise<StoredServiceRequest | null> {
+        return this.repo.findOne({
+            where: { treatmentCode, deletedAt: IsNull() },
+            relations: ['services'],
+        });
+    }
+
     async save(entity: StoredServiceRequest): Promise<StoredServiceRequest> {
         return this.repo.save(entity);
     }

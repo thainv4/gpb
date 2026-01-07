@@ -49,7 +49,7 @@ export class EmrController {
     })
     @ApiResponse({
         status: 400,
-        description: 'Bad request - Dữ liệu đầu vào không hợp lệ hoặc EMR API trả về lỗi',
+        description: 'Bad request - Dữ liệu đầu vào không hợp lệ, dịch vụ đã được ký số, hoặc EMR API trả về lỗi',
     })
     async createAndSignHsm(
         @Body() createAndSignHsmDto: CreateAndSignHsmDto,

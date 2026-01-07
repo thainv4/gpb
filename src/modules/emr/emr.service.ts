@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, HttpException, HttpStatus, Inject } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
@@ -8,6 +8,8 @@ import { GetEmrSignerResponseDto } from './dto/responses/get-emr-signer-response
 import { GetEmrSignerDto } from './dto/queries/get-emr-signer.dto';
 import { DeleteEmrDocumentResponseDto } from './dto/responses/delete-emr-document-response.dto';
 import { ProfileService } from '../profile/profile.service';
+import { IStoredServiceRequestServiceRepository } from '../service-request/interfaces/stored-service-request-service.repository.interface';
+import { IStoredServiceRequestRepository } from '../service-request/interfaces/stored-service-request.repository.interface';
 
 @Injectable()
 export class EmrService {
@@ -17,6 +19,10 @@ export class EmrService {
         private readonly httpService: HttpService,
         private readonly configService: ConfigService,
         private readonly profileService: ProfileService,
+        @Inject('IStoredServiceRequestServiceRepository')
+        private readonly serviceRepo: IStoredServiceRequestServiceRepository,
+        @Inject('IStoredServiceRequestRepository')
+        private readonly storedRequestRepo: IStoredServiceRequestRepository,
     ) {}
 
     async createAndSignHsm(
@@ -24,6 +30,44 @@ export class EmrService {
         tokenCode: string,
         applicationCode: string,
     ): Promise<EmrApiResponseDto> {
+        // Validate documentId: Find stored service request by TreatmentCode and check all services
+        this.logger.debug(`Validating documentId for TreatmentCode: ${createAndSignHsmDto.TreatmentCode}`);
+        const storedRequest = await this.storedRequestRepo.findByTreatmentCode(createAndSignHsmDto.TreatmentCode);
+        
+        if (storedRequest) {
+            this.logger.debug(`Found stored request with ID: ${storedRequest.id}, services count: ${storedRequest.services?.length || 0}`);
+            
+            if (storedRequest.services && storedRequest.services.length > 0) {
+                // Check all services in the stored request
+                for (const service of storedRequest.services) {
+                    if (service.documentId !== null && service.documentId !== undefined) {
+                        this.logger.warn(`Service ${service.id} already has documentId: ${service.documentId}, blocking create-and-sign-hsm`);
+                        throw new BadRequestException('Không thể tạo và ký văn bản vì dịch vụ đã được ký số.');
+                    }
+                }
+            }
+        } else {
+            this.logger.debug(`No stored request found for TreatmentCode: ${createAndSignHsmDto.TreatmentCode}`);
+        }
+
+        // Also check if HisCode is provided (specific service check)
+        if (createAndSignHsmDto.HisCode) {
+            this.logger.debug(`Checking HisCode: ${createAndSignHsmDto.HisCode}`);
+            // HisCode should be the ID of stored service request service
+            const service = await this.serviceRepo.findById(createAndSignHsmDto.HisCode);
+            
+            if (service) {
+                this.logger.debug(`Found service with ID: ${service.id}, documentId: ${service.documentId}`);
+                // Check if documentId is not null - if so, block this API
+                if (service.documentId !== null && service.documentId !== undefined) {
+                    this.logger.warn(`Service ${service.id} already has documentId: ${service.documentId}, blocking create-and-sign-hsm`);
+                    throw new BadRequestException('Không thể tạo và ký văn bản vì dịch vụ đã được ký số.');
+                }
+            } else {
+                this.logger.debug(`Service not found for HisCode: ${createAndSignHsmDto.HisCode}`);
+            }
+        }
+
         try {
             this.logger.log(`Calling EMR CreateAndSignHsm API for TreatmentCode: ${createAndSignHsmDto.TreatmentCode}`);
 
@@ -68,6 +112,11 @@ export class EmrService {
             return response.data;
 
         } catch (error: any) {
+            // Re-throw BadRequestException (like documentId validation)
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             
             this.logger.error(
