@@ -54,6 +54,11 @@ import { SampleReceptionModule } from '../sample-reception/sample-reception.modu
             useClass: StoredServiceRequestServiceRepository,
         },
     ],
-    exports: [ServiceRequestService, StoredServiceRequestService],
+    exports: [
+        ServiceRequestService, 
+        StoredServiceRequestService,
+        'IStoredServiceRequestServiceRepository', // Export repository token for use in other modules
+        'IStoredServiceRequestRepository', // Export repository token for use in other modules
+    ],
 })
 export class ServiceRequestModule { }

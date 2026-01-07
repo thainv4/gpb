@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, HttpException, HttpStatus, Inject } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
@@ -6,7 +6,10 @@ import { CreateAndSignHsmDto } from './dto/commands/create-and-sign-hsm.dto';
 import { EmrApiResponseDto } from './dto/responses/create-and-sign-hsm-response.dto';
 import { GetEmrSignerResponseDto } from './dto/responses/get-emr-signer-response.dto';
 import { GetEmrSignerDto } from './dto/queries/get-emr-signer.dto';
+import { DeleteEmrDocumentResponseDto } from './dto/responses/delete-emr-document-response.dto';
 import { ProfileService } from '../profile/profile.service';
+import { IStoredServiceRequestServiceRepository } from '../service-request/interfaces/stored-service-request-service.repository.interface';
+import { IStoredServiceRequestRepository } from '../service-request/interfaces/stored-service-request.repository.interface';
 
 @Injectable()
 export class EmrService {
@@ -16,6 +19,10 @@ export class EmrService {
         private readonly httpService: HttpService,
         private readonly configService: ConfigService,
         private readonly profileService: ProfileService,
+        @Inject('IStoredServiceRequestServiceRepository')
+        private readonly serviceRepo: IStoredServiceRequestServiceRepository,
+        @Inject('IStoredServiceRequestRepository')
+        private readonly storedRequestRepo: IStoredServiceRequestRepository,
     ) {}
 
     async createAndSignHsm(
@@ -23,6 +30,44 @@ export class EmrService {
         tokenCode: string,
         applicationCode: string,
     ): Promise<EmrApiResponseDto> {
+        // Validate documentId: Find stored service request by TreatmentCode and check all services
+        this.logger.debug(`Validating documentId for TreatmentCode: ${createAndSignHsmDto.TreatmentCode}`);
+        const storedRequest = await this.storedRequestRepo.findByTreatmentCode(createAndSignHsmDto.TreatmentCode);
+        
+        if (storedRequest) {
+            this.logger.debug(`Found stored request with ID: ${storedRequest.id}, services count: ${storedRequest.services?.length || 0}`);
+            
+            if (storedRequest.services && storedRequest.services.length > 0) {
+                // Check all services in the stored request
+                for (const service of storedRequest.services) {
+                    if (service.documentId !== null && service.documentId !== undefined) {
+                        this.logger.warn(`Service ${service.id} already has documentId: ${service.documentId}, blocking create-and-sign-hsm`);
+                        throw new BadRequestException('Không thể tạo và ký văn bản vì dịch vụ đã được ký số.');
+                    }
+                }
+            }
+        } else {
+            this.logger.debug(`No stored request found for TreatmentCode: ${createAndSignHsmDto.TreatmentCode}`);
+        }
+
+        // Also check if HisCode is provided (specific service check)
+        if (createAndSignHsmDto.HisCode) {
+            this.logger.debug(`Checking HisCode: ${createAndSignHsmDto.HisCode}`);
+            // HisCode should be the ID of stored service request service
+            const service = await this.serviceRepo.findById(createAndSignHsmDto.HisCode);
+            
+            if (service) {
+                this.logger.debug(`Found service with ID: ${service.id}, documentId: ${service.documentId}`);
+                // Check if documentId is not null - if so, block this API
+                if (service.documentId !== null && service.documentId !== undefined) {
+                    this.logger.warn(`Service ${service.id} already has documentId: ${service.documentId}, blocking create-and-sign-hsm`);
+                    throw new BadRequestException('Không thể tạo và ký văn bản vì dịch vụ đã được ký số.');
+                }
+            } else {
+                this.logger.debug(`Service not found for HisCode: ${createAndSignHsmDto.HisCode}`);
+            }
+        }
+
         try {
             this.logger.log(`Calling EMR CreateAndSignHsm API for TreatmentCode: ${createAndSignHsmDto.TreatmentCode}`);
 
@@ -67,6 +112,11 @@ export class EmrService {
             return response.data;
 
         } catch (error: any) {
+            // Re-throw BadRequestException (like documentId validation)
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             
             this.logger.error(
@@ -237,6 +287,83 @@ export class EmrService {
             // Re-throw BadRequestException (like missing mapped username)
             if (error instanceof BadRequestException) {
                 throw error;
+            }
+
+            throw new HttpException(
+                {
+                    message: 'Failed to communicate with EMR system',
+                    error: errorMessage,
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    async deleteEmrDocument(
+        documentId: number,
+        tokenCode: string,
+        applicationCode: string,
+    ): Promise<DeleteEmrDocumentResponseDto> {
+        try {
+            this.logger.log(`Calling EMR Delete API for DocumentId: ${documentId}`);
+
+            // Sử dụng EMR_ENDPOINT hoặc default URL
+            const emrEndpoint = this.configService.get<string>('EMR_ENDPOINT') || 'http://192.168.7.236:1415';
+            const apiUrl = `${emrEndpoint}/api/EmrDocument/Delete`;
+
+            const requestBody = {
+                ApiData: documentId,
+            };
+
+            this.logger.debug(`EMR API URL: ${apiUrl}`);
+            this.logger.debug(`Request body: ${JSON.stringify(requestBody)}`);
+
+            const response = await firstValueFrom(
+                this.httpService.post<DeleteEmrDocumentResponseDto>(
+                    apiUrl,
+                    requestBody,
+                    {
+                        headers: {
+                            'TokenCode': tokenCode,
+                            'ApplicationCode': applicationCode,
+                            'Content-Type': 'application/json',
+                        },
+                        timeout: 30000,
+                    }
+                )
+            );
+
+            this.logger.log(`EMR Delete API call successful for DocumentId: ${documentId}`);
+            
+            return response.data;
+
+        } catch (error: any) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            
+            this.logger.error(
+                `Failed to delete EMR document: ${documentId}`,
+                errorMessage
+            );
+
+            if (error.response) {
+                let status = error.response.status;
+                const data = error.response.data;
+
+                if (!status || status < 100 || status > 599) {
+                    this.logger.error(`Invalid status code from EMR API: ${status}, using 500`);
+                    status = HttpStatus.INTERNAL_SERVER_ERROR;
+                }
+
+                this.logger.error(`EMR API Error - Status: ${status}`, JSON.stringify(data));
+
+                throw new HttpException(
+                    {
+                        message: 'EMR API request failed',
+                        error: data?.Param?.Message || data?.Param?.Messages?.join(', ') || data?.message || errorMessage,
+                        statusCode: status,
+                    },
+                    status
+                );
             }
 
             throw new HttpException(
