@@ -153,6 +153,10 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
         await this.repo.softDelete(id);
     }
 
+    async hardDelete(id: string): Promise<void> {
+        await this.repo.delete(id);
+    }
+
     async findByRoomAndState(
         roomId: string | undefined,
         stateId: string | undefined,

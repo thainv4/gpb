@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Body, Param, Query, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { WorkflowHistoryService } from '../services/workflow-history.service';
 import { StartWorkflowDto } from '../dto/commands/start-workflow.dto';
@@ -74,6 +74,23 @@ export class WorkflowHistoryController {
             currentUser
         );
         return ResponseBuilder.success({ message: 'Current state updated successfully' });
+    }
+
+    @Delete(':id')
+    @ApiOperation({ summary: 'Xóa hoàn toàn workflow history' })
+    @ApiParam({ name: 'id', description: 'ID của workflow history' })
+    @ApiResponse({ status: 200, description: 'Xóa thành công' })
+    @ApiResponse({ status: 400, description: 'Không thể xóa vì documentId không null' })
+    @ApiResponse({ status: 404, description: 'Không tìm thấy workflow history' })
+    async deleteWorkflowHistory(
+        @Param('id') id: string,
+        @CurrentUser() currentUser: ICurrentUser | null
+    ) {
+        if (!currentUser) {
+            throw new BadRequestException('JWT authentication required for deleting workflow history. HIS token is not supported for write operations.');
+        }
+        await this.workflowHistoryService.deleteWorkflowHistory(id, currentUser);
+        return ResponseBuilder.success({ message: 'Workflow history đã được xóa hoàn toàn' });
     }
 
     // ========== QUERIES (Read Operations) ==========
