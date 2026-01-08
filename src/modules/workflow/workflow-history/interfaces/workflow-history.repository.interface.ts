@@ -25,4 +25,5 @@ export interface IWorkflowHistoryRepository {
     save(entity: WorkflowHistory): Promise<WorkflowHistory>;
     updateIsCurrent(storedServiceReqId: string, storedServiceId: string | null, isCurrent: number): Promise<void>;
     remove(id: string): Promise<void>;
+    hardDelete(id: string): Promise<void>; // Hard delete (xóa hoàn toàn)
 }

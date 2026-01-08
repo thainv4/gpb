@@ -10,9 +10,9 @@ import { GetWorkflowHistoryDto } from '../dto/queries/get-workflow-history.dto';
 import { GetWorkflowHistoryByRoomStateDto } from '../dto/queries/get-workflow-history-by-room-state.dto';
 import { WorkflowHistory } from '../entities/workflow-history.entity';
 import { WorkflowHistoryResponseDto, GetWorkflowHistoryResult } from '../dto/responses/workflow-history-response.dto';
-import { ServiceRequestSummaryDto } from '../dto/responses/service-request-summary.dto';
 import { CurrentUser } from '../../../../common/interfaces/current-user.interface';
 import { StoredServiceRequest } from '../../../service-request/entities/stored-service-request.entity';
+import { StoredServiceRequestService } from '../../../service-request/entities/stored-service-request-service.entity';
 import { WorkflowState } from '../../entities/workflow-state.entity';
 
 @Injectable()
@@ -109,6 +109,21 @@ export class WorkflowHistoryService {
             const toState = await this.workflowStateRepo.findById(dto.toStateId);
             if (!toState) {
                 throw new NotFoundException('Workflow state đích không tồn tại');
+            }
+
+            // Lấy fromState từ currentState.toStateId
+            const fromState = await this.workflowStateRepo.findById(currentState.toStateId);
+            if (!fromState) {
+                throw new NotFoundException('Workflow state nguồn không tồn tại');
+            }
+
+            // Kiểm tra stateOrder: không cho phép chuyển từ stateOrder cao về stateOrder thấp (trừ ROLLBACK)
+            if (dto.actionType !== 'ROLLBACK' && fromState.stateOrder > toState.stateOrder) {
+                throw new BadRequestException(
+                    `Không thể chuyển từ trạng thái có thứ tự ${fromState.stateOrder} (${fromState.stateName}) ` +
+                    `sang trạng thái có thứ tự ${toState.stateOrder} (${toState.stateName}). ` +
+                    `Chỉ có thể chuyển tiến hoặc sử dụng ROLLBACK để quay lại.`
+                );
             }
 
             // Kiểm tra không thể chuyển về state cũ trừ khi là ROLLBACK
@@ -213,6 +228,78 @@ export class WorkflowHistoryService {
 
             currentState.updatedBy = currentUser.id;
             await manager.save(WorkflowHistory, currentState);
+        });
+    }
+
+    /**
+     * Xóa hoàn toàn Workflow History (hard delete)
+     * Chỉ được xóa nếu:
+     * 1. Tất cả documentId của StoredServiceRequestService (theo storedServiceReqId) là null
+     * 2. Không có WorkflowHistory khác có cùng storedServiceReqId với stateOrder lớn hơn
+     */
+    async deleteWorkflowHistory(id: string, currentUser: CurrentUser): Promise<void> {
+        return this.dataSource.transaction(async (manager) => {
+            // Tìm workflow history
+            const workflowHistory = await this.workflowHistoryRepo.findById(id);
+            if (!workflowHistory) {
+                throw new NotFoundException('Workflow history không tìm thấy');
+            }
+
+            // Lấy toState để lấy stateOrder
+            const toState = await this.workflowStateRepo.findById(workflowHistory.toStateId);
+            if (!toState) {
+                throw new NotFoundException('Workflow state không tìm thấy');
+            }
+            const currentStateOrder = toState.stateOrder;
+
+            // Kiểm tra xem có WorkflowHistory khác có cùng storedServiceReqId với stateOrder lớn hơn không
+            const workflowHistoryRepo = manager.getRepository(WorkflowHistory);
+            const otherWorkflowHistories = await workflowHistoryRepo.find({
+                where: {
+                    storedServiceReqId: workflowHistory.storedServiceReqId,
+                    deletedAt: IsNull(),
+                },
+                relations: ['toState'],
+            });
+
+            // Lọc ra các WorkflowHistory khác (không phải cái đang xóa) và có stateOrder lớn hơn
+            const historiesWithHigherOrder = otherWorkflowHistories.filter(wh => {
+                if (wh.id === id) return false; // Bỏ qua chính nó
+                if (!wh.toState) return false; // Bỏ qua nếu không có toState
+                return wh.toState.stateOrder > currentStateOrder;
+            });
+
+            if (historiesWithHigherOrder.length > 0) {
+                const stateNames = historiesWithHigherOrder
+                    .map(wh => `${wh.toState?.stateName || 'Unknown'} (order: ${wh.toState?.stateOrder})`)
+                    .join(', ');
+                throw new BadRequestException(
+                    `Không thể xóa workflow history vì có ${historiesWithHigherOrder.length} workflow history khác có stateOrder lớn hơn: ${stateNames}. ` +
+                    `Chỉ được xóa workflow history có stateOrder cao nhất.`
+                );
+            }
+
+            // Kiểm tra documentId của tất cả services theo storedServiceReqId
+            const serviceRepo = manager.getRepository(StoredServiceRequestService);
+            const services = await serviceRepo.find({
+                where: {
+                    storedServiceRequestId: workflowHistory.storedServiceReqId,
+                    deletedAt: IsNull(),
+                },
+            });
+
+            // Kiểm tra xem có service nào có documentId không null không
+            const servicesWithDocument = services.filter(s => s.documentId !== null && s.documentId !== undefined);
+            if (servicesWithDocument.length > 0) {
+                const serviceCodes = servicesWithDocument.map(s => s.serviceCode || s.id).join(', ');
+                throw new BadRequestException(
+                    `Không thể xóa workflow history vì có ${servicesWithDocument.length} service(s) có documentId không null: ${serviceCodes}. ` +
+                    `Chỉ được xóa khi tất cả documentId của Service Request là null.`
+                );
+            }
+
+            // Xóa hoàn toàn (hard delete)
+            await this.workflowHistoryRepo.hardDelete(id);
         });
     }
 
