@@ -19,6 +19,29 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
         });
     }
 
+    async findByStateIdAndStoredServiceReqId(
+        stateId: string, 
+        storedServiceReqId: string, 
+        stateType: 'toStateId' | 'fromStateId' = 'toStateId'
+    ): Promise<WorkflowHistory | null> {
+        const where: any = {
+            storedServiceReqId,
+            deletedAt: IsNull(),
+        };
+        
+        if (stateType === 'toStateId') {
+            where.toStateId = stateId;
+        } else {
+            where.fromStateId = stateId;
+        }
+
+        return this.repo.findOne({
+            where,
+            relations: ['fromState', 'toState', 'previousState'],
+            order: { actionTimestamp: 'DESC', createdAt: 'DESC' },
+        });
+    }
+
     async findCurrentState(storedServiceReqId: string, storedServiceId?: string | null): Promise<WorkflowHistory | null> {
         const where: any = {
             storedServiceReqId,

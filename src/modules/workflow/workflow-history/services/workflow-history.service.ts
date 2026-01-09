@@ -298,6 +298,15 @@ export class WorkflowHistoryService {
                 );
             }
 
+            // ✅ KIỂM TRA resultText: Nếu có service nào có resultText khác null thì không được xóa
+            const servicesWithResultText = services.filter(s => s.resultText !== null && s.resultText !== undefined && s.resultText.trim() !== '');
+            if (servicesWithResultText.length > 0) {
+                const serviceCodes = servicesWithResultText.map(s => s.serviceCode || s.id).join(', ');
+                throw new BadRequestException(
+                    `Không thể xóa workflow history này vì có dịch vụ đã có kết quả`
+                );
+            }
+
             // Xóa hoàn toàn (hard delete)
             await this.workflowHistoryRepo.hardDelete(id);
         });
@@ -346,14 +355,82 @@ export class WorkflowHistoryService {
     }
 
     /**
-     * Lấy workflow history theo ID
+     * Lấy workflow history theo ID với thông tin creator (truy vấn từ bảng User)
      */
     async getById(id: string): Promise<WorkflowHistoryResponseDto> {
         const workflowHistory = await this.workflowHistoryRepo.findById(id);
         if (!workflowHistory) {
             throw new NotFoundException('Workflow history không tìm thấy');
         }
-        return this.mapToResponseDto(workflowHistory);
+
+        // ✅ TRUY VẤN THÔNG TIN NGƯỜI TẠO TỪ BẢNG USER (BML_USERS)
+        let creator = null;
+        if (workflowHistory.createdBy) {
+            try {
+                // Truy vấn user từ bảng BML_USERS thông qua IUserRepository
+                const user = await this.userRepo.findById(workflowHistory.createdBy);
+                if (user) {
+                    creator = {
+                        id: user.id,
+                        userName: user.username,  // Từ cột USERNAME trong bảng BML_USERS
+                        fullName: user.fullName, // Từ cột FULL_NAME trong bảng BML_USERS
+                    };
+                }
+            } catch (error) {
+                // Log error nhưng không throw để API vẫn chạy được
+                console.error('Error loading creator user from BML_USERS table:', error);
+            }
+        }
+
+        const dto = this.mapToResponseDto(workflowHistory);
+        dto.creator = creator; // Gán thông tin creator đã truy vấn từ bảng User
+        
+        return dto;
+    }
+
+    /**
+     * Lấy workflow history theo State ID và StoredServiceReqId (response tương tự getById)
+     */
+    async getByStateIdAndStoredServiceReqId(
+        stateId: string,
+        storedServiceReqId: string,
+        stateType: 'toStateId' | 'fromStateId' = 'toStateId'
+    ): Promise<WorkflowHistoryResponseDto> {
+        const workflowHistory = await this.workflowHistoryRepo.findByStateIdAndStoredServiceReqId(
+            stateId,
+            storedServiceReqId,
+            stateType
+        );
+        
+        if (!workflowHistory) {
+            throw new NotFoundException(
+                `Workflow history không tìm thấy với stateId: ${stateId} (${stateType}) và storedServiceReqId: ${storedServiceReqId}`
+            );
+        }
+
+        // ✅ TRUY VẤN THÔNG TIN NGƯỜI TẠO TỪ BẢNG USER (BML_USERS)
+        let creator = null;
+        if (workflowHistory.createdBy) {
+            try {
+                // Truy vấn user từ bảng BML_USERS thông qua IUserRepository
+                const user = await this.userRepo.findById(workflowHistory.createdBy);
+                if (user) {
+                    creator = {
+                        id: user.id,
+                        userName: user.username,  // Từ cột USERNAME trong bảng BML_USERS
+                        fullName: user.fullName, // Từ cột FULL_NAME trong bảng BML_USERS
+                    };
+                }
+            } catch (error) {
+                // Log error nhưng không throw để API vẫn chạy được
+                console.error('Error loading creator user from BML_USERS table:', error);
+            }
+        }
+
+        const dto = this.mapToResponseDto(workflowHistory);
+        dto.creator = creator; // Gán thông tin creator đã truy vấn từ bảng User
+        
+        return dto;
     }
 
     /**
@@ -442,8 +519,41 @@ export class WorkflowHistoryService {
             console.error('Error loading WorkflowState:', error);
         }
 
+        // ✅ LOAD CREATOR INFO TỪ BẢNG USER (BML_USERS) - BATCH LOADING
+        const creatorMap = new Map<string, { id: string; userName: string; fullName: string }>();
+        try {
+            if (items.length > 0) {
+                const creatorIds = items
+                    .map(item => item.createdBy)
+                    .filter((id): id is string => !!id);
+                
+                if (creatorIds.length > 0) {
+                    const uniqueCreatorIds = [...new Set(creatorIds)];
+                    const users = await this.userRepo.findByIds(uniqueCreatorIds);
+                    
+                    users.forEach(user => {
+                        creatorMap.set(user.id, {
+                            id: user.id,
+                            userName: user.username,
+                            fullName: user.fullName,
+                        });
+                    });
+                }
+            }
+        } catch (error) {
+            // Log error nhưng không throw để API vẫn chạy được
+            console.error('Error loading creator users from BML_USERS table:', error);
+        }
+
+        // Map to DTOs với creator info
+        const mappedItems = items.map(item => {
+            const dto = this.mapToResponseDto(item);
+            dto.creator = item.createdBy ? creatorMap.get(item.createdBy) || null : null;
+            return dto;
+        });
+
         return {
-            items: items.map(item => this.mapToResponseDto(item)),
+            items: mappedItems,
             total,
             limit: dto.limit || 10,
             offset: dto.offset || 0,

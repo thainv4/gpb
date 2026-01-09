@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsOptional, IsNumber, IsIn, MaxLength } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsNumber, IsIn, MaxLength, ValidateIf } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -15,10 +15,14 @@ export class EnterResultDto {
     @MaxLength(500, { message: 'Giá trị kết quả text không được quá 500 ký tự' })
     resultValueText?: string;
 
-    @ApiPropertyOptional({ description: 'Kết quả xét nghiệm chi tiết (CLOB)' })
+    @ApiPropertyOptional({ 
+        description: 'Kết quả xét nghiệm chi tiết (CLOB). Có thể gửi null để xóa resultText.',
+        nullable: true
+    })
     @IsOptional()
+    @ValidateIf((o, v) => v !== null)
     @IsString()
-    resultText?: string;
+    resultText?: string | null;
 
     @ApiPropertyOptional({ description: 'Tên kết quả xét nghiệm', example: 'Kết quả xét nghiệm máu', maxLength: 200 })
     @IsOptional()

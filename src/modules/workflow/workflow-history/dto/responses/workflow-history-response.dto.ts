@@ -107,6 +107,19 @@ export class WorkflowHistoryResponseDto extends BaseResponseDto {
         stateName: string;
         sortOrder: number;
     };
+
+    // ========== CREATOR INFO (truy vấn từ bảng User) ==========
+    
+    @ApiPropertyOptional({ 
+        description: 'Thông tin người tạo workflow history (truy vấn từ bảng BML_USERS)',
+        type: Object,
+        nullable: true
+    })
+    creator?: {
+        id: string;
+        userName: string;
+        fullName: string;
+    } | null;
 }
 
 export interface GetWorkflowHistoryResult {

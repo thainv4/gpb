@@ -6,6 +6,7 @@ import { CreateSampleReceptionDto } from './dto/commands/create-sample-reception
 import { CreateSampleReceptionByPrefixDto } from './dto/commands/create-sample-reception-by-prefix.dto';
 import { GetSampleReceptionsDto } from './dto/queries/get-sample-receptions.dto';
 import { GenerateCodeDto } from './dto/queries/generate-code.dto';
+import { GetSampleTypeByReceptionCodeDto } from './dto/queries/get-sample-type-by-reception-code.dto';
 import { SampleReceptionResponseDto } from './dto/responses/sample-reception-response.dto';
 import { GenerateCodeResponseDto } from './dto/responses/generate-code-response.dto';
 import { DataLoaderService } from '../../shared/dataloaders/dataloader.service';
@@ -326,6 +327,20 @@ export class SampleReceptionService extends BaseService {
                 never: this.formatDateByResetPeriod(new Date(), 'NEVER'),
             },
             currentDate: new Date().toISOString(),
+        };
+    }
+
+    /**
+     * Query sampleTypeId từ receptionCode
+     */
+    async getSampleTypeByReceptionCode(dto: GetSampleTypeByReceptionCodeDto): Promise<{ sampleTypeId: string | null }> {
+        const reception = await this.sampleReceptionRepository.findByCode(dto.receptionCode);
+        if (!reception) {
+            throw AppError.notFound(`Sample reception với code ${dto.receptionCode} không tìm thấy`);
+        }
+
+        return {
+            sampleTypeId: reception.sampleTypeId || null,
         };
     }
 

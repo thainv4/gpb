@@ -3,6 +3,7 @@ import { GetWorkflowHistoryDto } from '../dto/queries/get-workflow-history.dto';
 
 export interface IWorkflowHistoryRepository {
     findById(id: string): Promise<WorkflowHistory | null>;
+    findByStateIdAndStoredServiceReqId(stateId: string, storedServiceReqId: string, stateType?: 'toStateId' | 'fromStateId'): Promise<WorkflowHistory | null>;
     findCurrentState(storedServiceReqId: string, storedServiceId?: string | null): Promise<WorkflowHistory | null>;
     findHistory(storedServiceReqId: string, storedServiceId?: string | null): Promise<WorkflowHistory[]>;
     findAll(query: GetWorkflowHistoryDto): Promise<{ items: WorkflowHistory[]; total: number }>;
