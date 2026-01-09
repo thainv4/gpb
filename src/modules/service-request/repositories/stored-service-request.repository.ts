@@ -54,5 +54,9 @@ export class StoredServiceRequestRepository implements IStoredServiceRequestRepo
     async remove(id: string): Promise<void> {
         await this.repo.softDelete(id);
     }
+
+    async hardDelete(id: string): Promise<void> {
+        await this.repo.delete(id);
+    }
 }
 

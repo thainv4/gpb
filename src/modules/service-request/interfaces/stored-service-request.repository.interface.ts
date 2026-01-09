@@ -7,5 +7,6 @@ export interface IStoredServiceRequestRepository {
     findByTreatmentCode(treatmentCode: string): Promise<StoredServiceRequest | null>;
     save(entity: StoredServiceRequest): Promise<StoredServiceRequest>;
     remove(id: string): Promise<void>;
+    hardDelete(id: string): Promise<void>; // Hard delete (xóa hoàn toàn)
 }
 

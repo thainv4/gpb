@@ -5,6 +5,7 @@ import { CreateSampleReceptionDto } from './dto/commands/create-sample-reception
 import { CreateSampleReceptionByPrefixDto } from './dto/commands/create-sample-reception-by-prefix.dto';
 import { GetSampleReceptionsDto } from './dto/queries/get-sample-receptions.dto';
 import { GenerateCodeDto } from './dto/queries/generate-code.dto';
+import { GetSampleTypeByReceptionCodeDto } from './dto/queries/get-sample-type-by-reception-code.dto';
 import { DualAuthGuard } from '../auth/guards/dual-auth.guard';
 import { ResponseBuilder } from '../../common/builders/response.builder';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -162,5 +163,42 @@ export class SampleReceptionController {
     async getSampleReceptionById(@Param('id') id: string) {
         const reception = await this.sampleReceptionService.getSampleReceptionById(id);
         return ResponseBuilder.success(reception);
+    }
+
+    @Post('query-sample-type')
+    @ApiOperation({
+        summary: 'Query sampleTypeId từ ReceptionCode',
+        description: 'Lấy sampleTypeId dựa trên ReceptionCode từ request body'
+    })
+    @ApiBody({ type: GetSampleTypeByReceptionCodeDto })
+    @ApiResponse({
+        status: 200,
+        description: 'Query thành công',
+        schema: {
+            type: 'object',
+            properties: {
+                success: { type: 'boolean' },
+                status_code: { type: 'number' },
+                data: {
+                    type: 'object',
+                    properties: {
+                        sampleTypeId: { 
+                            type: 'string', 
+                            nullable: true,
+                            description: 'ID của loại mẫu (có thể null nếu không có sample type)',
+                            example: '426df256-bbfe-28d1-e065-9e6b783dd008'
+                        }
+                    }
+                }
+            }
+        }
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Không tìm thấy sample reception với reception code này'
+    })
+    async getSampleTypeByReceptionCode(@Body() dto: GetSampleTypeByReceptionCodeDto) {
+        const result = await this.sampleReceptionService.getSampleTypeByReceptionCode(dto);
+        return ResponseBuilder.success(result);
     }
 }

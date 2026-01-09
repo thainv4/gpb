@@ -11,7 +11,6 @@ export class CreateSampleReceptionByPrefixDto {
 
     @ApiPropertyOptional({ description: 'ID loại mẫu (nếu có)', example: 'uuid-sample-type-001' })
     @IsOptional()
-    @IsUUID('4', { message: 'Sample type ID phải là UUID hợp lệ' })
     sampleTypeId?: string;
 
     @ApiPropertyOptional({ description: 'Độ rộng phần số (1-5)', example: 4, default: 4 })

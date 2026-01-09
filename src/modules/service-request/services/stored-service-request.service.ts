@@ -509,27 +509,21 @@ export class StoredServiceRequestService {
      * Nhập/cập nhật kết quả xét nghiệm
      */
     async enterResult(
-        storedReqId: string,
         serviceId: string,
         dto: EnterResultDto,
         currentUser: CurrentUser
     ): Promise<{ id: string; resultEnteredAt: Date; resultEnteredByUserId: string }> {
         return this.dataSource.transaction(async (manager) => {
-            // Validate stored request exists
-            const storedRequest = await this.storedRepo.findById(storedReqId);
-            if (!storedRequest) {
-                throw new NotFoundException(`Stored Service Request với ID ${storedReqId} không tìm thấy`);
-            }
-
             // Find service
             const service = await this.serviceRepo.findById(serviceId);
             if (!service) {
                 throw new NotFoundException(`Service với ID ${serviceId} không tìm thấy`);
             }
 
-            // Validate service belongs to stored request
-            if (service.storedServiceRequestId !== storedReqId) {
-                throw new BadRequestException('Service không thuộc Service Request này');
+            // Validate stored request exists (lấy từ service.storedServiceRequestId)
+            const storedRequest = await this.storedRepo.findById(service.storedServiceRequestId);
+            if (!storedRequest) {
+                throw new NotFoundException(`Stored Service Request với ID ${service.storedServiceRequestId} không tìm thấy`);
             }
 
             // Check if documentId is not null - if so, block this API
@@ -595,25 +589,17 @@ export class StoredServiceRequestService {
     /**
      * Lấy kết quả xét nghiệm
      */
-    async getResult(
-        storedReqId: string,
-        serviceId: string
-    ): Promise<EnterResultDto> {
-        // Validate stored request exists
-        const storedRequest = await this.storedRepo.findById(storedReqId);
-        if (!storedRequest) {
-            throw new NotFoundException(`Stored Service Request với ID ${storedReqId} không tìm thấy`);
-        }
-
+    async getResult(serviceId: string): Promise<EnterResultDto> {
         // Find service
         const service = await this.serviceRepo.findById(serviceId);
         if (!service) {
             throw new NotFoundException(`Service với ID ${serviceId} không tìm thấy`);
         }
 
-        // Validate service belongs to stored request
-        if (service.storedServiceRequestId !== storedReqId) {
-            throw new BadRequestException('Service không thuộc Service Request này');
+        // Validate stored request exists (lấy từ service.storedServiceRequestId)
+        const storedRequest = await this.storedRepo.findById(service.storedServiceRequestId);
+        if (!storedRequest) {
+            throw new NotFoundException(`Stored Service Request với ID ${service.storedServiceRequestId} không tìm thấy`);
         }
 
         // Check if documentId is not null - if so, block this API
@@ -838,6 +824,35 @@ export class StoredServiceRequestService {
 
             // 3. Lưu vào database
             await manager.save(StoredServiceRequestServiceEntity, storedService);
+        });
+    }
+
+    /**
+     * Xóa hoàn toàn StoredServiceRequest và tất cả StoredServiceRequestService liên quan
+     */
+    async deleteStoredServiceRequest(id: string, currentUser: CurrentUser): Promise<void> {
+        return this.dataSource.transaction(async (manager) => {
+            // 1. Kiểm tra StoredServiceRequest có tồn tại không
+            const storedRequest = await this.storedRepo.findById(id);
+            if (!storedRequest) {
+                throw new NotFoundException(`Stored Service Request với ID ${id} không tìm thấy`);
+            }
+
+            // 2. Lấy tất cả services liên quan (cả parent và child)
+            const servicesRepo = manager.getRepository(StoredServiceRequestServiceEntity);
+            const services = await servicesRepo.find({
+                where: { storedServiceRequestId: id },
+            });
+
+            // 3. Xóa tất cả services trước (cascade delete)
+            if (services.length > 0) {
+                const serviceIds = services.map(s => s.id);
+                await servicesRepo.delete(serviceIds);
+            }
+
+            // 4. Xóa StoredServiceRequest
+            const storedRequestRepo = manager.getRepository(StoredServiceRequest);
+            await storedRequestRepo.delete(id);
         });
     }
 }

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, HttpCode, HttpStatus, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus, UseGuards, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { ServiceRequestService } from '../services/service-request.service';
 import { StoredServiceRequestService } from '../services/stored-service-request.service';
@@ -145,30 +145,26 @@ export class ServiceRequestController {
         return ResponseBuilder.success(result);
     }
 
-    @Get('stored/:storedReqId/services/:serviceId/result')
+    @Get('stored/services/:serviceId/result')
     @ApiOperation({ summary: 'Lấy kết quả xét nghiệm' })
-    @ApiParam({ name: 'storedReqId', description: 'ID của Service Request đã lưu' })
     @ApiParam({ name: 'serviceId', description: 'ID của Service/Test' })
     @ApiResponse({ status: 200, description: 'Lấy kết quả thành công', type: EnterResultDto })
-    @ApiResponse({ status: 404, description: 'Service Request hoặc Service không tìm thấy' })
-    @ApiResponse({ status: 400, description: 'Service không thuộc Service Request này' })
+    @ApiResponse({ status: 404, description: 'Service không tìm thấy' })
+    @ApiResponse({ status: 400, description: 'Dịch vụ đã được ký số' })
     async getResult(
-        @Param('storedReqId') storedReqId: string,
         @Param('serviceId') serviceId: string,
     ) {
-        const result = await this.storedServiceRequestService.getResult(storedReqId, serviceId);
+        const result = await this.storedServiceRequestService.getResult(serviceId);
         return ResponseBuilder.success(result);
     }
 
-    @Patch('stored/:storedReqId/services/:serviceId/result')
+    @Patch('stored/services/:serviceId/result')
     @ApiOperation({ summary: 'Nhập/cập nhật kết quả xét nghiệm' })
-    @ApiParam({ name: 'storedReqId', description: 'ID của Service Request đã lưu' })
     @ApiParam({ name: 'serviceId', description: 'ID của Service/Test' })
     @ApiResponse({ status: 200, description: 'Nhập kết quả thành công' })
-    @ApiResponse({ status: 404, description: 'Service Request hoặc Service không tìm thấy' })
-    @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
+    @ApiResponse({ status: 404, description: 'Service không tìm thấy' })
+    @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ hoặc dịch vụ đã được ký số' })
     async enterResult(
-        @Param('storedReqId') storedReqId: string,
         @Param('serviceId') serviceId: string,
         @Body() dto: EnterResultDto,
         @CurrentUser() currentUser: ICurrentUser | null,
@@ -176,7 +172,7 @@ export class ServiceRequestController {
         if (!currentUser) {
             throw new BadRequestException('JWT authentication required for entering results. HIS token is not supported for write operations.');
         }
-        const result = await this.storedServiceRequestService.enterResult(storedReqId, serviceId, dto, currentUser);
+        const result = await this.storedServiceRequestService.enterResult(serviceId, dto, currentUser);
         return ResponseBuilder.success(result);
     }
 
@@ -302,6 +298,39 @@ export class ServiceRequestController {
             serviceId: serviceId,
             receptionCode: dto.receptionCode,
             sampleTypeName: dto.sampleTypeName
+        });
+    }
+
+    @Delete('stored/:id')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ 
+        summary: 'Xóa hoàn toàn Stored Service Request và tất cả services liên quan',
+        description: 'Hard delete StoredServiceRequest và tất cả StoredServiceRequestService (cả parent và child) có liên quan. Hành động này không thể hoàn tác.'
+    })
+    @ApiParam({ 
+        name: 'id', 
+        description: 'ID của Stored Service Request cần xóa',
+        example: 'f32c11f9-cab8-4f72-9776-5b41a1bc89e8'
+    })
+    @ApiResponse({ 
+        status: 200, 
+        description: 'Xóa thành công' 
+    })
+    @ApiResponse({ 
+        status: 404, 
+        description: 'Stored Service Request không tìm thấy' 
+    })
+    async deleteStoredServiceRequest(
+        @Param('id') id: string,
+        @CurrentUser() currentUser: ICurrentUser | null,
+    ) {
+        if (!currentUser) {
+            throw new BadRequestException('JWT authentication required for deleting stored service requests. HIS token is not supported for write operations.');
+        }
+        await this.storedServiceRequestService.deleteStoredServiceRequest(id, currentUser);
+        return ResponseBuilder.success({ 
+            message: 'Stored Service Request và tất cả services liên quan đã được xóa hoàn toàn',
+            deletedId: id
         });
     }
 }

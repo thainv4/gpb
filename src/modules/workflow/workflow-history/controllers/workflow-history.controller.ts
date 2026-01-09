@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, BadRequestException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiParam, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { WorkflowHistoryService } from '../services/workflow-history.service';
 import { StartWorkflowDto } from '../dto/commands/start-workflow.dto';
 import { TransitionStateDto } from '../dto/commands/transition-state.dto';
@@ -80,7 +80,7 @@ export class WorkflowHistoryController {
     @ApiOperation({ summary: 'Xóa hoàn toàn workflow history' })
     @ApiParam({ name: 'id', description: 'ID của workflow history' })
     @ApiResponse({ status: 200, description: 'Xóa thành công' })
-    @ApiResponse({ status: 400, description: 'Không thể xóa vì documentId không null' })
+    @ApiResponse({ status: 400, description: 'Không thể xóa vì documentId không null hoặc resultText không null' })
     @ApiResponse({ status: 404, description: 'Không tìm thấy workflow history' })
     async deleteWorkflowHistory(
         @Param('id') id: string,
@@ -194,6 +194,50 @@ export class WorkflowHistoryController {
                 hisServiceReqCode: query.hisServiceReqCode || 'all',
             },
         });
+    }
+
+    @Get('by-state-and-service-req/:stateId/:storedServiceReqId')
+    @ApiOperation({ 
+        summary: 'Lấy workflow history theo State ID và StoredServiceReqId',
+        description: 'Lấy workflow history theo workflow state id và stored service request id. Response tương tự như GET /api/v1/workflow-history/{id} với đầy đủ thông tin creator.'
+    })
+    @ApiParam({ 
+        name: 'stateId', 
+        description: 'ID của workflow state',
+        example: '426df256-bbfa-28d1-e065-9e6b783dd008'
+    })
+    @ApiParam({ 
+        name: 'storedServiceReqId', 
+        description: 'ID của stored service request',
+        example: 'abc-123-def-456'
+    })
+    @ApiQuery({ 
+        name: 'stateType', 
+        description: 'Loại state để filter: toStateId hoặc fromStateId',
+        enum: ['toStateId', 'fromStateId'],
+        required: false,
+        example: 'toStateId'
+    })
+    @ApiResponse({ 
+        status: 200, 
+        description: 'Lấy thành công', 
+        type: WorkflowHistoryResponseDto 
+    })
+    @ApiResponse({ 
+        status: 404, 
+        description: 'Không tìm thấy workflow history với stateId và storedServiceReqId này' 
+    })
+    async getByStateIdAndStoredServiceReqId(
+        @Param('stateId') stateId: string,
+        @Param('storedServiceReqId') storedServiceReqId: string,
+        @Query('stateType') stateType?: 'toStateId' | 'fromStateId'
+    ) {
+        const result = await this.workflowHistoryService.getByStateIdAndStoredServiceReqId(
+            stateId,
+            storedServiceReqId,
+            stateType || 'toStateId'
+        );
+        return ResponseBuilder.success(result);
     }
 
     @Get(':id')
