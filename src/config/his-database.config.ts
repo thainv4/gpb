@@ -12,6 +12,7 @@ export const getHisDatabaseConfig = (configService: ConfigService): TypeOrmModul
         serviceName: configService.get<string>('DB_SERVICE_NAME_HIS', 'orclstb'),
         entities: [
             'dist/modules/service-request/entities/service-request-view.entity.js',
+            'dist/modules/service-request/entities/his-sere-serv.entity.js',
         ],
         synchronize: false, // Never synchronize with HIS database
         logging: configService.get<string>('NODE_ENV') === 'development',
