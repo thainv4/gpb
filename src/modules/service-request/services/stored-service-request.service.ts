@@ -10,6 +10,7 @@ import { ReviewResultDto } from '../dto/commands/review-result.dto';
 import { ApproveResultDto } from '../dto/commands/approve-result.dto';
 import { QcResultDto } from '../dto/commands/qc-result.dto';
 import { UpdateReceptionCodeDto } from '../dto/commands/update-reception-code.dto';
+import { UpdateFlagDto } from '../dto/commands/update-flag.dto';
 import { StoredServiceRequestResponseDto } from '../dto/responses/stored-service-request-response.dto';
 import { StoredServiceRequestDetailResponseDto, StoredServiceResponseDto, WorkflowCurrentStateDto } from '../dto/responses/stored-service-request-detail-response.dto';
 import { CurrentUser } from '../../../common/interfaces/current-user.interface';
@@ -824,6 +825,35 @@ export class StoredServiceRequestService {
 
             // 3. Lưu vào database
             await manager.save(StoredServiceRequestServiceEntity, storedService);
+        });
+    }
+
+    /**
+     * Cập nhật flag cho stored service request
+     */
+    async updateFlag(
+        id: string,
+        dto: UpdateFlagDto,
+        currentUser: CurrentUser
+    ): Promise<void> {
+        return this.dataSource.transaction(async (manager) => {
+            // 1. Tìm stored service request
+            const storedRequest = await this.storedRepo.findById(id);
+            
+            if (!storedRequest) {
+                throw new NotFoundException(
+                    `Không tìm thấy stored service request với ID: ${id}`
+                );
+            }
+
+            // 2. Cập nhật flag (có thể null để xóa flag)
+            if (dto.flag !== undefined) {
+                storedRequest.flag = dto.flag;
+            }
+            storedRequest.updatedBy = currentUser.id;
+
+            // 3. Lưu vào database
+            await manager.save(StoredServiceRequest, storedRequest);
         });
     }
 

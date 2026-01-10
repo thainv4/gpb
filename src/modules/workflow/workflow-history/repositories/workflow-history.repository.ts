@@ -190,6 +190,7 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
         toDate?: Date,
         isCurrent?: number,
         hisServiceReqCode?: string,
+        flag?: string,
         limit: number = 10,
         offset: number = 0,
         order: 'ASC' | 'DESC' = 'DESC',
@@ -220,6 +221,33 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
                     )`,
                     { hisServiceReqCode }
                 );
+            }
+
+            // Filter theo flag nếu được cung cấp
+            // Dùng WHERE EXISTS để filter theo flag của stored service request
+            if (flag !== undefined) {
+                if (flag === null) {
+                    // Nếu flag = null, filter các request không có flag
+                    queryBuilder.andWhere(
+                        `EXISTS (
+                            SELECT 1 FROM BML_STORED_SERVICE_REQUESTS ssr 
+                            WHERE ssr.ID = wh.STORED_SERVICE_REQ_ID 
+                            AND ssr.FLAG IS NULL
+                            AND ssr.DELETED_AT IS NULL
+                        )`
+                    );
+                } else {
+                    // Nếu flag có giá trị, filter các request có flag = giá trị đó
+                    queryBuilder.andWhere(
+                        `EXISTS (
+                            SELECT 1 FROM BML_STORED_SERVICE_REQUESTS ssr 
+                            WHERE ssr.ID = wh.STORED_SERVICE_REQ_ID 
+                            AND ssr.FLAG = :flag
+                            AND ssr.DELETED_AT IS NULL
+                        )`,
+                        { flag }
+                    );
+                }
             }
 
             // Chỉ filter theo state nếu stateId được cung cấp

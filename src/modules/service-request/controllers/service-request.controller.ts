@@ -9,6 +9,7 @@ import { ApproveResultDto } from '../dto/commands/approve-result.dto';
 import { QcResultDto } from '../dto/commands/qc-result.dto';
 import { UpdateDocumentIdDto } from '../dto/commands/update-document-id.dto';
 import { UpdateReceptionCodeDto } from '../dto/commands/update-reception-code.dto';
+import { UpdateFlagDto } from '../dto/commands/update-flag.dto';
 import { GetServiceRequestsDto } from '../dto/queries/get-service-requests.dto';
 import { SearchServiceRequestsDto } from '../dto/queries/search-service-requests.dto';
 import { ServiceRequestResponseDto } from '../dto/responses/service-request-response.dto';
@@ -298,6 +299,53 @@ export class ServiceRequestController {
             serviceId: serviceId,
             receptionCode: dto.receptionCode,
             sampleTypeName: dto.sampleTypeName
+        });
+    }
+
+    @Patch('stored/:id/flag')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ 
+        summary: 'Cập nhật flag của stored service request',
+        description: 'Chỉnh sửa flag cho một stored service request cụ thể. Có thể gửi null để xóa flag.'
+    })
+    @ApiParam({ 
+        name: 'id', 
+        description: 'ID của stored service request',
+        example: 'f32c11f9-cab8-4f72-9776-5b41a1bc89e8'
+    })
+    @ApiResponse({ 
+        status: 200, 
+        description: 'Cập nhật flag thành công' 
+    })
+    @ApiResponse({ 
+        status: 404, 
+        description: 'Không tìm thấy stored service request' 
+    })
+    @ApiResponse({ 
+        status: 400, 
+        description: 'Dữ liệu không hợp lệ' 
+    })
+    async updateFlag(
+        @Param('id') id: string,
+        @Body() dto: UpdateFlagDto,
+        @CurrentUser() currentUser: ICurrentUser | null
+    ) {
+        if (!currentUser) {
+            throw new BadRequestException(
+                'JWT authentication required. HIS token is not supported for write operations.'
+            );
+        }
+
+        await this.storedServiceRequestService.updateFlag(
+            id,
+            dto,
+            currentUser
+        );
+
+        return ResponseBuilder.success({ 
+            message: 'Flag đã được cập nhật thành công',
+            id: id,
+            flag: dto.flag
         });
     }
 
