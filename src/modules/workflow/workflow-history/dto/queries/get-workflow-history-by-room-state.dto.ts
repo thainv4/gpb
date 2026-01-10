@@ -33,6 +33,14 @@ export class GetWorkflowHistoryByRoomStateDto {
     hisServiceReqCode?: string = '';
 
     @ApiPropertyOptional({ 
+        description: 'Flag của stored service request (để trống để lấy tất cả, có thể null để lấy các request không có flag)', 
+        example: 'URGENT'
+    })
+    @IsOptional()
+    @IsString()
+    flag?: string;
+
+    @ApiPropertyOptional({ 
         description: 'Loại room field để filter (actionRoomId, currentRoomId, transitionedByRoomId)', 
         enum: ['actionRoomId', 'currentRoomId', 'transitionedByRoomId'],
         default: 'currentRoomId'

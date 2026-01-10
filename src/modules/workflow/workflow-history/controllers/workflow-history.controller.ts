@@ -166,6 +166,7 @@ export class WorkflowHistoryController {
             - Time Type: actionTimestamp, startedAt, completedAt, currentStateStartedAt
             - Time Range: fromDate, toDate (ISO format)
             - Current State: isCurrent (0 hoặc 1)
+            - Flag: Flag của stored service request (để trống để lấy tất cả, null để lấy các request không có flag)
             - Response bao gồm thông tin Service Request và State (nested)
         `
     })
@@ -192,6 +193,7 @@ export class WorkflowHistoryController {
                 toDate: query.toDate,
                 isCurrent: query.isCurrent,
                 hisServiceReqCode: query.hisServiceReqCode || 'all',
+                flag: query.flag !== undefined ? query.flag : 'all',
             },
         });
     }

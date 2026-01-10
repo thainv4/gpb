@@ -34,15 +34,13 @@ export class WorkflowHistoryService {
      */
     async startWorkflow(dto: StartWorkflowDto, currentUser: CurrentUser): Promise<string> {
         return this.dataSource.transaction(async (manager) => {
-            // Kiểm tra đã có workflow đang chạy chưa
-            const existingCurrent = await this.workflowHistoryRepo.findCurrentState(
+            // ✅ QUAN TRỌNG: Set tất cả workflow history cũ có isCurrent = 1 thành isCurrent = 0
+            // trước khi tạo workflow mới. Điều này cho phép restart workflow nếu cần.
+            await this.workflowHistoryRepo.updateIsCurrent(
                 dto.storedServiceReqId,
-                dto.storedServiceId || null
+                dto.storedServiceId || null,
+                0
             );
-
-            if (existingCurrent) {
-                throw new ConflictException('Workflow đã được khởi tạo cho Service Request này');
-            }
 
             // Validate state
             const toState = await this.workflowStateRepo.findById(dto.toStateId);
@@ -92,6 +90,7 @@ export class WorkflowHistoryService {
 
     /**
      * Chuyển workflow sang state mới
+     * Nếu không có currentState, sẽ tạo workflow mới (như START workflow)
      */
     async transitionState(dto: TransitionStateDto, currentUser: CurrentUser): Promise<string> {
         return this.dataSource.transaction(async (manager) => {
@@ -101,11 +100,69 @@ export class WorkflowHistoryService {
                 dto.storedServiceId || null
             );
 
+            // ✅ Nếu không có currentState, cho phép tạo workflow history mới (như START workflow)
             if (!currentState) {
-                throw new NotFoundException('Không tìm thấy workflow đang chạy cho Service Request này');
+                // Validate new state
+                const toState = await this.workflowStateRepo.findById(dto.toStateId);
+                if (!toState) {
+                    throw new NotFoundException('Workflow state đích không tồn tại');
+                }
+
+                // Lấy username
+                const user = await this.userRepo.findById(currentUser.id);
+                const username = user?.username || currentUser.username || '';
+
+                // ✅ Set tất cả workflow history cũ có isCurrent = 1 thành isCurrent = 0
+                // để đảm bảo chỉ có 1 workflow có isCurrent = 1
+                await this.workflowHistoryRepo.updateIsCurrent(
+                    dto.storedServiceReqId,
+                    dto.storedServiceId || null,
+                    0
+                );
+
+                // Tạo workflow history mới (tương tự START nhưng dùng actionType từ DTO)
+                const newState = new WorkflowHistory();
+                newState.storedServiceReqId = dto.storedServiceReqId;
+                newState.storedServiceId = dto.storedServiceId || null;
+                newState.fromStateId = null; // Không có from state (bắt đầu mới)
+                newState.toStateId = dto.toStateId;
+                newState.previousStateId = null;
+                newState.startedAt = new Date();
+                newState.actionTimestamp = new Date();
+                newState.currentStateStartedAt = new Date();
+                newState.durationMinutes = null;
+                newState.actionType = dto.actionType; // Dùng actionType từ DTO
+                newState.actionUserId = currentUser.id;
+                newState.actionUsername = username;
+                newState.actionDepartmentId = dto.currentDepartmentId || null;
+                newState.actionRoomId = dto.currentRoomId || null;
+                newState.currentUserId = dto.currentUserId || null;
+                newState.currentDepartmentId = dto.currentDepartmentId || null;
+                newState.currentRoomId = dto.currentRoomId || null;
+                newState.transitionedByUserId = currentUser.id;
+                newState.transitionedByDepartmentId = dto.currentDepartmentId || null;
+                newState.transitionedByRoomId = dto.currentRoomId || null;
+                newState.isCurrent = 1; // Current state
+                newState.isActive = 1;
+                newState.isCompleted = dto.toStateId === (await this.getCompletedStateId()) ? 1 : 0;
+                newState.notes = dto.notes || null;
+                newState.estimatedCompletionTime = dto.estimatedCompletionTime
+                    ? new Date(dto.estimatedCompletionTime)
+                    : null;
+                newState.attachmentUrl = dto.attachmentUrl || null;
+                newState.createdBy = currentUser.id;
+                newState.updatedBy = currentUser.id;
+
+                // Set completed_at nếu workflow đã hoàn thành
+                if (newState.isCompleted === 1) {
+                    newState.completedAt = new Date();
+                }
+
+                const saved = await manager.save(WorkflowHistory, newState);
+                return saved.id;
             }
 
-            // Validate new state
+            // Validate new state (logic cũ khi có currentState)
             const toState = await this.workflowStateRepo.findById(dto.toStateId);
             if (!toState) {
                 throw new NotFoundException('Workflow state đích không tồn tại');
@@ -120,9 +177,8 @@ export class WorkflowHistoryService {
             // Kiểm tra stateOrder: không cho phép chuyển từ stateOrder cao về stateOrder thấp (trừ ROLLBACK)
             if (dto.actionType !== 'ROLLBACK' && fromState.stateOrder > toState.stateOrder) {
                 throw new BadRequestException(
-                    `Không thể chuyển từ trạng thái có thứ tự ${fromState.stateOrder} (${fromState.stateName}) ` +
-                    `sang trạng thái có thứ tự ${toState.stateOrder} (${toState.stateName}). ` +
-                    `Chỉ có thể chuyển tiến hoặc sử dụng ROLLBACK để quay lại.`
+                    `Không thể chuyển từ trạng thái (${fromState.stateName}) ` +
+                    `sang trạng thái (${toState.stateName}).`
                 );
             }
 
@@ -133,7 +189,7 @@ export class WorkflowHistoryService {
 
             // Tính duration từ state cũ
             const durationMinutes = currentState.currentStateStartedAt
-                ? Math.round((new Date().getTime() - currentState.currentStateStartedAt.getTime()) / (1000 * 60))
+                ? Math.round((Date.now() - currentState.currentStateStartedAt.getTime()) / (1000 * 60))
                 : null;
 
             // Lấy username
@@ -307,6 +363,34 @@ export class WorkflowHistoryService {
                 );
             }
 
+            // ✅ Nếu workflow history đang xóa có isCurrent = 1, cần tìm workflow history khác để set isCurrent = 1
+            if (workflowHistory.isCurrent === 1) {
+                // Tìm workflow history khác có cùng storedServiceReqId và storedServiceId, chưa bị xóa
+                const otherHistories = await workflowHistoryRepo.find({
+                    where: {
+                        storedServiceReqId: workflowHistory.storedServiceReqId,
+                        storedServiceId: workflowHistory.storedServiceId ?? IsNull(),
+                        deletedAt: IsNull(),
+                    },
+                    relations: ['toState'],
+                    order: { actionTimestamp: 'DESC' },
+                });
+
+                // Lọc ra các history khác (không phải cái đang xóa)
+                const otherHistoriesFiltered = otherHistories.filter(wh => wh.id !== id);
+                
+                if (otherHistoriesFiltered.length > 0) {
+                    // Chọn workflow history có actionTimestamp gần nhất với workflow đang xóa
+                    const candidateHistory = otherHistoriesFiltered[0];
+                    
+                    // Set isCurrent = 1 cho candidate history
+                    candidateHistory.isCurrent = 1;
+                    candidateHistory.currentStateStartedAt = new Date();
+                    candidateHistory.updatedBy = currentUser.id;
+                    await manager.save(WorkflowHistory, candidateHistory);
+                }
+            }
+
             // Xóa hoàn toàn (hard delete)
             await this.workflowHistoryRepo.hardDelete(id);
         });
@@ -451,6 +535,16 @@ export class WorkflowHistoryService {
         // Normalize stateId: empty string hoặc undefined => undefined
         const normalizedStateId = dto.stateId && dto.stateId.trim() !== '' ? dto.stateId : undefined;
 
+        // Normalize flag: undefined => undefined, empty string => undefined, "null" string => null
+        let normalizedFlag: string | undefined | null = undefined;
+        if (dto.flag !== undefined) {
+            if (dto.flag === '' || dto.flag.toLowerCase() === 'null') {
+                normalizedFlag = null; // Filter các request không có flag
+            } else {
+                normalizedFlag = dto.flag; // Filter các request có flag = giá trị này
+            }
+        }
+
         const [items, total] = await this.workflowHistoryRepo.findByRoomAndState(
             dto.roomId,
             normalizedStateId,
@@ -461,6 +555,7 @@ export class WorkflowHistoryService {
             toDate,
             dto.isCurrent,
             dto.hisServiceReqCode || '',
+            normalizedFlag,
             dto.limit || 10,
             dto.offset || 0,
             dto.order || 'DESC',
