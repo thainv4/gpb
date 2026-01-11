@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException, Inject } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { DataSource, In, IsNull } from 'typeorm';
 import { IWorkflowHistoryRepository } from '../interfaces/workflow-history.repository.interface';
 import { IWorkflowStateRepository } from '../../interfaces/workflow-state.repository.interface';
@@ -354,13 +354,16 @@ export class WorkflowHistoryService {
                 );
             }
 
-            // ✅ KIỂM TRA resultText: Nếu có service nào có resultText khác null thì không được xóa
+            // ✅ SET resultText = null cho tất cả services có resultText khác null
             const servicesWithResultText = services.filter(s => s.resultText !== null && s.resultText !== undefined && s.resultText.trim() !== '');
             if (servicesWithResultText.length > 0) {
-                const serviceCodes = servicesWithResultText.map(s => s.serviceCode || s.id).join(', ');
-                throw new BadRequestException(
-                    `Không thể xóa workflow history này vì có dịch vụ đã có kết quả`
-                );
+                // Set resultText = null và updatedBy cho tất cả services
+                for (const service of servicesWithResultText) {
+                    service.resultText = null;
+                    service.updatedBy = currentUser.id;
+                }
+                // Save tất cả services đã được update
+                await serviceRepo.save(servicesWithResultText);
             }
 
             // ✅ Nếu workflow history đang xóa có isCurrent = 1, cần tìm workflow history khác để set isCurrent = 1
@@ -394,6 +397,31 @@ export class WorkflowHistoryService {
             // Xóa hoàn toàn (hard delete)
             await this.workflowHistoryRepo.hardDelete(id);
         });
+    }
+
+    /**
+     * Xóa workflow history theo toStateId và storedServiceReqId
+     */
+    async deleteByStateAndRequest(
+        toStateId: string,
+        storedServiceReqId: string,
+        currentUser: CurrentUser
+    ): Promise<void> {
+        // Tìm workflow history theo toStateId và storedServiceReqId
+        const workflowHistory = await this.workflowHistoryRepo.findByStateIdAndStoredServiceReqId(
+            toStateId,
+            storedServiceReqId,
+            'toStateId'
+        );
+
+        if (!workflowHistory) {
+            throw new NotFoundException(
+                `Không tìm thấy workflow history với toStateId: ${toStateId} và storedServiceReqId: ${storedServiceReqId}`
+            );
+        }
+
+        // Gọi deleteWorkflowHistory với id tìm được
+        await this.deleteWorkflowHistory(workflowHistory.id, currentUser);
     }
 
     // ========== QUERIES (Read Operations) ==========
@@ -545,6 +573,16 @@ export class WorkflowHistoryService {
             }
         }
 
+        // Normalize receptionCode: undefined => undefined, empty string => undefined, "null" string => null
+        let normalizedReceptionCode: string | undefined | null = undefined;
+        if (dto.receptionCode !== undefined) {
+            if (dto.receptionCode === '' || dto.receptionCode.toLowerCase() === 'null') {
+                normalizedReceptionCode = null; // Filter các request không có receptionCode
+            } else {
+                normalizedReceptionCode = dto.receptionCode; // Filter các request có receptionCode = giá trị này
+            }
+        }
+
         const [items, total] = await this.workflowHistoryRepo.findByRoomAndState(
             dto.roomId,
             normalizedStateId,
@@ -556,6 +594,7 @@ export class WorkflowHistoryService {
             dto.isCurrent,
             dto.hisServiceReqCode || '',
             normalizedFlag,
+            normalizedReceptionCode,
             dto.limit || 10,
             dto.offset || 0,
             dto.order || 'DESC',
