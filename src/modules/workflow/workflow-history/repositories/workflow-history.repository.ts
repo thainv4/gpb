@@ -191,6 +191,7 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
         isCurrent?: number,
         hisServiceReqCode?: string,
         flag?: string,
+        receptionCode?: string,
         limit: number = 10,
         offset: number = 0,
         order: 'ASC' | 'DESC' = 'DESC',
@@ -246,6 +247,33 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
                             AND ssr.DELETED_AT IS NULL
                         )`,
                         { flag }
+                    );
+                }
+            }
+
+            // Filter theo receptionCode nếu được cung cấp
+            // Dùng WHERE EXISTS để filter theo receptionCode của stored service request service
+            if (receptionCode !== undefined) {
+                if (receptionCode === null || receptionCode === '') {
+                    // Nếu receptionCode = null hoặc rỗng, filter các request không có receptionCode
+                    queryBuilder.andWhere(
+                        `EXISTS (
+                            SELECT 1 FROM BML_STORED_SR_SERVICES sss 
+                            WHERE sss.STORED_SERVICE_REQ_ID = wh.STORED_SERVICE_REQ_ID 
+                            AND sss.RECEPTION_CODE IS NULL
+                            AND sss.DELETED_AT IS NULL
+                        )`
+                    );
+                } else {
+                    // Nếu receptionCode có giá trị, filter các request có receptionCode = giá trị đó
+                    queryBuilder.andWhere(
+                        `EXISTS (
+                            SELECT 1 FROM BML_STORED_SR_SERVICES sss 
+                            WHERE sss.STORED_SERVICE_REQ_ID = wh.STORED_SERVICE_REQ_ID 
+                            AND sss.RECEPTION_CODE = :receptionCode
+                            AND sss.DELETED_AT IS NULL
+                        )`,
+                        { receptionCode }
                     );
                 }
             }

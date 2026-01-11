@@ -41,6 +41,14 @@ export class GetWorkflowHistoryByRoomStateDto {
     flag?: string;
 
     @ApiPropertyOptional({ 
+        description: 'Mã tiếp nhận mẫu (reception code) - để trống để lấy tất cả, có thể null để lấy các request không có receptionCode', 
+        example: 'BLOOD.20241024.0001'
+    })
+    @IsOptional()
+    @IsString()
+    receptionCode?: string;
+
+    @ApiPropertyOptional({ 
         description: 'Loại room field để filter (actionRoomId, currentRoomId, transitionedByRoomId)', 
         enum: ['actionRoomId', 'currentRoomId', 'transitionedByRoomId'],
         default: 'currentRoomId'

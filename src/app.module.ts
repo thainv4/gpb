@@ -32,6 +32,8 @@ import { WorkflowModule } from './modules/workflow/workflow.module';
 import { WorkflowHistoryModule } from './modules/workflow/workflow-history/workflow-history.module';
 import { EmrModule } from './modules/emr/emr.module';
 import { ResultTemplateModule } from './modules/result-template/result-template.module';
+import { HisSereServModule } from './modules/his-sere-serv/his-sere-serv.module';
+import { HisPacsModule } from './modules/his-pacs/his-pacs.module';
 import { HealthController } from './health.controller';
 
 // Shared
@@ -88,6 +90,8 @@ import { ServicesModule } from './shared/services/services.module';
         WorkflowHistoryModule,
         EmrModule,
         ResultTemplateModule,
+        HisSereServModule,
+        HisPacsModule,
     ],
     controllers: [HealthController],
     providers: [],

@@ -4,6 +4,7 @@ import { WorkflowHistoryService } from '../services/workflow-history.service';
 import { StartWorkflowDto } from '../dto/commands/start-workflow.dto';
 import { TransitionStateDto } from '../dto/commands/transition-state.dto';
 import { UpdateCurrentStateDto } from '../dto/commands/update-current-state.dto';
+import { DeleteByStateAndRequestDto } from '../dto/commands/delete-by-state-and-request.dto';
 import { GetWorkflowHistoryDto } from '../dto/queries/get-workflow-history.dto';
 import { GetWorkflowHistoryByRoomStateDto } from '../dto/queries/get-workflow-history-by-room-state.dto';
 import { WorkflowHistoryResponseDto } from '../dto/responses/workflow-history-response.dto';
@@ -74,6 +75,35 @@ export class WorkflowHistoryController {
             currentUser
         );
         return ResponseBuilder.success({ message: 'Current state updated successfully' });
+    }
+
+    @Delete('by-state-and-request')
+    @ApiOperation({ 
+        summary: 'Xóa workflow history theo toStateId và storedServiceReqId',
+        description: 'Xóa workflow history dựa trên toStateId và storedServiceReqId. Tìm workflow history theo toStateId và storedServiceReqId, sau đó xóa hoàn toàn (hard delete).'
+    })
+    @ApiQuery({ name: 'toStateId', description: 'ID của workflow state (toStateId)', example: '426df256-bbfa-28d1-e065-9e6b783dd008', required: true })
+    @ApiQuery({ name: 'storedServiceReqId', description: 'ID của stored service request', example: 'abc-123-def-456', required: true })
+    @ApiResponse({ status: 200, description: 'Xóa thành công' })
+    @ApiResponse({ status: 400, description: 'Không thể xóa vì documentId không null hoặc resultText không null, hoặc thiếu query params' })
+    @ApiResponse({ status: 404, description: 'Không tìm thấy workflow history với toStateId và storedServiceReqId này' })
+    async deleteByStateAndRequest(
+        @Query() query: DeleteByStateAndRequestDto,
+        @CurrentUser() currentUser: ICurrentUser | null
+    ) {
+        if (!currentUser) {
+            throw new BadRequestException('JWT authentication required for deleting workflow history. HIS token is not supported for write operations.');
+        }
+        await this.workflowHistoryService.deleteByStateAndRequest(
+            query.toStateId,
+            query.storedServiceReqId,
+            currentUser
+        );
+        return ResponseBuilder.success({ 
+            message: 'Workflow history đã được xóa hoàn toàn',
+            toStateId: query.toStateId,
+            storedServiceReqId: query.storedServiceReqId
+        });
     }
 
     @Delete(':id')
@@ -167,6 +197,7 @@ export class WorkflowHistoryController {
             - Time Range: fromDate, toDate (ISO format)
             - Current State: isCurrent (0 hoặc 1)
             - Flag: Flag của stored service request (để trống để lấy tất cả, null để lấy các request không có flag)
+            - Reception Code: Mã tiếp nhận mẫu (để trống để lấy tất cả, null để lấy các request không có receptionCode)
             - Response bao gồm thông tin Service Request và State (nested)
         `
     })
@@ -194,6 +225,7 @@ export class WorkflowHistoryController {
                 isCurrent: query.isCurrent,
                 hisServiceReqCode: query.hisServiceReqCode || 'all',
                 flag: query.flag !== undefined ? query.flag : 'all',
+                receptionCode: query.receptionCode !== undefined ? query.receptionCode : 'all',
             },
         });
     }

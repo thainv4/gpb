@@ -4,6 +4,7 @@ import { ServiceRequestService } from './services/service-request.service';
 import { StoredServiceRequestService } from './services/stored-service-request.service';
 import { ServiceRequestController } from './controllers/service-request.controller';
 import { ServiceRequestView } from './entities/service-request-view.entity';
+import { HisSereServ } from './entities/his-sere-serv.entity';
 import { StoredServiceRequest } from './entities/stored-service-request.entity';
 import { StoredServiceRequestService as StoredServiceRequestServiceEntity } from './entities/stored-service-request-service.entity';
 import { ServiceRequestRepository } from './repositories/service-request.repository';
@@ -31,7 +32,7 @@ import { SampleReceptionModule } from '../sample-reception/sample-reception.modu
         AuthModule, // Import để sử dụng DualAuthGuard
         SampleReceptionModule, // Import để inject ISampleReceptionRepository
         TypeOrmModule.forFeature(
-            [ServiceRequestView],
+            [ServiceRequestView, HisSereServ],
             'hisConnection' // Use HIS database connection
         ),
         TypeOrmModule.forFeature([Department, Room, Patient, Province, Ward, Service]),
