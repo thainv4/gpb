@@ -234,4 +234,124 @@ export class HisPacsService {
             );
         }
     }
+
+    async unstart(
+        tdlServiceReqCode: string,
+        tokenCode: string,
+    ): Promise<StartResponseArrayDto> {
+        try {
+            // Lấy tất cả dữ liệu từ API his-sere-serv (không có tdlServiceCode)
+            const hisSereServResults = await this.hisSereServService.getHisSereServId({
+                tdlServiceReqCode,
+                // tdlServiceCode không được truyền vào
+            });
+
+            if (!hisSereServResults || hisSereServResults.length === 0) {
+                throw new NotFoundException(
+                    `Không tìm thấy HIS_SERE_SERV với tdlServiceReqCode: ${tdlServiceReqCode}`
+                );
+            }
+
+            this.logger.log(`Found ${hisSereServResults.length} HIS_SERE_SERV records. Calling Unstart API for each.`);
+
+            // Get endpoint from config or use default
+            const hisPacsEndpoint = this.configService.get<string>('HIS_PACS_UNSTART_ENDPOINT') || 'http://192.168.7.200:1420';
+            const apiUrl = `${hisPacsEndpoint}/api/HisPacsServiceReq/Unstart`;
+
+            // Get ApplicationCode from config or use default
+            const applicationCode = this.configService.get<string>('HIS_APPLICATION_CODE') || 'HIS_RS';
+
+            const results: StartResponseDto[] = [];
+            let successCount = 0;
+            let errorCount = 0;
+
+            // Gọi API Unstart cho mỗi accessionNumber
+            for (const hisSereServResult of hisSereServResults) {
+                const accessionNumber = hisSereServResult.accessionNumber;
+
+                try {
+                    this.logger.log(`Calling HIS PACS Unstart API for AccessionNumber: ${accessionNumber}`);
+
+                    const requestBody: StartDto = {
+                        ApiData: accessionNumber,
+                    };
+
+                    this.logger.debug(`HIS PACS Unstart API URL: ${apiUrl}`);
+                    this.logger.debug(`Request body: ${JSON.stringify(requestBody, null, 2)}`);
+
+                    const response = await firstValueFrom(
+                        this.httpService.post<StartResponseDto>(
+                            apiUrl,
+                            requestBody,
+                            {
+                                headers: {
+                                    'TokenCode': tokenCode,
+                                    'ApplicationCode': applicationCode,
+                                    'Content-Type': 'application/json',
+                                },
+                                timeout: 60000, // 60 seconds
+                            }
+                        )
+                    );
+
+                    this.logger.log(`HIS PACS Unstart API call successful for AccessionNumber: ${accessionNumber}`);
+                    
+                    // Thêm AccessionNumber vào response để dễ theo dõi
+                    const result: StartResponseDto = {
+                        ...response.data,
+                        AccessionNumber: accessionNumber,
+                    };
+                    results.push(result);
+                    successCount++;
+
+                } catch (error: any) {
+                    errorCount++;
+                    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                    
+                    this.logger.error(
+                        `Failed to call HIS PACS Unstart API for AccessionNumber: ${accessionNumber}`,
+                        errorMessage
+                    );
+
+                    // Tạo error response object
+                    const errorResponse: StartResponseDto = {
+                        Success: false,
+                        AccessionNumber: accessionNumber,
+                        ErrorMessage: error.response?.data?.ErrorMessage || error.response?.data?.message || errorMessage,
+                        ErrorCode: error.response?.data?.ErrorCode || 'HIS_PACS_UNSTART_API_ERROR',
+                    };
+
+                    results.push(errorResponse);
+                }
+            }
+
+            return {
+                results,
+                successCount,
+                errorCount,
+                totalCount: hisSereServResults.length,
+            };
+
+        } catch (error: any) {
+            // Re-throw NotFoundException
+            if (error instanceof NotFoundException) {
+                throw error;
+            }
+
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            
+            this.logger.error(
+                `Failed to process HIS PACS Unstart API`,
+                errorMessage
+            );
+
+            throw new HttpException(
+                {
+                    message: `Failed to process HIS PACS Unstart API: ${errorMessage}`,
+                    errorCode: 'HIS_PACS_UNSTART_API_ERROR',
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
 }
