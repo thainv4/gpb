@@ -596,9 +596,12 @@ export class WorkflowHistoryService {
             }
         }
 
-        const [items, total] = await this.workflowHistoryRepo.findByRoomAndState(
+        // Luôn áp dụng filterByMaxStateOrder: Filter theo stateOrder lớn nhất TRƯỚC, sau đó mới filter theo stateId
+        
+        // BƯỚC 1: Query từ repository KHÔNG có filter stateId (để filterByMaxStateOrder hoạt động đúng)
+        const [allItems] = await this.workflowHistoryRepo.findByRoomAndState(
             dto.roomId,
-            normalizedStateId,
+            undefined, // Không filter theo stateId ở đây - để filterByMaxStateOrder hoạt động đúng
             dto.roomType || 'currentRoomId',
             dto.stateType || 'toStateId',
             dto.timeType || 'actionTimestamp',
@@ -608,11 +611,33 @@ export class WorkflowHistoryService {
             dto.hisServiceReqCode || '',
             normalizedFlag,
             normalizedReceptionCode,
-            dto.limit || 10,
-            dto.offset || 0,
+            10000, // Limit lớn để lấy tất cả (sẽ filter và paginate sau)
+            0, // Offset = 0
             dto.order || 'DESC',
             dto.orderBy || 'actionTimestamp'
         );
+
+        // BƯỚC 2: Filter theo stateOrder lớn nhất TRƯỚC
+        const filteredByStateOrder = await this.filterByMaxStateOrder(allItems);
+
+        // BƯỚC 3: Filter theo stateId trên kết quả đã được filterByMaxStateOrder
+        let filteredItems = filteredByStateOrder;
+        
+        if (normalizedStateId) {
+            filteredItems = filteredItems.filter(item => {
+                if (dto.stateType === 'fromStateId') {
+                    return item.fromStateId === normalizedStateId;
+                } else {
+                    return item.toStateId === normalizedStateId;
+                }
+            });
+        }
+
+        // BƯỚC 4: Áp dụng pagination sau khi đã filter
+        const limit = dto.limit || 10;
+        const offset = dto.offset || 0;
+        const finalTotal = filteredItems.length;
+        const items = filteredItems.slice(offset, offset + limit);
 
         // Load StoredServiceRequest batch để tránh N+1 queries
         try {
@@ -632,6 +657,59 @@ export class WorkflowHistoryService {
         } catch (error) {
             // Log error nhưng không throw để API vẫn chạy được
             console.error('Error loading StoredServiceRequest:', error);
+        }
+
+        // Load StoredServiceRequestService batch để lấy receptionCode
+        // Map key = workflow history item id để lấy receptionCode chính xác cho từng item
+        const itemReceptionCodeMap = new Map<string, string | null>();
+        try {
+            if (items.length > 0) {
+                const serviceRepo = this.dataSource.getRepository(StoredServiceRequestService);
+                const storedReqIds = [...new Set(items.map(item => item.storedServiceReqId))];
+                
+                // Load tất cả services cho các storedServiceReqId
+                const services = await serviceRepo.find({
+                    where: { 
+                        storedServiceRequestId: In(storedReqIds),
+                        deletedAt: IsNull(),
+                    },
+                });
+
+                // Tạo map services theo storedServiceRequestId
+                const serviceMap = new Map<string, StoredServiceRequestService[]>();
+                services.forEach(service => {
+                    const key = service.storedServiceRequestId;
+                    if (!serviceMap.has(key)) {
+                        serviceMap.set(key, []);
+                    }
+                    serviceMap.get(key)!.push(service);
+                });
+
+                // Tạo map receptionCode cho mỗi workflow history item
+                items.forEach(item => {
+                    const servicesForReq = serviceMap.get(item.storedServiceReqId) || [];
+                    let receptionCode: string | null = null;
+
+                    if (item.storedServiceId) {
+                        // Nếu có storedServiceId, tìm service tương ứng
+                        const matchingService = servicesForReq.find(s => s.id === item.storedServiceId);
+                        if (matchingService) {
+                            receptionCode = matchingService.receptionCode || null;
+                        }
+                    } else {
+                        // Nếu không có storedServiceId, lấy từ service đầu tiên
+                        if (servicesForReq.length > 0) {
+                            receptionCode = servicesForReq[0].receptionCode || null;
+                        }
+                    }
+
+                    // Key = workflow history item id để map chính xác vào response
+                    itemReceptionCodeMap.set(item.id, receptionCode);
+                });
+            }
+        } catch (error) {
+            // Log error nhưng không throw để API vẫn chạy được
+            console.error('Error loading StoredServiceRequestService for receptionCode:', error);
         }
 
         // Load WorkflowState batch để tránh N+1 queries
@@ -692,22 +770,111 @@ export class WorkflowHistoryService {
             console.error('Error loading creator users from BML_USERS table:', error);
         }
 
-        // Map to DTOs với creator info
+        // Map to DTOs với creator info và receptionCode
         const mappedItems = items.map(item => {
             const dto = this.mapToResponseDto(item);
             dto.creator = item.createdBy ? creatorMap.get(item.createdBy) || null : null;
+            
+            // Thêm receptionCode vào serviceRequest nếu có
+            if (dto.serviceRequest) {
+                const receptionCode = itemReceptionCodeMap.get(item.id);
+                dto.serviceRequest.receptionCode = receptionCode !== undefined ? receptionCode : null;
+            }
+            
             return dto;
         });
 
         return {
             items: mappedItems,
-            total,
+            total: finalTotal, // Sử dụng total sau khi filter
             limit: dto.limit || 10,
             offset: dto.offset || 0,
         };
     }
 
     // ========== PRIVATE METHODS ==========
+
+    /**
+     * Filter workflow history items để chỉ giữ lại các items có stateOrder lớn nhất
+     * trong các toStateId của StoredServiceRequest
+     */
+    private async filterByMaxStateOrder(items: WorkflowHistory[]): Promise<WorkflowHistory[]> {
+        if (items.length === 0) {
+            return items;
+        }
+
+        try {
+            // Load WorkflowState để có stateOrder
+            const stateRepo = this.dataSource.getRepository(WorkflowState);
+            const stateIds = new Set<string>();
+            items.forEach(item => {
+                if (item.toStateId) stateIds.add(item.toStateId);
+                if (item.fromStateId) stateIds.add(item.fromStateId);
+            });
+
+            if (stateIds.size === 0) {
+                return items; // Không có state nào, trả về nguyên items
+            }
+
+            const states = await stateRepo.find({
+                where: { id: In([...stateIds]), deletedAt: IsNull() },
+            });
+            const stateMap = new Map(states.map(s => [s.id, s]));
+
+            // Attach States to each WorkflowHistory item
+            items.forEach(item => {
+                if (item.toStateId && stateMap.has(item.toStateId)) {
+                    item.toState = stateMap.get(item.toStateId);
+                }
+                if (item.fromStateId && stateMap.has(item.fromStateId)) {
+                    item.fromState = stateMap.get(item.fromStateId);
+                }
+            });
+
+            // Nhóm các workflow history theo storedServiceReqId
+            const workflowHistoryByReqId = new Map<string, WorkflowHistory[]>();
+            items.forEach(item => {
+                const reqId = item.storedServiceReqId;
+                if (!workflowHistoryByReqId.has(reqId)) {
+                    workflowHistoryByReqId.set(reqId, []);
+                }
+                const reqHistories = workflowHistoryByReqId.get(reqId);
+                if (reqHistories) {
+                    reqHistories.push(item);
+                }
+            });
+
+            // Tìm stateOrder lớn nhất cho mỗi storedServiceReqId và filter
+            const filtered: WorkflowHistory[] = [];
+            workflowHistoryByReqId.forEach((histories) => {
+                // Tìm stateOrder lớn nhất trong các toStateId
+                let maxStateOrder = -1;
+                histories.forEach(history => {
+                    if (history.toStateId && stateMap.has(history.toStateId)) {
+                        const state = stateMap.get(history.toStateId);
+                        if (state && state.stateOrder > maxStateOrder) {
+                            maxStateOrder = state.stateOrder;
+                        }
+                    }
+                });
+
+                // Chỉ giữ lại các workflow history có toStateId với stateOrder = maxStateOrder
+                histories.forEach(history => {
+                    const state = history.toStateId ? stateMap.get(history.toStateId) : undefined;
+                    if (state?.stateOrder === maxStateOrder || maxStateOrder === -1) {
+                        // maxStateOrder === -1: Nếu không có state nào có stateOrder, vẫn giữ lại (trường hợp edge case)
+                        filtered.push(history);
+                    }
+                });
+            });
+
+            return filtered;
+        } catch (error) {
+            // Log error nhưng không throw để API vẫn chạy được
+            console.error('Error filtering by max stateOrder:', error);
+            return items; // Trả về nguyên items nếu có lỗi
+        }
+    }
 
     private async getCompletedStateId(): Promise<string | null> {
         const completedState = await this.workflowStateRepo.findByCode('COMPLETED');

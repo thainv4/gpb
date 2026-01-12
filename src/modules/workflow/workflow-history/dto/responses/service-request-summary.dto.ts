@@ -73,5 +73,8 @@ export class ServiceRequestSummaryDto {
 
     @ApiPropertyOptional({ description: 'Treatment Code' })
     treatmentCode?: string;
+
+    @ApiPropertyOptional({ description: 'Reception Code' })
+    receptionCode?: string | null;
 }
 
