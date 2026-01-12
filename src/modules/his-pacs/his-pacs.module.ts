@@ -5,6 +5,7 @@ import { HisPacsController } from './his-pacs.controller';
 import { HisPacsService } from './his-pacs.service';
 import { HisSereServ } from '../service-request/entities/his-sere-serv.entity';
 import { HisDatabaseModule } from '../his-database/his-database.module';
+import { HisSereServModule } from '../his-sere-serv/his-sere-serv.module';
 
 @Module({
     imports: [
@@ -13,6 +14,7 @@ import { HisDatabaseModule } from '../his-database/his-database.module';
             maxRedirects: 5,
         }),
         HisDatabaseModule,
+        HisSereServModule,
         TypeOrmModule.forFeature(
             [HisSereServ],
             'hisConnection' // Use HIS database connection

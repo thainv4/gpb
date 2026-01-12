@@ -12,26 +12,26 @@ export class HisSereServService {
         private readonly hisSereServRepo: Repository<HisSereServ>,
     ) { }
 
-    async getHisSereServId(dto: GetHisSereServDto): Promise<HisSereServResponseDto> {
+    async getHisSereServId(dto: GetHisSereServDto): Promise<HisSereServResponseDto[]> {
         const { tdlServiceReqCode, tdlServiceCode } = dto;
 
-        const record = await this.hisSereServRepo.findOne({
-            where: { 
-                tdlServiceReqCode,
-                tdlServiceCode,
-            },
+        // Build where condition dynamically
+        const whereCondition: any = {
+            tdlServiceReqCode,
+        };
+        
+        if (tdlServiceCode !== undefined && tdlServiceCode !== null && tdlServiceCode !== '') {
+            whereCondition.tdlServiceCode = tdlServiceCode;
+        }
+
+        const records = await this.hisSereServRepo.find({
+            where: whereCondition,
             select: ['id'],
         });
 
-        if (!record) {
-            throw new NotFoundException(
-                `Không tìm thấy HIS_SERE_SERV với tdlServiceReqCode: ${tdlServiceReqCode} và tdlServiceCode: ${tdlServiceCode}`
-            );
-        }
-
-        return {
+        return records.map(record => ({
             id: record.id,
             accessionNumber: record.id.toString(), // AccessionNumber là ID convert sang string
-        };
+        }));
     }
 }
