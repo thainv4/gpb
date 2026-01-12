@@ -1,11 +1,9 @@
-import { Controller, Post, Body, Get, Query, BadRequestException, Request, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, Query, BadRequestException, Request, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { HisPacsService } from './his-pacs.service';
 import { UpdateResultDto } from './dto/update-result.dto';
 import { UpdateResultResponseDto } from './dto/update-result-response.dto';
-import { GetHisSereServDto } from '../his-sere-serv/dto/get-his-sere-serv.dto';
-import { HisSereServResponseDto } from '../his-sere-serv/dto/his-sere-serv-response.dto';
-import { ResponseBuilder } from '../../common/builders/response.builder';
+import { StartResponseArrayDto } from './dto/start-response.dto';
 
 @ApiTags('his-pacs')
 @Controller('his-pacs')
@@ -13,17 +11,6 @@ export class HisPacsController {
     constructor(
         private readonly hisPacsService: HisPacsService,
     ) { }
-
-    @Get('his-sere-serv')
-    @ApiOperation({ summary: 'Lấy ID và AccessionNumber từ HIS_SERE_SERV theo mã yêu cầu dịch vụ và mã dịch vụ' })
-    @ApiQuery({ name: 'tdlServiceReqCode', description: 'Mã yêu cầu dịch vụ', example: '000063851158', required: true })
-    @ApiQuery({ name: 'tdlServiceCode', description: 'Mã dịch vụ', example: 'BM00233', required: true })
-    @ApiResponse({ status: 200, type: HisSereServResponseDto, description: 'Trả về ID và AccessionNumber' })
-    @ApiResponse({ status: 404, description: 'Không tìm thấy record' })
-    async getHisSereServId(@Query() query: GetHisSereServDto) {
-        const result = await this.hisPacsService.getHisSereServId(query.tdlServiceReqCode, query.tdlServiceCode);
-        return ResponseBuilder.success(result);
-    }
 
     @Post('update-result')
     @HttpCode(HttpStatus.OK)
@@ -88,6 +75,60 @@ export class HisPacsController {
 
         // Thêm hisSereServId vào response
         result.hisSereServId = hisSereServResult.id;
+
+        return result;
+    }
+
+    @Post('start')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Bắt đầu HIS PACS',
+        description: 'API proxy để gọi HIS PACS Start API. Query HIS_SERE_SERV trước để lấy danh sách AccessionNumber từ tdlServiceReqCode (không có tdlServiceCode). Gọi API Start cho mỗi AccessionNumber. Yêu cầu query param tdlServiceReqCode. Chỉ cần header TokenCode (hisTokenCode từ login response).',
+    })
+    @ApiHeader({
+        name: 'TokenCode',
+        description: 'HIS token code (required - lấy từ login response hisTokenCode)',
+        required: true,
+    })
+    @ApiQuery({ name: 'tdlServiceReqCode', description: 'Mã yêu cầu dịch vụ (required - để query HIS_SERE_SERV và lấy AccessionNumber)', example: '000063851158', required: true })
+    @ApiResponse({
+        status: 200,
+        description: 'Kết quả các lần gọi API Start',
+        type: StartResponseArrayDto,
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - Dữ liệu đầu vào không hợp lệ, thiếu TokenCode header hoặc query params',
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Not found - Không tìm thấy HIS_SERE_SERV với query param đã cho',
+    })
+    async start(
+        @Query('tdlServiceReqCode') tdlServiceReqCode: string,
+        @Request() req: any,
+    ): Promise<StartResponseArrayDto> {
+        // Lấy TokenCode từ header (là hisTokenCode từ login response)
+        const tokenCode = req.headers['tokencode'] || req.headers['TokenCode'];
+
+        if (!tokenCode) {
+            throw new BadRequestException(
+                'TokenCode header is required. Please provide hisTokenCode from login response.'
+            );
+        }
+
+        // Validate query params
+        if (!tdlServiceReqCode) {
+            throw new BadRequestException(
+                'Query param tdlServiceReqCode is required to query HIS_SERE_SERV and get AccessionNumber.'
+            );
+        }
+
+        // Gọi service
+        const result = await this.hisPacsService.start(
+            tdlServiceReqCode,
+            tokenCode,
+        );
 
         return result;
     }

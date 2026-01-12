@@ -18,9 +18,8 @@ export class HisSereServController {
     @Get()
     @ApiOperation({ summary: 'Lấy ID từ HIS_SERE_SERV theo mã yêu cầu dịch vụ và mã dịch vụ' })
     @ApiQuery({ name: 'tdlServiceReqCode', description: 'Mã yêu cầu dịch vụ', example: '000063851158', required: true })
-    @ApiQuery({ name: 'tdlServiceCode', description: 'Mã dịch vụ', example: 'BM00233', required: true })
-    @ApiResponse({ status: 200, type: HisSereServResponseDto, description: 'Trả về ID' })
-    @ApiResponse({ status: 404, description: 'Không tìm thấy record' })
+    @ApiQuery({ name: 'tdlServiceCode', description: 'Mã dịch vụ', example: 'BM00233', required: false })
+    @ApiResponse({ status: 200, type: [HisSereServResponseDto], description: 'Trả về danh sách ID' })
     async getHisSereServId(@Query() query: GetHisSereServDto) {
         const result = await this.hisSereServService.getHisSereServId(query);
         return ResponseBuilder.success(result);

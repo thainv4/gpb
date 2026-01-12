@@ -330,8 +330,7 @@ export class WorkflowHistoryService {
                     .map(wh => `${wh.toState?.stateName || 'Unknown'} (order: ${wh.toState?.stateOrder})`)
                     .join(', ');
                 throw new BadRequestException(
-                    `Không thể xóa workflow history vì có ${historiesWithHigherOrder.length} workflow history khác có stateOrder lớn hơn: ${stateNames}. ` +
-                    `Chỉ được xóa workflow history có stateOrder cao nhất.`
+                    `Không thể xóa workflow history vì bệnh phẩm đang ở giai đoạn ${stateNames}.`
                 );
             }
 
@@ -364,6 +363,20 @@ export class WorkflowHistoryService {
                 }
                 // Save tất cả services đã được update
                 await serviceRepo.save(servicesWithResultText);
+            }
+
+            // ✅ Nếu stateOrder = 1, xóa các bản ghi liên quan trong Stored_service_requests và stored_sr_services
+            if (currentStateOrder === 1) {
+                const storedServiceReqRepo = manager.getRepository(StoredServiceRequest);
+                const storedServiceReqServiceRepo = manager.getRepository(StoredServiceRequestService);
+
+                // Xóa tất cả StoredServiceRequestService liên quan (hard delete)
+                await storedServiceReqServiceRepo.delete({
+                    storedServiceRequestId: workflowHistory.storedServiceReqId,
+                });
+
+                // Xóa StoredServiceRequest (hard delete)
+                await storedServiceReqRepo.delete(workflowHistory.storedServiceReqId);
             }
 
             // ✅ Nếu workflow history đang xóa có isCurrent = 1, cần tìm workflow history khác để set isCurrent = 1
