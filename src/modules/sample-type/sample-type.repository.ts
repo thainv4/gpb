@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, Like } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { SampleType } from './entities/sample-type.entity';
 import { ISampleTypeRepository } from './interfaces/sample-type.repository.interface';
 
@@ -21,6 +21,16 @@ export class SampleTypeRepository implements ISampleTypeRepository {
         return this.sampleTypeRepository.findOne({
             where: { typeCode, deletedAt: IsNull() },
         });
+    }
+
+    async findByTypeName(typeName: string): Promise<SampleType[]> {
+        return this.sampleTypeRepository
+            .createQueryBuilder('sampleType')
+            .where('UPPER(sampleType.typeName) LIKE UPPER(:typeName)', { typeName: `%${typeName}%` })
+            .andWhere('sampleType.deletedAt IS NULL')
+            .orderBy('sampleType.sortOrder', 'ASC')
+            .addOrderBy('sampleType.createdAt', 'DESC')
+            .getMany();
     }
 
     async existsByCode(typeCode: string): Promise<boolean> {

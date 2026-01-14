@@ -61,7 +61,7 @@ export class SampleReceptionService extends BaseService {
                     // 2. Format date string
                     const dateStr = this.formatDateByResetPeriod(targetDate, sampleType.resetPeriod);
 
-                    // 3. Tìm sequence number và code UNIQUE TOÀN BẢNG
+                    // 4. Tìm sequence number và code UNIQUE TOÀN BẢNG
                     // Method này sẽ tự động tăng sequence nếu code bị trùng với SampleType khác
                     const { sequenceNumber, receptionCode } = 
                         await this.sampleReceptionRepository.getNextUniqueSequenceNumber(
@@ -257,10 +257,10 @@ export class SampleReceptionService extends BaseService {
         // 2. Xác định format ngày dựa trên resetPeriod
         const dateStr = this.formatDateByResetPeriod(targetDate, sampleType.resetPeriod);
 
-        // 3. Lấy số thứ tự tiếp theo
+        // 4. Lấy số thứ tự tiếp theo
         const nextSequence = await this.getNextSequenceNumber(sampleTypeId, targetDate, sampleType.resetPeriod);
 
-        // 4. Tạo mã với format mới: {CODE_PREFIX}{DATE_FORMAT}.{SEQUENCE_NUMBER}
+        // 5. Tạo mã với format mới: {CODE_PREFIX}{DATE_FORMAT}.{SEQUENCE_NUMBER}
         const paddedSequence = nextSequence.toString().padStart(sampleType.codeWidth, '0');
         return `${sampleType.codePrefix}${dateStr}${paddedSequence}`;
     }

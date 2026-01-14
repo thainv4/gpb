@@ -143,6 +143,22 @@ export class SampleTypeController {
         return ResponseBuilder.success(sampleTypes);
     }
 
+    @Get('by-type-name/:typeName')
+    @ApiOperation({
+        summary: 'Tìm kiếm loại mẫu theo tên',
+        description: 'Tìm kiếm danh sách loại mẫu có chứa chuỗi TypeName (không phân biệt chữ hoa, chữ thường). Ví dụ: tìm "te" sẽ trả về tất cả loại mẫu như "Test", "Testosterone"'
+    })
+    @ApiParam({ name: 'typeName', description: 'Chuỗi tìm kiếm trong tên loại mẫu (không phân biệt chữ hoa, chữ thường)' })
+    @ApiResponse({
+        status: 200,
+        description: 'Danh sách loại mẫu',
+        type: [SampleTypeResponseDto]
+    })
+    async getSampleTypeByTypeName(@Param('typeName') typeName: string) {
+        const sampleTypes = await this.sampleTypeService.getSampleTypeByTypeName(typeName);
+        return ResponseBuilder.success(sampleTypes);
+    }
+
     @Get(':id')
     @ApiOperation({
         summary: 'Lấy thông tin loại mẫu',

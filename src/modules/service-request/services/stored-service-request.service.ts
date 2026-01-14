@@ -489,7 +489,6 @@ export class StoredServiceRequestService {
             resultEnteredByUserId: service.resultEnteredByUserId,
             resultReviewedByUserId: service.resultReviewedByUserId,
             resultApprovedByUserId: service.resultApprovedByUserId,
-            resultNotes: service.resultNotes,
             resultMetadata: service.resultMetadata,
             qcStatus: service.qcStatus,
             qcCheckedByUserId: service.qcCheckedByUserId,
@@ -565,9 +564,6 @@ export class StoredServiceRequestService {
                 }
             }
 
-            if (dto.resultNotes !== undefined) {
-                service.resultNotes = dto.resultNotes;
-            }
             if (dto.resultMetadata !== undefined) {
                 service.resultMetadata = dto.resultMetadata;
             }
@@ -615,7 +611,6 @@ export class StoredServiceRequestService {
             resultText: service.resultText ?? undefined,
             resultName: service.resultName ?? undefined,
             resultStatus: service.resultStatus ?? 'PENDING',
-            resultNotes: service.resultNotes ?? undefined,
             resultMetadata: service.resultMetadata ?? undefined,
         };
 
@@ -657,9 +652,6 @@ export class StoredServiceRequestService {
             // Update review fields
             service.resultReviewedAt = new Date();
             service.resultReviewedByUserId = currentUser.id;
-            if (dto.notes) {
-                service.resultNotes = (service.resultNotes || '') + '\n[Review] ' + dto.notes;
-            }
             service.updatedBy = currentUser.id;
 
             // If rejected, reset result status
@@ -714,9 +706,6 @@ export class StoredServiceRequestService {
             // Update approve fields
             service.resultApprovedAt = new Date();
             service.resultApprovedByUserId = currentUser.id;
-            if (dto.notes) {
-                service.resultNotes = (service.resultNotes || '') + '\n[Approve] ' + dto.notes;
-            }
             service.updatedBy = currentUser.id;
 
             const savedService = await manager.save(StoredServiceRequestServiceEntity, service);
@@ -760,9 +749,6 @@ export class StoredServiceRequestService {
             service.qcStatus = dto.qcStatus;
             service.qcCheckedAt = new Date();
             service.qcCheckedByUserId = currentUser.id;
-            if (dto.notes) {
-                service.resultNotes = (service.resultNotes || '') + '\n[QC] ' + dto.notes;
-            }
             service.updatedBy = currentUser.id;
 
             const savedService = await manager.save(StoredServiceRequestServiceEntity, service);
@@ -886,4 +872,3 @@ export class StoredServiceRequestService {
         });
     }
 }
-

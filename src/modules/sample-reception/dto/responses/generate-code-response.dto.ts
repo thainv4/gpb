@@ -1,8 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CodeGenerationConfigDto {
-    @ApiProperty({ description: 'Tiền tố mã tiếp nhận', example: 'BLOOD' })
-    codePrefix: string;
+    @ApiProperty({ description: 'Tiền tố mã tiếp nhận (có thể null)', example: 'BLOOD' })
+    codePrefix?: string | null;
 
     @ApiProperty({ description: 'Độ rộng phần số', example: 4 })
     codeWidth: number;

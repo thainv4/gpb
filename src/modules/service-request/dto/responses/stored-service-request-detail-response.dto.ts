@@ -102,10 +102,6 @@ export class StoredServiceResponseDto {
     @ApiPropertyOptional({ description: 'User phê duyệt' })
     resultApprovedByUserId?: string | null;
 
-    // Result Notes & Metadata
-    @ApiPropertyOptional({ description: 'Ghi chú về kết quả' })
-    resultNotes?: string | null;
-
     @ApiPropertyOptional({ description: 'JSON metadata' })
     resultMetadata?: string | null;
 
