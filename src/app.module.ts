@@ -34,6 +34,7 @@ import { EmrModule } from './modules/emr/emr.module';
 import { ResultTemplateModule } from './modules/result-template/result-template.module';
 import { HisSereServModule } from './modules/his-sere-serv/his-sere-serv.module';
 import { HisPacsModule } from './modules/his-pacs/his-pacs.module';
+import { StainingMethodModule } from './modules/staining-method/staining-method.module';
 import { HealthController } from './health.controller';
 
 // Shared
@@ -92,6 +93,7 @@ import { ServicesModule } from './shared/services/services.module';
         ResultTemplateModule,
         HisSereServModule,
         HisPacsModule,
+        StainingMethodModule,
     ],
     controllers: [HealthController],
     providers: [],

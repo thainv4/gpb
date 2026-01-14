@@ -18,8 +18,8 @@ export class SampleType extends BaseEntity {
     @Column({ name: 'SORT_ORDER', type: 'number', default: 0 })
     sortOrder: number;
 
-    @Column({ name: 'CODE_PREFIX', length: 5 })
-    codePrefix: string;
+    @Column({ name: 'CODE_PREFIX', length: 5, nullable: true })
+    codePrefix?: string | null;
 
     @Column({ name: 'CODE_WIDTH', type: 'number', default: 4 })
     codeWidth: number;
@@ -36,6 +36,9 @@ export class SampleType extends BaseEntity {
     }
 
     getCodeGenerationInfo(): string {
+        if (!this.codePrefix) {
+            return `No prefix configured (${this.codeWidth} digits, ${this.allowDuplicate ? 'duplicate allowed' : 'unique'}, ${this.resetPeriod})`;
+        }
         return `${this.codePrefix} (${this.codeWidth} digits, ${this.allowDuplicate ? 'duplicate allowed' : 'unique'}, ${this.resetPeriod})`;
     }
 }

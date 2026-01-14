@@ -3,6 +3,7 @@ import { SampleType } from '../entities/sample-type.entity';
 export interface ISampleTypeRepository {
     findById(id: string): Promise<SampleType | null>;
     findByCode(typeCode: string): Promise<SampleType | null>;
+    findByTypeName(typeName: string): Promise<SampleType[]>;
     existsByCode(typeCode: string): Promise<boolean>;
     existsByName(typeName: string): Promise<boolean>;
     save(sampleType: SampleType): Promise<SampleType>;

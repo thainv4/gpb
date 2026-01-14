@@ -19,8 +19,8 @@ export class SampleTypeResponseDto {
     @ApiProperty({ description: 'Số thứ tự' })
     sortOrder: number;
 
-    @ApiProperty({ description: 'Tiền tố mã tiếp nhận' })
-    codePrefix: string;
+    @ApiPropertyOptional({ description: 'Tiền tố mã tiếp nhận (có thể null)' })
+    codePrefix?: string | null;
 
     @ApiProperty({ description: 'Độ rộng phần số' })
     codeWidth: number;

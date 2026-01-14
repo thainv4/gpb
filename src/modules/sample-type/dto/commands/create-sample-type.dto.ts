@@ -26,12 +26,11 @@ export class CreateSampleTypeDto {
     @IsOptional()
     sortOrder?: number;
 
-    @ApiProperty({ description: 'Tiền tố mã tiếp nhận (1-5 ký tự)', example: 'BLOOD' })
-    @IsString()
-    @IsNotEmpty()
-    @MinLength(1)
+    @ApiPropertyOptional({ description: 'Tiền tố mã tiếp nhận (1-5 ký tự, có thể null)', example: 'BLOOD' })
+    @IsOptional()
+    @IsString({ message: 'Code prefix must be a string if provided' })
     @MaxLength(5)
-    codePrefix: string;
+    codePrefix?: string | null;
 
     @ApiPropertyOptional({ description: 'Độ rộng phần số (1-5)', example: 4 })
     @IsNumber()

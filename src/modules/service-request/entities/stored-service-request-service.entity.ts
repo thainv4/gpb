@@ -62,8 +62,14 @@ export class StoredServiceRequestService extends BaseEntity {
     @Column({ name: 'SHORT_NAME', type: 'varchar2', length: 100, nullable: true })
     shortName?: string | null;
 
-    @Column({ name: 'DESCRIPTION', type: 'clob', nullable: true })
+    @Column({ name: 'RESULT_DESCRIPTION', type: 'nvarchar2', length: 500, nullable: true })
     description?: string | null;
+
+    @Column({ name: 'RESULT_CONCLUDE', type: 'nvarchar2', length: 500, nullable: true })
+    conclude?: string | null; // Kết luận
+
+    @Column({ name: 'RESULT_NOTE', type: 'nvarchar2', length: 500, nullable: true })
+    note?: string | null; // Ghi chú
 
     @Column({ name: 'RESULT_TEXT', type: 'clob', nullable: true })
     resultText?: string | null; // Kết quả xét nghiệm (3-5 trang A4)
@@ -108,8 +114,6 @@ export class StoredServiceRequestService extends BaseEntity {
     resultApprovedByUserId?: string | null;
 
     // Result Notes & Metadata
-    @Column({ name: 'RESULT_NOTES', type: 'varchar2', length: 1000, nullable: true })
-    resultNotes?: string | null;
 
     @Column({ name: 'RESULT_METADATA', type: 'clob', nullable: true })
     resultMetadata?: string | null; // JSON metadata

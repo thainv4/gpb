@@ -40,11 +40,6 @@ export class EnterResultDto {
     @IsIn(['NORMAL', 'ABNORMAL', 'CRITICAL', 'PENDING'], { message: 'Trạng thái kết quả không hợp lệ' })
     resultStatus: string;
 
-    @ApiPropertyOptional({ description: 'Ghi chú về kết quả', maxLength: 1000 })
-    @IsOptional()
-    @IsString()
-    @MaxLength(1000, { message: 'Ghi chú không được quá 1000 ký tự' })
-    resultNotes?: string;
 
     @ApiPropertyOptional({ description: 'JSON metadata (máy xét nghiệm, method, etc.)' })
     @IsOptional()

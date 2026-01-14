@@ -33,12 +33,11 @@ export class UpdateSampleTypeDto {
     @IsOptional()
     sortOrder?: number;
 
-    @ApiPropertyOptional({ description: 'Tiền tố mã tiếp nhận (1-5 ký tự)', example: 'BLOOD' })
-    @IsString()
+    @ApiPropertyOptional({ description: 'Tiền tố mã tiếp nhận (1-5 ký tự, có thể null)', example: 'BLOOD' })
     @IsOptional()
-    @MinLength(1)
+    @IsString({ message: 'Code prefix must be a string if provided' })
     @MaxLength(5)
-    codePrefix?: string;
+    codePrefix?: string | null;
 
     @ApiPropertyOptional({ description: 'Độ rộng phần số (1-5)', example: 4 })
     @IsNumber()

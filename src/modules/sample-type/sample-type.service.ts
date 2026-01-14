@@ -127,6 +127,11 @@ export class SampleTypeService extends BaseService {
         return this.mapSampleTypeToResponseDto(sampleType);
     }
 
+    async getSampleTypeByTypeName(typeName: string): Promise<SampleTypeResponseDto[]> {
+        const sampleTypes = await this.sampleTypeRepository.findByTypeName(typeName);
+        return sampleTypes.map(st => this.mapSampleTypeToResponseDto(st));
+    }
+
     async getSampleTypes(query: GetSampleTypesDto): Promise<GetSampleTypesResult> {
         const { limit = 10, offset = 0, search } = query;
 
