@@ -181,6 +181,9 @@ export class StoredServiceRequest extends BaseEntity {
     @Column({ name: 'FLAG', type: 'varchar2', length: 50, nullable: true })
     flag?: string;
 
+    @Column({ name: 'STAINING_METHOD_ID', type: 'varchar2', length: 36, nullable: true })
+    stainingMethodId?: string;
+
     @Column({ name: 'STORED_AT', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
     storedAt: Date;
 

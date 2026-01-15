@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
-import { StainingMethod } from '../../service-request/entities/staining-method.entity';
+import { StainingMethod } from '../entities/staining-method.entity';
 import { IStainingMethodRepository } from '../interfaces/staining-method.repository.interface';
 
 @Injectable()

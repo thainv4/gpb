@@ -177,8 +177,8 @@ export class WorkflowHistoryService {
             // Kiểm tra stateOrder: không cho phép chuyển từ stateOrder cao về stateOrder thấp (trừ ROLLBACK)
             if (dto.actionType !== 'ROLLBACK' && fromState.stateOrder > toState.stateOrder) {
                 throw new BadRequestException(
-                    `Không thể chuyển từ trạng thái (${fromState.stateName}) ` +
-                    `sang trạng thái (${toState.stateName}).`
+                    `Không thể chuyển từ trạng thái ${fromState.stateName} ` +
+                    `sang trạng thái ${toState.stateName}.`
                 );
             }
 

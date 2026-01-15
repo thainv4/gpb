@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { StainingMethod } from '../service-request/entities/staining-method.entity';
+import { StainingMethod } from './entities/staining-method.entity';
 import { StainingMethodController } from './staining-method.controller';
 import { StainingMethodService } from './staining-method.service';
 import { StainingMethodRepository } from './repositories/staining-method.repository';

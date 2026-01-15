@@ -3,6 +3,7 @@ import { DataSource } from 'typeorm';
 import { IStoredServiceRequestRepository } from '../interfaces/stored-service-request.repository.interface';
 import { IStoredServiceRequestServiceRepository } from '../interfaces/stored-service-request-service.repository.interface';
 import { ISampleReceptionRepository } from '../../sample-reception/interfaces/sample-reception.repository.interface';
+import { IStainingMethodRepository } from '../../staining-method/interfaces/staining-method.repository.interface';
 import { ServiceRequestService } from './service-request.service';
 import { StoreServiceRequestDto } from '../dto/commands/store-service-request.dto';
 import { EnterResultDto } from '../dto/commands/enter-result.dto';
@@ -11,6 +12,7 @@ import { ApproveResultDto } from '../dto/commands/approve-result.dto';
 import { QcResultDto } from '../dto/commands/qc-result.dto';
 import { UpdateReceptionCodeDto } from '../dto/commands/update-reception-code.dto';
 import { UpdateFlagDto } from '../dto/commands/update-flag.dto';
+import { UpdateStainingMethodDto } from '../dto/commands/update-staining-method.dto';
 import { StoredServiceRequestResponseDto } from '../dto/responses/stored-service-request-response.dto';
 import { StoredServiceRequestDetailResponseDto, StoredServiceResponseDto, WorkflowCurrentStateDto } from '../dto/responses/stored-service-request-detail-response.dto';
 import { CurrentUser } from '../../../common/interfaces/current-user.interface';
@@ -29,6 +31,8 @@ export class StoredServiceRequestService {
         private readonly serviceRepo: IStoredServiceRequestServiceRepository,
         @Inject('ISampleReceptionRepository')
         private readonly sampleReceptionRepository: ISampleReceptionRepository,
+        @Inject('IStainingMethodRepository')
+        private readonly stainingMethodRepository: IStainingMethodRepository,
         private readonly serviceRequestService: ServiceRequestService,
         private readonly workflowHistoryService: WorkflowHistoryService,
         @Inject('IWorkflowStateRepository')
@@ -416,7 +420,7 @@ export class StoredServiceRequestService {
      * Lấy chi tiết Service/Test đã lưu theo ID
      */
     async getStoredServiceById(serviceId: string): Promise<StoredServiceResponseDto> {
-        const service = await this.serviceRepo.findById(serviceId);
+        const service = await this.serviceRepo.findByIdWithRelations(serviceId);
         
         if (!service) {
             throw new NotFoundException(`Stored Service với ID ${serviceId} không tìm thấy`);
@@ -445,6 +449,19 @@ export class StoredServiceRequestService {
                 }
             } catch (error) {
                 // Ignore errors, sampleTypeId will be null
+            }
+        }
+
+        // Lấy stainingMethodName từ storedServiceRequest nếu có
+        let stainingMethodName: string | null = null;
+        if (service.storedServiceRequest?.stainingMethodId) {
+            try {
+                const method = await this.stainingMethodRepository.findById(service.storedServiceRequest.stainingMethodId);
+                if (method) {
+                    stainingMethodName = method.methodName;
+                }
+            } catch (error) {
+                // Ignore errors, stainingMethodName will be null
             }
         }
 
@@ -499,6 +516,7 @@ export class StoredServiceRequestService {
             sampleCollectionTime: service.sampleCollectionTime,
             collectedByUserId: service.collectedByUserId,
             documentId: service.documentId,
+            stainingMethodName: stainingMethodName,
             testId: service.testId,
             isActive: service.isActive,
             serviceTests: serviceTests,
@@ -839,6 +857,32 @@ export class StoredServiceRequestService {
             storedRequest.updatedBy = currentUser.id;
 
             // 3. Lưu vào database
+            await manager.save(StoredServiceRequest, storedRequest);
+        });
+    }
+
+    /**
+     * Cập nhật stainingMethodId cho stored service request
+     */
+    async updateStainingMethod(
+        id: string,
+        dto: UpdateStainingMethodDto,
+        currentUser: CurrentUser
+    ): Promise<void> {
+        return this.dataSource.transaction(async (manager) => {
+            const storedRequest = await this.storedRepo.findById(id);
+
+            if (!storedRequest) {
+                throw new NotFoundException(
+                    `Không tìm thấy stored service request với ID: ${id}`
+                );
+            }
+
+            if (dto.stainingMethodId !== undefined) {
+                storedRequest.stainingMethodId = dto.stainingMethodId ?? null;
+            }
+            storedRequest.updatedBy = currentUser.id;
+
             await manager.save(StoredServiceRequest, storedRequest);
         });
     }

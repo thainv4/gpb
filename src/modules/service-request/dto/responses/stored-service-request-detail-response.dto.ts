@@ -135,6 +135,10 @@ export class StoredServiceResponseDto {
     @ApiPropertyOptional({ description: 'ID văn bản EMR (từ bảng EMR_DOCUMENT)' })
     documentId?: number | null;
 
+    // Staining Method
+    @ApiPropertyOptional({ description: 'Tên phương pháp nhuộm' })
+    stainingMethodName?: string | null;
+
     // Child-specific fields
     @ApiPropertyOptional({ description: 'Test ID (cho child services)' })
     testId?: string | null;

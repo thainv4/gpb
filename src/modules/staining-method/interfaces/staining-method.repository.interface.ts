@@ -1,4 +1,4 @@
-import { StainingMethod } from '../../service-request/entities/staining-method.entity';
+import { StainingMethod } from '../entities/staining-method.entity';
 
 export interface IStainingMethodRepository {
     findById(id: string): Promise<StainingMethod | null>;

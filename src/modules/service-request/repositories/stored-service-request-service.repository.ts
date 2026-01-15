@@ -17,6 +17,13 @@ export class StoredServiceRequestServiceRepository implements IStoredServiceRequ
         });
     }
 
+    async findByIdWithRelations(id: string): Promise<StoredServiceRequestService | null> {
+        return this.repo.findOne({
+            where: { id, deletedAt: IsNull() },
+            relations: ['storedServiceRequest'],
+        });
+    }
+
     async findByParentServiceId(parentServiceId: string): Promise<StoredServiceRequestService[]> {
         return this.repo.find({
             where: { parentServiceId, deletedAt: IsNull() },

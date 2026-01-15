@@ -2,6 +2,7 @@ import { StoredServiceRequestService } from '../entities/stored-service-request-
 
 export interface IStoredServiceRequestServiceRepository {
     findById(id: string): Promise<StoredServiceRequestService | null>;
+    findByIdWithRelations(id: string): Promise<StoredServiceRequestService | null>;
     findByParentServiceId(parentServiceId: string): Promise<StoredServiceRequestService[]>;
     findByStoredServiceRequestId(storedServiceRequestId: string): Promise<StoredServiceRequestService[]>;
     save(entity: StoredServiceRequestService): Promise<StoredServiceRequestService>;
