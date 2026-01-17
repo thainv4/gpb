@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Query, HttpCode, HttpStatus, BadRequestException, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Get, Body, Query, HttpCode, HttpStatus, BadRequestException, UseGuards, Request, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiBody, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { EmrService } from './emr.service';
 import { CreateAndSignHsmDto } from './dto/commands/create-and-sign-hsm.dto';
@@ -199,6 +199,7 @@ export class EmrController {
     async deleteEmrDocument(
         @Body() deleteEmrDocumentDto: DeleteEmrDocumentDto,
         @Request() req: any,
+        @CurrentUser() currentUser: { id: string; username: string; email: string } | null,
     ): Promise<DeleteEmrDocumentResponseDto> {
         let tokenCode: string;
         let applicationCode: string;
@@ -216,6 +217,14 @@ export class EmrController {
                     'Alternatively, you can use HIS TokenCode header for direct HIS authentication.'
                 );
             }
+        }
+
+        // Validate signerId if JWT authentication is used
+        if (currentUser) {
+            await this.emrService.validateSignerPermission(
+                deleteEmrDocumentDto.documentId,
+                currentUser.id,
+            );
         }
 
         return this.emrService.deleteEmrDocument(

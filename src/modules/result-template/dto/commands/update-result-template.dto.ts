@@ -1,11 +1,10 @@
 import { IsString, IsNotEmpty, MinLength, MaxLength, IsOptional } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateResultTemplateDto {
-    @ApiProperty({
+    @ApiPropertyOptional({
         description: 'Tên mẫu kết quả',
         example: 'Mẫu xét nghiệm máu',
-        required: false
     })
     @IsString()
     @IsOptional()
@@ -14,16 +13,34 @@ export class UpdateResultTemplateDto {
     @MaxLength(255)
     templateName?: string;
 
-    @ApiProperty({
-        description: 'Mẫu văn bản kết quả xét nghiệm (unique)',
-        example: 'Kết quả xét nghiệm tổng quát: {{param1}}, {{param2}}',
-        required: false
+    @ApiPropertyOptional({
+        description: 'Mô tả kết quả',
+        example: 'Mô tả chi tiết về kết quả xét nghiệm',
+        maxLength: 500
     })
-    @IsString()
     @IsOptional()
-    @IsNotEmpty()
-    @MinLength(1)
-    @MaxLength(2000)
-    resultTextTemplate?: string;
+    @IsString()
+    @MaxLength(500, { message: 'Mô tả kết quả không được quá 500 ký tự' })
+    resultDescription?: string;
+
+    @ApiPropertyOptional({
+        description: 'Kết luận',
+        example: 'Kết luận về kết quả xét nghiệm',
+        maxLength: 500
+    })
+    @IsOptional()
+    @IsString()
+    @MaxLength(500, { message: 'Kết luận không được quá 500 ký tự' })
+    resultConclude?: string;
+
+    @ApiPropertyOptional({
+        description: 'Ghi chú kết quả',
+        example: 'Ghi chú về kết quả xét nghiệm',
+        maxLength: 500
+    })
+    @IsOptional()
+    @IsString()
+    @MaxLength(500, { message: 'Ghi chú kết quả không được quá 500 ký tự' })
+    resultNote?: string;
 }
 

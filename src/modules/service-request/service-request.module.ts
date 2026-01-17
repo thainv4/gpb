@@ -22,6 +22,7 @@ import { WorkflowHistoryModule } from '../workflow/workflow-history/workflow-his
 import { WorkflowModule } from '../workflow/workflow.module';
 import { AuthModule } from '../auth/auth.module';
 import { SampleReceptionModule } from '../sample-reception/sample-reception.module';
+import { StainingMethodModule } from '../staining-method/staining-method.module';
 
 @Module({
     imports: [
@@ -31,6 +32,7 @@ import { SampleReceptionModule } from '../sample-reception/sample-reception.modu
         WorkflowModule, // Import để inject IWorkflowStateRepository
         AuthModule, // Import để sử dụng DualAuthGuard
         SampleReceptionModule, // Import để inject ISampleReceptionRepository
+        StainingMethodModule, // Import để inject IStainingMethodRepository
         TypeOrmModule.forFeature(
             [ServiceRequestView, HisSereServ],
             'hisConnection' // Use HIS database connection

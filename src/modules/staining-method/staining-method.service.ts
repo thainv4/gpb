@@ -4,7 +4,7 @@ import { BaseService } from '../../common/services/base.service';
 import { CurrentUserContextService } from '../../common/services/current-user-context.service';
 import { AppError } from '../../common/errors/app.error';
 import { CurrentUser } from '../../common/interfaces/current-user.interface';
-import { StainingMethod } from '../service-request/entities/staining-method.entity';
+import { StainingMethod } from './entities/staining-method.entity';
 import { IStainingMethodRepository } from './interfaces/staining-method.repository.interface';
 import { CreateStainingMethodDto } from './dto/commands/create-staining-method.dto';
 import { UpdateStainingMethodDto } from './dto/commands/update-staining-method.dto';

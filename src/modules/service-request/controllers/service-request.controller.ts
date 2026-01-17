@@ -10,6 +10,7 @@ import { QcResultDto } from '../dto/commands/qc-result.dto';
 import { UpdateDocumentIdDto } from '../dto/commands/update-document-id.dto';
 import { UpdateReceptionCodeDto } from '../dto/commands/update-reception-code.dto';
 import { UpdateFlagDto } from '../dto/commands/update-flag.dto';
+import { UpdateStainingMethodDto } from '../dto/commands/update-staining-method.dto';
 import { GetServiceRequestsDto } from '../dto/queries/get-service-requests.dto';
 import { SearchServiceRequestsDto } from '../dto/queries/search-service-requests.dto';
 import { ServiceRequestResponseDto } from '../dto/responses/service-request-response.dto';
@@ -346,6 +347,53 @@ export class ServiceRequestController {
             message: 'Flag đã được cập nhật thành công',
             id: id,
             flag: dto.flag
+        });
+    }
+
+    @Patch('stored/:id/staining-method')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Cập nhật phương pháp nhuộm (stainingMethodId) cho stored service request',
+        description: 'Gán hoặc xóa ID phương pháp nhuộm cho một stored service request cụ thể.'
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'ID của stored service request',
+        example: 'f32c11f9-cab8-4f72-9776-5b41a1bc89e8'
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Cập nhật stainingMethodId thành công'
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Không tìm thấy stored service request'
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Dữ liệu không hợp lệ'
+    })
+    async updateStainingMethod(
+        @Param('id') id: string,
+        @Body() dto: UpdateStainingMethodDto,
+        @CurrentUser() currentUser: ICurrentUser | null
+    ) {
+        if (!currentUser) {
+            throw new BadRequestException(
+                'JWT authentication required. HIS token is not supported for write operations.'
+            );
+        }
+
+        await this.storedServiceRequestService.updateStainingMethod(
+            id,
+            dto,
+            currentUser
+        );
+
+        return ResponseBuilder.success({
+            message: 'stainingMethodId đã được cập nhật thành công',
+            id: id,
+            stainingMethodId: dto.stainingMethodId ?? null,
         });
     }
 

@@ -60,6 +60,15 @@ export class StoredServiceResponseDto {
     @ApiPropertyOptional({ description: 'Description' })
     description?: string | null;
 
+    @ApiPropertyOptional({ description: 'Mô tả kết quả' })
+    resultDescription?: string | null;
+
+    @ApiPropertyOptional({ description: 'Kết luận' })
+    resultConclude?: string | null;
+
+    @ApiPropertyOptional({ description: 'Ghi chú kết quả' })
+    resultNote?: string | null;
+
     @ApiPropertyOptional({ description: 'Kết quả xét nghiệm (CLOB)' })
     resultText?: string | null;
 
@@ -134,6 +143,10 @@ export class StoredServiceResponseDto {
     // EMR Document ID
     @ApiPropertyOptional({ description: 'ID văn bản EMR (từ bảng EMR_DOCUMENT)' })
     documentId?: number | null;
+
+    // Staining Method
+    @ApiPropertyOptional({ description: 'Tên phương pháp nhuộm' })
+    stainingMethodName?: string | null;
 
     // Child-specific fields
     @ApiPropertyOptional({ description: 'Test ID (cho child services)' })

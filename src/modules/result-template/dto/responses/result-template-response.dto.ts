@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ResultTemplateResponseDto {
     @ApiProperty({
@@ -13,11 +13,26 @@ export class ResultTemplateResponseDto {
     })
     templateName: string;
 
-    @ApiProperty({
-        description: 'Mẫu văn bản kết quả xét nghiệm',
-        example: 'Kết quả xét nghiệm tổng quát: {{param1}}, {{param2}}'
+    @ApiPropertyOptional({
+        description: 'Mô tả kết quả',
+        example: 'Mô tả chi tiết về kết quả xét nghiệm',
+        nullable: true
     })
-    resultTextTemplate: string;
+    resultDescription?: string | null;
+
+    @ApiPropertyOptional({
+        description: 'Kết luận',
+        example: 'Kết luận về kết quả xét nghiệm',
+        nullable: true
+    })
+    resultConclude?: string | null;
+
+    @ApiPropertyOptional({
+        description: 'Ghi chú kết quả',
+        example: 'Ghi chú về kết quả xét nghiệm',
+        nullable: true
+    })
+    resultNote?: string | null;
 
     @ApiProperty({
         description: 'Ngày tạo',

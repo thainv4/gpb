@@ -17,6 +17,13 @@ export class StoredServiceRequestServiceRepository implements IStoredServiceRequ
         });
     }
 
+    async findByIdWithRelations(id: string): Promise<StoredServiceRequestService | null> {
+        return this.repo.findOne({
+            where: { id, deletedAt: IsNull() },
+            relations: ['storedServiceRequest'],
+        });
+    }
+
     async findByParentServiceId(parentServiceId: string): Promise<StoredServiceRequestService[]> {
         return this.repo.find({
             where: { parentServiceId, deletedAt: IsNull() },
@@ -28,6 +35,12 @@ export class StoredServiceRequestServiceRepository implements IStoredServiceRequ
         return this.repo.find({
             where: { storedServiceRequestId, deletedAt: IsNull() },
             order: { testOrder: 'ASC', createdAt: 'ASC' },
+        });
+    }
+
+    async findByDocumentId(documentId: number): Promise<StoredServiceRequestService | null> {
+        return this.repo.findOne({
+            where: { documentId, deletedAt: IsNull() },
         });
     }
 

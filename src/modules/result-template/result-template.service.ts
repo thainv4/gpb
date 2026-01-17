@@ -43,18 +43,12 @@ export class ResultTemplateService extends BaseService {
         this.currentUserContext.setCurrentUser(currentUser);
 
         return this.transactionWithAudit(async (manager) => {
-            // Check if template already exists
-            const existingTemplate = await this.resultTemplateRepository.findByTemplate(
-                createResultTemplateDto.resultTextTemplate
-            );
-            if (existingTemplate) {
-                throw AppError.conflict('Result template with this content already exists');
-            }
-
             // Create result template
             const resultTemplate = new ResultTemplate();
             resultTemplate.templateName = createResultTemplateDto.templateName;
-            resultTemplate.resultTextTemplate = createResultTemplateDto.resultTextTemplate;
+            resultTemplate.resultDescription = createResultTemplateDto.resultDescription;
+            resultTemplate.resultConclude = createResultTemplateDto.resultConclude;
+            resultTemplate.resultNote = createResultTemplateDto.resultNote;
 
             // ✅ Manual audit fields assignment
             const now = new Date();
@@ -82,19 +76,19 @@ export class ResultTemplateService extends BaseService {
                 throw AppError.notFound('Result template', id);
             }
 
-            // Check for duplicate template if updating
-            if (updateResultTemplateDto.resultTextTemplate) {
-                const duplicateTemplate = await this.resultTemplateRepository.existsByTemplate(
-                    updateResultTemplateDto.resultTextTemplate,
-                    id
-                );
-                if (duplicateTemplate) {
-                    throw AppError.conflict('Result template with this content already exists');
-                }
-            }
-
             // Update result template fields
-            Object.assign(resultTemplate, updateResultTemplateDto);
+            if (updateResultTemplateDto.templateName !== undefined) {
+                resultTemplate.templateName = updateResultTemplateDto.templateName;
+            }
+            if (updateResultTemplateDto.resultDescription !== undefined) {
+                resultTemplate.resultDescription = updateResultTemplateDto.resultDescription;
+            }
+            if (updateResultTemplateDto.resultConclude !== undefined) {
+                resultTemplate.resultConclude = updateResultTemplateDto.resultConclude;
+            }
+            if (updateResultTemplateDto.resultNote !== undefined) {
+                resultTemplate.resultNote = updateResultTemplateDto.resultNote;
+            }
 
             // ✅ Automatic audit fields - no manual assignment needed!
             this.setAuditFields(resultTemplate, true); // true = update operation
@@ -183,7 +177,9 @@ export class ResultTemplateService extends BaseService {
         return {
             id: resultTemplate.id,
             templateName: resultTemplate.templateName,
-            resultTextTemplate: resultTemplate.resultTextTemplate,
+            resultDescription: resultTemplate.resultDescription ?? undefined,
+            resultConclude: resultTemplate.resultConclude ?? undefined,
+            resultNote: resultTemplate.resultNote ?? undefined,
             createdAt: resultTemplate.createdAt,
             updatedAt: resultTemplate.updatedAt,
             createdBy: resultTemplate.createdBy,

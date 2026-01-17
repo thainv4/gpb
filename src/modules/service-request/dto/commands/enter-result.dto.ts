@@ -45,5 +45,41 @@ export class EnterResultDto {
     @IsOptional()
     @IsString()
     resultMetadata?: string;
+
+    @ApiPropertyOptional({ 
+        description: 'Mô tả kết quả', 
+        example: 'Mô tả chi tiết về kết quả xét nghiệm', 
+        maxLength: 500,
+        nullable: true
+    })
+    @IsOptional()
+    @ValidateIf((o, v) => v !== null)
+    @IsString()
+    @MaxLength(500, { message: 'Mô tả kết quả không được quá 500 ký tự' })
+    resultDescription?: string | null;
+
+    @ApiPropertyOptional({ 
+        description: 'Kết luận', 
+        example: 'Kết luận về kết quả xét nghiệm', 
+        maxLength: 500,
+        nullable: true
+    })
+    @IsOptional()
+    @ValidateIf((o, v) => v !== null)
+    @IsString()
+    @MaxLength(500, { message: 'Kết luận không được quá 500 ký tự' })
+    resultConclude?: string | null;
+
+    @ApiPropertyOptional({ 
+        description: 'Ghi chú kết quả', 
+        example: 'Ghi chú về kết quả xét nghiệm', 
+        maxLength: 500,
+        nullable: true
+    })
+    @IsOptional()
+    @ValidateIf((o, v) => v !== null)
+    @IsString()
+    @MaxLength(500, { message: 'Ghi chú kết quả không được quá 500 ký tự' })
+    resultNote?: string | null;
 }
 
