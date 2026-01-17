@@ -15,6 +15,12 @@ export class StainingMethodRepository implements IStainingMethodRepository {
         return this.repository.findOne({ where: { id, deletedAt: IsNull() } });
     }
 
+    async findByMethodName(methodName: string): Promise<StainingMethod | null> {
+        return this.repository.findOne({ 
+            where: { methodName, deletedAt: IsNull() } 
+        });
+    }
+
     async existsByName(methodName: string): Promise<boolean> {
         const count = await this.repository.count({ where: { methodName, deletedAt: IsNull() } });
         return count > 0;
