@@ -493,6 +493,9 @@ export class StoredServiceRequestService {
             testOrder: service.testOrder,
             shortName: service.shortName,
             description: service.description,
+            resultDescription: service.description,
+            resultConclude: service.conclude,
+            resultNote: service.note,
             resultText: service.resultText,
             resultName: service.resultName,
             resultValue: service.resultValue,
@@ -585,6 +588,15 @@ export class StoredServiceRequestService {
             if (dto.resultMetadata !== undefined) {
                 service.resultMetadata = dto.resultMetadata;
             }
+            if (dto.resultDescription !== undefined) {
+                service.description = dto.resultDescription;
+            }
+            if (dto.resultConclude !== undefined) {
+                service.conclude = dto.resultConclude;
+            }
+            if (dto.resultNote !== undefined) {
+                service.note = dto.resultNote;
+            }
 
             // Set audit fields
             service.resultEnteredAt = new Date();
@@ -630,6 +642,9 @@ export class StoredServiceRequestService {
             resultName: service.resultName ?? undefined,
             resultStatus: service.resultStatus ?? 'PENDING',
             resultMetadata: service.resultMetadata ?? undefined,
+            resultDescription: service.description ?? null,
+            resultConclude: service.conclude ?? null,
+            resultNote: service.note ?? null,
         };
 
         return result;
