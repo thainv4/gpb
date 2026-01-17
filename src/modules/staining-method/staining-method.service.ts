@@ -92,6 +92,15 @@ export class StainingMethodService extends BaseService {
         return this.mapToResponse(entity);
     }
 
+    async getByMethodName(methodName: string): Promise<StainingMethodResponseDto> {
+        const entity = await this.stainingMethodRepository.findByMethodName(methodName);
+        if (!entity) {
+            throw AppError.notFound('Staining method not found');
+        }
+
+        return this.mapToResponse(entity);
+    }
+
     async getList(query: GetStainingMethodsDto): Promise<GetStainingMethodsResult> {
         const { limit = 10, offset = 0, search } = query;
         const [entities, total] = await this.stainingMethodRepository.findWithPagination(limit, offset, search);

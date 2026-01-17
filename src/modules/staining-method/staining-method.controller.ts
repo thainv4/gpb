@@ -68,6 +68,16 @@ export class StainingMethodController {
         return ResponseBuilder.success(result);
     }
 
+    @Get('search/method-name')
+    @ApiOperation({ summary: 'Tìm kiếm phương pháp nhuộm theo tên', description: 'Tìm kiếm phương pháp nhuộm theo methodName (tìm chính xác)' })
+    @ApiQuery({ name: 'methodName', required: true, description: 'Tên phương pháp nhuộm', example: 'H&E' })
+    @ApiResponse({ status: 200, description: 'Thông tin phương pháp nhuộm', type: StainingMethodResponseDto })
+    @ApiResponse({ status: 404, description: 'Không tìm thấy phương pháp nhuộm' })
+    async getByMethodName(@Query('methodName') methodName: string) {
+        const stainingMethod = await this.stainingMethodService.getByMethodName(methodName);
+        return ResponseBuilder.success(stainingMethod);
+    }
+
     @Get(':id')
     @ApiOperation({ summary: 'Lấy chi tiết phương pháp nhuộm', description: 'Lấy thông tin phương pháp nhuộm theo ID' })
     @ApiParam({ name: 'id', description: 'ID phương pháp nhuộm' })

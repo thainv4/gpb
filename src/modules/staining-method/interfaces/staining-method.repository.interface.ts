@@ -2,6 +2,7 @@ import { StainingMethod } from '../entities/staining-method.entity';
 
 export interface IStainingMethodRepository {
     findById(id: string): Promise<StainingMethod | null>;
+    findByMethodName(methodName: string): Promise<StainingMethod | null>;
     existsByName(methodName: string): Promise<boolean>;
     save(stainingMethod: StainingMethod): Promise<StainingMethod>;
     delete(id: string): Promise<void>;
