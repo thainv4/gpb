@@ -38,6 +38,12 @@ export class StoredServiceRequestServiceRepository implements IStoredServiceRequ
         });
     }
 
+    async findByDocumentId(documentId: number): Promise<StoredServiceRequestService | null> {
+        return this.repo.findOne({
+            where: { documentId, deletedAt: IsNull() },
+        });
+    }
+
     async save(entity: StoredServiceRequestService): Promise<StoredServiceRequestService> {
         return this.repo.save(entity);
     }
