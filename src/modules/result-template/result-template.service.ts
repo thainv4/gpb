@@ -43,8 +43,15 @@ export class ResultTemplateService extends BaseService {
         this.currentUserContext.setCurrentUser(currentUser);
 
         return this.transactionWithAudit(async (manager) => {
+            // Check if result template code already exists
+            const existingByCode = await this.resultTemplateRepository.existsByCode(createResultTemplateDto.resultTemplateCode);
+            if (existingByCode) {
+                throw AppError.conflict(`Mẫu kết quả với mã '${createResultTemplateDto.resultTemplateCode}' đã tồn tại`);
+            }
+
             // Create result template
             const resultTemplate = new ResultTemplate();
+            resultTemplate.resultTemplateCode = createResultTemplateDto.resultTemplateCode;
             resultTemplate.templateName = createResultTemplateDto.templateName;
             resultTemplate.resultDescription = createResultTemplateDto.resultDescription;
             resultTemplate.resultConclude = createResultTemplateDto.resultConclude;
@@ -77,6 +84,17 @@ export class ResultTemplateService extends BaseService {
             }
 
             // Update result template fields
+            if (updateResultTemplateDto.resultTemplateCode !== undefined) {
+                // Check if new code already exists (excluding current record)
+                const existingByCode = await this.resultTemplateRepository.existsByCode(
+                    updateResultTemplateDto.resultTemplateCode,
+                    id
+                );
+                if (existingByCode) {
+                    throw AppError.conflict(`Mẫu kết quả với mã '${updateResultTemplateDto.resultTemplateCode}' đã tồn tại`);
+                }
+                resultTemplate.resultTemplateCode = updateResultTemplateDto.resultTemplateCode;
+            }
             if (updateResultTemplateDto.templateName !== undefined) {
                 resultTemplate.templateName = updateResultTemplateDto.templateName;
             }
@@ -176,6 +194,7 @@ export class ResultTemplateService extends BaseService {
     private mapResultTemplateToResponseDto(resultTemplate: ResultTemplate): ResultTemplateResponseDto {
         return {
             id: resultTemplate.id,
+            resultTemplateCode: resultTemplate.resultTemplateCode,
             templateName: resultTemplate.templateName,
             resultDescription: resultTemplate.resultDescription ?? undefined,
             resultConclude: resultTemplate.resultConclude ?? undefined,

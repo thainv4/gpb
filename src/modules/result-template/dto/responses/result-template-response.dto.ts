@@ -8,6 +8,12 @@ export class ResultTemplateResponseDto {
     id: string;
 
     @ApiProperty({
+        description: 'Mã mẫu kết quả',
+        example: 'RT001'
+    })
+    resultTemplateCode: string;
+
+    @ApiProperty({
         description: 'Tên mẫu kết quả',
         example: 'Mẫu xét nghiệm máu'
     })
