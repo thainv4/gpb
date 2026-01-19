@@ -3,6 +3,16 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateResultTemplateDto {
     @ApiPropertyOptional({
+        description: 'Mã mẫu kết quả',
+        example: 'RT001',
+    })
+    @IsString()
+    @IsOptional()
+    @IsNotEmpty()
+    @MaxLength(50, { message: 'Mã mẫu kết quả không được quá 50 ký tự' })
+    resultTemplateCode?: string;
+
+    @ApiPropertyOptional({
         description: 'Tên mẫu kết quả',
         example: 'Mẫu xét nghiệm máu',
     })

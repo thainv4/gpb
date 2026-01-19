@@ -32,5 +32,7 @@ export interface IResultTemplateRepository {
 
     // ========== EXISTENCE CHECK OPERATIONS ==========
     existsByTemplate(template: string, excludeId?: string): Promise<boolean>;
+    existsByCode(resultTemplateCode: string, excludeId?: string): Promise<boolean>;
+    findByCode(resultTemplateCode: string): Promise<ResultTemplate | null>;
 }
 
