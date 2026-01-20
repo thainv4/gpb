@@ -76,5 +76,8 @@ export class ServiceRequestSummaryDto {
 
     @ApiPropertyOptional({ description: 'Reception Code' })
     receptionCode?: string | null;
+
+    @ApiPropertyOptional({ description: 'Số lượng block' })
+    numOfBlock?: string | null;
 }
 

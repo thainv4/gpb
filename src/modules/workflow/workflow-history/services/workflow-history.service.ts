@@ -947,6 +947,7 @@ export class WorkflowHistoryService {
                 icdCode: sr.icdCode || undefined,
                 icdName: sr.icdName || undefined,
                 treatmentCode: sr.treatmentCode || undefined,
+                numOfBlock: sr.numOfBlock || undefined,
             };
         }
 
