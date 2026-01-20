@@ -8,6 +8,7 @@ export interface IStoredServiceRequestServiceRepository {
     findByDocumentId(documentId: number): Promise<StoredServiceRequestService | null>;
     save(entity: StoredServiceRequestService): Promise<StoredServiceRequestService>;
     updateDocumentId(id: string, documentId: number | null): Promise<void>;
+    updateSignerId(id: string, signerId: string | null): Promise<void>;
     hardDelete(id: string): Promise<void>; // Hard delete (xóa hoàn toàn)
     hardDeleteByStoredServiceRequestId(storedServiceRequestId: string): Promise<void>; // Xóa tất cả services theo storedServiceRequestId
 }

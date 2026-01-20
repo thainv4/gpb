@@ -322,6 +322,20 @@ export class StoredServiceRequestService {
             console.warn('Failed to load workflow current state:', error);
         }
 
+        // Load staining method name if stainingMethodId exists
+        let stainingMethodName: string | null = null;
+        if (storedRequest.stainingMethodId) {
+            try {
+                const stainingMethod = await this.stainingMethodRepository.findById(storedRequest.stainingMethodId);
+                if (stainingMethod) {
+                    stainingMethodName = stainingMethod.methodName;
+                }
+            } catch (error) {
+                // Ignore staining method errors, just log
+                console.warn('Failed to load staining method:', error);
+            }
+        }
+
         // Map services (parent + children)
         const servicesMap = new Map<string, StoredServiceResponseDto>();
 
@@ -409,6 +423,8 @@ export class StoredServiceRequestService {
             storedAt: storedRequest.storedAt,
             storedBy: storedRequest.storedBy,
             rawResponseJson: storedRequest.rawResponseJson,
+            stainingMethodId: storedRequest.stainingMethodId || null,
+            stainingMethodName: stainingMethodName,
             services,
             workflowCurrentState,
             createdAt: storedRequest.createdAt,
