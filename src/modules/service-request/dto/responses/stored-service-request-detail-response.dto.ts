@@ -375,6 +375,12 @@ export class StoredServiceRequestDetailResponseDto {
     @ApiPropertyOptional({ description: 'Raw JSON response' })
     rawResponseJson?: string | null;
 
+    @ApiPropertyOptional({ description: 'Staining Method ID' })
+    stainingMethodId?: string | null;
+
+    @ApiPropertyOptional({ description: 'Staining Method Name' })
+    stainingMethodName?: string | null;
+
     // Services
     @ApiProperty({ description: 'Danh sách services', type: [StoredServiceResponseDto] })
     services: StoredServiceResponseDto[];

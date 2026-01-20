@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Query, HttpCode, HttpStatus, BadRequestException, UseGuards, Request, ForbiddenException } from '@nestjs/common';
+import { Controller, Post, Get, Body, Query, HttpCode, HttpStatus, BadRequestException, UseGuards, Request, ForbiddenException, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiBody, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { EmrService } from './emr.service';
 import { CreateAndSignHsmDto } from './dto/commands/create-and-sign-hsm.dto';
@@ -16,6 +16,8 @@ import { ResponseBuilder } from '../../common/builders/response.builder';
 @UseGuards(DualAuthGuard)
 @ApiBearerAuth('JWT-auth')
 export class EmrController {
+    private readonly logger = new Logger(EmrController.name);
+    
     constructor(private readonly emrService: EmrService) {}
 
     @Post('create-and-sign-hsm')
@@ -54,6 +56,7 @@ export class EmrController {
     async createAndSignHsm(
         @Body() createAndSignHsmDto: CreateAndSignHsmDto,
         @Request() req: any,
+        @CurrentUser() currentUser: { id: string; username: string; email: string } | null,
     ): Promise<EmrApiResponseDto> {
         // Lấy token từ request (đã được guard xử lý)
         // Nếu là JWT auth, cần lấy HIS token từ user profile hoặc yêu cầu header
@@ -82,6 +85,7 @@ export class EmrController {
             createAndSignHsmDto,
             tokenCode,
             applicationCode,
+            currentUser,
         );
     }
 
@@ -217,14 +221,6 @@ export class EmrController {
                     'Alternatively, you can use HIS TokenCode header for direct HIS authentication.'
                 );
             }
-        }
-
-        // Validate signerId if JWT authentication is used
-        if (currentUser) {
-            await this.emrService.validateSignerPermission(
-                deleteEmrDocumentDto.documentId,
-                currentUser.id,
-            );
         }
 
         return this.emrService.deleteEmrDocument(

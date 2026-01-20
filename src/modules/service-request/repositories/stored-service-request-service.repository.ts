@@ -55,6 +55,13 @@ export class StoredServiceRequestServiceRepository implements IStoredServiceRequ
         );
     }
 
+    async updateSignerId(id: string, signerId: string | null): Promise<void> {
+        await this.repo.update(
+            { id, deletedAt: IsNull() },
+            { signerId }
+        );
+    }
+
     async hardDelete(id: string): Promise<void> {
         await this.repo.delete(id);
     }
