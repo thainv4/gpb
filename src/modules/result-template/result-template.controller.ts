@@ -176,7 +176,7 @@ export class ResultTemplateController {
     @Get('search/keyword')
     @ApiOperation({
         summary: 'Tìm kiếm mẫu kết quả',
-        description: 'Tìm kiếm mẫu kết quả theo từ khóa với phân trang'
+        description: 'Tìm kiếm mẫu kết quả theo từ khóa trong mã mẫu (RESULT_TEMPLATE_CODE) và tên mẫu (TEMPLATE_NAME) với phân trang'
     })
     @ApiResponse({
         status: 200,

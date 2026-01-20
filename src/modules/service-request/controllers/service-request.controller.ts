@@ -11,6 +11,7 @@ import { UpdateDocumentIdDto } from '../dto/commands/update-document-id.dto';
 import { UpdateReceptionCodeDto } from '../dto/commands/update-reception-code.dto';
 import { UpdateFlagDto } from '../dto/commands/update-flag.dto';
 import { UpdateStainingMethodDto } from '../dto/commands/update-staining-method.dto';
+import { UpdateNumOfBlockDto } from '../dto/commands/update-num-of-block.dto';
 import { GetServiceRequestsDto } from '../dto/queries/get-service-requests.dto';
 import { SearchServiceRequestsDto } from '../dto/queries/search-service-requests.dto';
 import { ServiceRequestResponseDto } from '../dto/responses/service-request-response.dto';
@@ -394,6 +395,53 @@ export class ServiceRequestController {
             message: 'stainingMethodId đã được cập nhật thành công',
             id: id,
             stainingMethodId: dto.stainingMethodId ?? null,
+        });
+    }
+
+    @Patch('stored/:id/num-of-block')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Cập nhật số lượng block (numOfBlock) cho stored service request',
+        description: 'Gán hoặc xóa số lượng block cho một stored service request cụ thể. Có thể gửi null để xóa.'
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'ID của stored service request',
+        example: 'f32c11f9-cab8-4f72-9776-5b41a1bc89e8'
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Cập nhật numOfBlock thành công'
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Không tìm thấy stored service request'
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Dữ liệu không hợp lệ'
+    })
+    async updateNumOfBlock(
+        @Param('id') id: string,
+        @Body() dto: UpdateNumOfBlockDto,
+        @CurrentUser() currentUser: ICurrentUser | null
+    ) {
+        if (!currentUser) {
+            throw new BadRequestException(
+                'JWT authentication required. HIS token is not supported for write operations.'
+            );
+        }
+
+        await this.storedServiceRequestService.updateNumOfBlock(
+            id,
+            dto,
+            currentUser
+        );
+
+        return ResponseBuilder.success({
+            message: 'numOfBlock đã được cập nhật thành công',
+            id: id,
+            numOfBlock: dto.numOfBlock ?? null,
         });
     }
 
