@@ -13,6 +13,7 @@ import { QcResultDto } from '../dto/commands/qc-result.dto';
 import { UpdateReceptionCodeDto } from '../dto/commands/update-reception-code.dto';
 import { UpdateFlagDto } from '../dto/commands/update-flag.dto';
 import { UpdateStainingMethodDto } from '../dto/commands/update-staining-method.dto';
+import { UpdateNumOfBlockDto } from '../dto/commands/update-num-of-block.dto';
 import { StoredServiceRequestResponseDto } from '../dto/responses/stored-service-request-response.dto';
 import { StoredServiceRequestDetailResponseDto, StoredServiceResponseDto, WorkflowCurrentStateDto } from '../dto/responses/stored-service-request-detail-response.dto';
 import { CurrentUser } from '../../../common/interfaces/current-user.interface';
@@ -895,6 +896,32 @@ export class StoredServiceRequestService {
 
             if (dto.stainingMethodId !== undefined) {
                 storedRequest.stainingMethodId = dto.stainingMethodId ?? null;
+            }
+            storedRequest.updatedBy = currentUser.id;
+
+            await manager.save(StoredServiceRequest, storedRequest);
+        });
+    }
+
+    /**
+     * Cập nhật numOfBlock cho stored service request
+     */
+    async updateNumOfBlock(
+        id: string,
+        dto: UpdateNumOfBlockDto,
+        currentUser: CurrentUser
+    ): Promise<void> {
+        return this.dataSource.transaction(async (manager) => {
+            const storedRequest = await this.storedRepo.findById(id);
+
+            if (!storedRequest) {
+                throw new NotFoundException(
+                    `Không tìm thấy stored service request với ID: ${id}`
+                );
+            }
+
+            if (dto.numOfBlock !== undefined) {
+                storedRequest.numOfBlock = dto.numOfBlock ?? null;
             }
             storedRequest.updatedBy = currentUser.id;
 

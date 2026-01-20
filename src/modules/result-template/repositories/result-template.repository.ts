@@ -52,11 +52,11 @@ export class ResultTemplateRepository implements IResultTemplateRepository {
 
     // ========== SEARCH OPERATIONS ==========
     async searchByKeyword(keyword: string): Promise<ResultTemplate[]> {
-        // Search in resultTemplateCode, templateName and resultTextTemplate
-        // Use LIKE for resultTemplateCode and templateName (VARCHAR2/NVARCHAR2) and DBMS_LOB.INSTR for CLOB
+        // Search in resultTemplateCode and templateName only
+        // Use LIKE for resultTemplateCode (VARCHAR2) and templateName (NVARCHAR2)
         return this.resultTemplateRepository
             .createQueryBuilder('resultTemplate')
-            .where('(UPPER(resultTemplate.resultTemplateCode) LIKE UPPER(:keyword) OR UPPER(resultTemplate.templateName) LIKE UPPER(:keyword) OR DBMS_LOB.INSTR(resultTemplate.resultTextTemplate, :keyword) > 0)', { keyword: `%${keyword}%` })
+            .where('(UPPER(resultTemplate.resultTemplateCode) LIKE UPPER(:keyword) OR UPPER(resultTemplate.templateName) LIKE UPPER(:keyword))', { keyword: `%${keyword}%` })
             .andWhere('resultTemplate.deletedAt IS NULL')
             .orderBy('resultTemplate.createdAt', 'DESC')
             .getMany();
@@ -86,11 +86,11 @@ export class ResultTemplateRepository implements IResultTemplateRepository {
         sortBy: string = 'createdAt',
         sortOrder: 'ASC' | 'DESC' = 'DESC'
     ): Promise<{ data: ResultTemplate[]; total: number }> {
-        // Search in resultTemplateCode, templateName and resultTextTemplate
-        // Use LIKE for resultTemplateCode and templateName (VARCHAR2/NVARCHAR2) and DBMS_LOB.INSTR for CLOB
+        // Search in resultTemplateCode and templateName only
+        // Use LIKE for resultTemplateCode (VARCHAR2) and templateName (NVARCHAR2)
         const queryBuilder = this.resultTemplateRepository
             .createQueryBuilder('resultTemplate')
-            .where('(UPPER(resultTemplate.resultTemplateCode) LIKE UPPER(:keyword) OR UPPER(resultTemplate.templateName) LIKE UPPER(:keyword) OR DBMS_LOB.INSTR(resultTemplate.resultTextTemplate, :keyword) > 0)', { keyword: `%${keyword}%` })
+            .where('(UPPER(resultTemplate.resultTemplateCode) LIKE UPPER(:keyword) OR UPPER(resultTemplate.templateName) LIKE UPPER(:keyword))', { keyword: `%${keyword}%` })
             .andWhere('resultTemplate.deletedAt IS NULL')
             .orderBy(`resultTemplate.${sortBy}`, sortOrder)
             .take(limit)

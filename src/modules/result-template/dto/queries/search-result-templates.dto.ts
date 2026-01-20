@@ -4,8 +4,8 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class SearchResultTemplatesDto {
     @ApiProperty({
-        description: 'Từ khóa tìm kiếm trong mẫu văn bản',
-        example: 'xét nghiệm',
+        description: 'Từ khóa tìm kiếm trong mã mẫu kết quả (RESULT_TEMPLATE_CODE) và tên mẫu (TEMPLATE_NAME)',
+        example: 'RT001',
         required: false
     })
     @IsOptional()
