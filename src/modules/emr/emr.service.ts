@@ -307,38 +307,6 @@ export class EmrService {
         }
     }
 
-    /**
-     * Validate signer permission - check if signerId of stored service matches current user
-     */
-    async validateSignerPermission(
-        documentId: number,
-        currentUserId: string,
-    ): Promise<void> {
-        // Find service by documentId
-        const service = await this.serviceRepo.findByDocumentId(documentId);
-        
-        if (!service) {
-            throw new BadRequestException(`Không tìm thấy service với documentId: ${documentId}`);
-        }
-
-        // Get signerId from entity field
-        const signerId = service.signerId;
-
-        // If signerId is null or undefined, throw error
-        if (!signerId) {
-            throw new BadRequestException(
-                'Không thể xác định signerId của văn bản. Văn bản này chưa được ký số hoặc chưa có thông tin người ký.'
-            );
-        }
-
-        // Compare signerId with currentUserId
-        if (signerId !== currentUserId) {
-            throw new ForbiddenException(
-                'Bạn không có quyền xóa văn bản này. Chỉ người ký văn bản mới có quyền xóa.'
-            );
-        }
-    }
-
     async deleteEmrDocument(
         documentId: number,
         tokenCode: string,
