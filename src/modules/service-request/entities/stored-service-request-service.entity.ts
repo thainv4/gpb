@@ -171,9 +171,6 @@ export class StoredServiceRequestService extends BaseEntity {
     @Column({ name: 'DOCUMENT_ID', type: 'number', nullable: true })
     documentId?: number | null; // ID văn bản EMR (từ bảng EMR_DOCUMENT)
 
-    @Column({ name: 'SIGNER_ID', type: 'varchar2', length: 36, nullable: true })
-    signerId?: string | null; // ID của người ký văn bản EMR
-
     // Relationships
     @ManyToOne(() => StoredServiceRequest, sr => sr.services)
     @JoinColumn({ name: 'STORED_SERVICE_REQ_ID' })
