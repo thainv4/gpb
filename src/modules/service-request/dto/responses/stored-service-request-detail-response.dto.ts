@@ -69,6 +69,9 @@ export class StoredServiceResponseDto {
     @ApiPropertyOptional({ description: 'Ghi chú kết quả' })
     resultNote?: string | null;
 
+    @ApiPropertyOptional({ description: 'Bình luận về kết quả' })
+    resultComment?: string | null;
+
     @ApiPropertyOptional({ description: 'Kết quả xét nghiệm (CLOB)' })
     resultText?: string | null;
 

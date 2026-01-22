@@ -513,6 +513,7 @@ export class StoredServiceRequestService {
             resultDescription: service.description,
             resultConclude: service.conclude,
             resultNote: service.note,
+            resultComment: service.resultComment,
             resultText: service.resultText,
             resultName: service.resultName,
             resultValue: service.resultValue,
