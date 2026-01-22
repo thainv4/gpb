@@ -2,7 +2,7 @@ import {
     Controller,
     Get,
     Post,
-    Put,
+    Patch,
     Delete,
     Body,
     Param,
@@ -64,10 +64,10 @@ export class ResultTemplateController {
         return ResponseBuilder.success(resultTemplate, HttpStatus.CREATED);
     }
 
-    @Put(':id')
+    @Patch(':id')
     @ApiOperation({
         summary: 'Cập nhật mẫu kết quả',
-        description: 'Cập nhật thông tin mẫu kết quả theo ID'
+        description: 'Cập nhật một phần thông tin mẫu kết quả theo ID (PATCH)'
     })
     @ApiParam({
         name: 'id',

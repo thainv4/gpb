@@ -614,6 +614,9 @@ export class StoredServiceRequestService {
             if (dto.resultNote !== undefined) {
                 service.note = dto.resultNote;
             }
+            if (dto.resultComment !== undefined) {
+                service.resultComment = dto.resultComment;
+            }
 
             // Set audit fields
             service.resultEnteredAt = new Date();
@@ -662,6 +665,7 @@ export class StoredServiceRequestService {
             resultDescription: service.description ?? null,
             resultConclude: service.conclude ?? null,
             resultNote: service.note ?? null,
+            resultComment: service.resultComment ?? null,
         };
 
         return result;

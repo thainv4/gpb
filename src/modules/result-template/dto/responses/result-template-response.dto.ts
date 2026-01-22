@@ -40,6 +40,13 @@ export class ResultTemplateResponseDto {
     })
     resultNote?: string | null;
 
+    @ApiPropertyOptional({
+        description: 'Bình luận về kết quả',
+        example: 'Bình luận về kết quả xét nghiệm',
+        nullable: true
+    })
+    resultComment?: string | null;
+
     @ApiProperty({
         description: 'Ngày tạo',
         example: '2025-12-09T10:00:00.000Z'
