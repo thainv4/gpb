@@ -22,31 +22,41 @@ export class CreateResultTemplateDto {
     @ApiPropertyOptional({
         description: 'Mô tả kết quả',
         example: 'Mô tả chi tiết về kết quả xét nghiệm',
-        maxLength: 500
+        maxLength: 2000
     })
     @IsOptional()
     @IsString()
-    @MaxLength(500, { message: 'Mô tả kết quả không được quá 500 ký tự' })
+    @MaxLength(2000, { message: 'Mô tả kết quả không được quá 2000 ký tự' })
     resultDescription?: string;
 
     @ApiPropertyOptional({
         description: 'Kết luận',
         example: 'Kết luận về kết quả xét nghiệm',
-        maxLength: 500
+        maxLength: 2000
     })
     @IsOptional()
     @IsString()
-    @MaxLength(500, { message: 'Kết luận không được quá 500 ký tự' })
+    @MaxLength(2000, { message: 'Kết luận không được quá 2000 ký tự' })
     resultConclude?: string;
 
     @ApiPropertyOptional({
         description: 'Ghi chú kết quả',
         example: 'Ghi chú về kết quả xét nghiệm',
-        maxLength: 500
+        maxLength: 2000
     })
     @IsOptional()
     @IsString()
-    @MaxLength(500, { message: 'Ghi chú kết quả không được quá 500 ký tự' })
+    @MaxLength(2000, { message: 'Ghi chú kết quả không được quá 2000 ký tự' })
     resultNote?: string;
+
+    @ApiPropertyOptional({
+        description: 'Bình luận về kết quả',
+        example: 'Bình luận về kết quả xét nghiệm',
+        maxLength: 2000
+    })
+    @IsOptional()
+    @IsString()
+    @MaxLength(2000, { message: 'Bình luận kết quả không được quá 2000 ký tự' })
+    resultComment?: string;
 }
 

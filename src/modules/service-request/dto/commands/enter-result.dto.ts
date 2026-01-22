@@ -55,31 +55,43 @@ export class EnterResultDto {
     @IsOptional()
     @ValidateIf((o, v) => v !== null)
     @IsString()
-    @MaxLength(500, { message: 'Mô tả kết quả không được quá 500 ký tự' })
+    @MaxLength(2000, { message: 'Mô tả kết quả không được quá 2000 ký tự' })
     resultDescription?: string | null;
 
     @ApiPropertyOptional({ 
         description: 'Kết luận', 
         example: 'Kết luận về kết quả xét nghiệm', 
-        maxLength: 500,
+        maxLength: 2000,
         nullable: true
     })
     @IsOptional()
     @ValidateIf((o, v) => v !== null)
     @IsString()
-    @MaxLength(500, { message: 'Kết luận không được quá 500 ký tự' })
+    @MaxLength(2000, { message: 'Kết luận không được quá 2000 ký tự' })
     resultConclude?: string | null;
 
     @ApiPropertyOptional({ 
         description: 'Ghi chú kết quả', 
         example: 'Ghi chú về kết quả xét nghiệm', 
-        maxLength: 500,
+        maxLength: 2000,
         nullable: true
     })
     @IsOptional()
     @ValidateIf((o, v) => v !== null)
     @IsString()
-    @MaxLength(500, { message: 'Ghi chú kết quả không được quá 500 ký tự' })
+    @MaxLength(2000, { message: 'Ghi chú kết quả không được quá 2000 ký tự' })
     resultNote?: string | null;
+
+    @ApiPropertyOptional({ 
+        description: 'Bình luận về kết quả', 
+        example: 'Bình luận về kết quả xét nghiệm', 
+        maxLength: 2000,
+        nullable: true
+    })
+    @IsOptional()
+    @ValidateIf((o, v) => v !== null)
+    @IsString()
+    @MaxLength(2000, { message: 'Bình luận kết quả không được quá 2000 ký tự' })
+    resultComment?: string | null;
 }
 

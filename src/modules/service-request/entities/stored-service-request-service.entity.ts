@@ -71,6 +71,9 @@ export class StoredServiceRequestService extends BaseEntity {
     @Column({ name: 'RESULT_NOTE', type: 'nvarchar2', length: 500, nullable: true })
     note?: string | null; // Ghi chú
 
+    @Column({ name: 'RESULT_COMMENT', type: 'nvarchar2', length: 1000, nullable: true })
+    resultComment?: string | null; // Bình luận về kết quả
+
     @Column({ name: 'RESULT_TEXT', type: 'clob', nullable: true })
     resultText?: string | null; // Kết quả xét nghiệm (3-5 trang A4)
 

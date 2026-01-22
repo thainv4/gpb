@@ -56,6 +56,7 @@ export class ResultTemplateService extends BaseService {
             resultTemplate.resultDescription = createResultTemplateDto.resultDescription;
             resultTemplate.resultConclude = createResultTemplateDto.resultConclude;
             resultTemplate.resultNote = createResultTemplateDto.resultNote;
+            resultTemplate.resultComment = createResultTemplateDto.resultComment;
 
             // ✅ Manual audit fields assignment
             const now = new Date();
@@ -106,6 +107,9 @@ export class ResultTemplateService extends BaseService {
             }
             if (updateResultTemplateDto.resultNote !== undefined) {
                 resultTemplate.resultNote = updateResultTemplateDto.resultNote;
+            }
+            if (updateResultTemplateDto.resultComment !== undefined) {
+                resultTemplate.resultComment = updateResultTemplateDto.resultComment;
             }
 
             // ✅ Automatic audit fields - no manual assignment needed!
@@ -199,6 +203,7 @@ export class ResultTemplateService extends BaseService {
             resultDescription: resultTemplate.resultDescription ?? undefined,
             resultConclude: resultTemplate.resultConclude ?? undefined,
             resultNote: resultTemplate.resultNote ?? undefined,
+            resultComment: resultTemplate.resultComment ?? undefined,
             createdAt: resultTemplate.createdAt,
             updatedAt: resultTemplate.updatedAt,
             createdBy: resultTemplate.createdBy,

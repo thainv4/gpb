@@ -52,5 +52,15 @@ export class UpdateResultTemplateDto {
     @IsString()
     @MaxLength(500, { message: 'Ghi chú kết quả không được quá 500 ký tự' })
     resultNote?: string;
+
+    @ApiPropertyOptional({
+        description: 'Bình luận về kết quả',
+        example: 'Bình luận về kết quả xét nghiệm',
+        maxLength: 1000
+    })
+    @IsOptional()
+    @IsString()
+    @MaxLength(1000, { message: 'Bình luận kết quả không được quá 1000 ký tự' })
+    resultComment?: string;
 }
 
