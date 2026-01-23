@@ -8,6 +8,8 @@ import { AuthResponseDto } from './dto/auth-response.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { RequestResetPasswordDto } from './dto/request-reset-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ProfileResponseDto } from './dto/profile-response.dto';
 import { DualAuthGuard } from './guards/dual-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -265,5 +267,66 @@ export class AuthController {
         
         await this.authService.changePassword(req.user.id, changePasswordDto, currentUser);
         return ResponseBuilder.success({ message: 'Password changed successfully' });
+    }
+
+    @Post('request-reset-password')
+    @ApiOperation({
+        summary: 'Request password reset',
+        description: 'Request a password reset token. Token will be sent to user email (if email service is configured) or returned in response.'
+    })
+    @ApiBody({ type: RequestResetPasswordDto })
+    @ApiResponse({
+        status: 200,
+        description: 'Reset token generated successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                success: { type: 'boolean', example: true },
+                status_code: { type: 'number', example: 200 },
+                data: {
+                    type: 'object',
+                    properties: {
+                        message: { type: 'string', example: 'Reset token đã được tạo. Vui lòng kiểm tra email của bạn.' },
+                        resetToken: { type: 'string', example: 'reset-token-here' }
+                    }
+                }
+            }
+        }
+    })
+    @ApiResponse({ status: 400, description: 'Bad request - email or username required' })
+    async requestPasswordReset(@Body() requestResetPasswordDto: RequestResetPasswordDto) {
+        const result = await this.authService.requestPasswordReset(requestResetPasswordDto);
+        return ResponseBuilder.success(result);
+    }
+
+    @Post('reset-password')
+    @ApiOperation({
+        summary: 'Reset password',
+        description: 'Reset password for user by username. A new secure password will be generated and returned.'
+    })
+    @ApiBody({ type: ResetPasswordDto })
+    @ApiResponse({
+        status: 200,
+        description: 'Password reset successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                success: { type: 'boolean', example: true },
+                status_code: { type: 'number', example: 200 },
+                data: {
+                    type: 'object',
+                    properties: {
+                        password: { type: 'string', example: 'Xy9@mK2pQw4L' }
+                    }
+                }
+            }
+        }
+    })
+    @ApiResponse({ status: 404, description: 'User not found' })
+    @ApiResponse({ status: 401, description: 'Account is inactive' })
+    @ApiResponse({ status: 400, description: 'Bad request - validation failed' })
+    async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+        const result = await this.authService.resetPassword(resetPasswordDto);
+        return ResponseBuilder.success(result);
     }
 }

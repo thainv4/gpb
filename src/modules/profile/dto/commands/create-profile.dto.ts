@@ -72,6 +72,5 @@ export class CreateProfileDto {
     @ApiPropertyOptional({ description: 'Password cho hệ thống tích hợp', example: 'his_password_123' })
     @IsString()
     @IsOptional()
-    @Length(6, 100)
     mappedPassword?: string;
 }

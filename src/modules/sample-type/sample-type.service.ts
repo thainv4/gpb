@@ -39,20 +39,31 @@ export class SampleTypeService extends BaseService {
         this.currentUserContext.setCurrentUser(currentUser);
 
         return this.transactionWithAudit(async (manager) => {
-            // Tự động generate typeCode với format BP000001, BP000002, ...
-            const generatedTypeCode = await this.generateNextTypeCode('BP');
-            
-            // Check if generated type code already exists (safety check)
-            const existingByCode = await this.sampleTypeRepository.existsByCode(generatedTypeCode);
-            if (existingByCode) {
-                throw AppError.conflict('Generated type code already exists. Please try again.');
-            }
-
-            // Check if type name already exists
+            // Check if type name already exists (case-insensitive)
             const existingByName = await this.sampleTypeRepository.existsByName(createDto.typeName);
             if (existingByName) {
                 throw AppError.conflict('Sample type with this name already exists');
             }
+
+            // Generate typeCode với retry logic để tránh race condition
+            let generatedTypeCode: string;
+            let attempts = 0;
+            const maxAttempts = 5;
+
+            do {
+                generatedTypeCode = await this.generateNextTypeCode('BP');
+                
+                // Check if generated type code already exists (kể cả đã bị soft delete)
+                const existingByCode = await this.sampleTypeRepository.existsByCode(generatedTypeCode);
+                if (!existingByCode) {
+                    break; // Code is available
+                }
+                
+                attempts++;
+                if (attempts >= maxAttempts) {
+                    throw AppError.internalServerError('Unable to generate unique type code after multiple attempts');
+                }
+            } while (attempts < maxAttempts);
 
             const sampleType = new SampleType();
             sampleType.typeCode = generatedTypeCode; // Sử dụng generated code
@@ -68,8 +79,23 @@ export class SampleTypeService extends BaseService {
             // ✅ Automatic audit fields - no manual assignment needed!
             this.setAuditFields(sampleType, false); // false = create operation
 
-            const savedSampleType = await manager.save(SampleType, sampleType);
-            return savedSampleType.id;
+            try {
+                const savedSampleType = await manager.save(SampleType, sampleType);
+                return savedSampleType.id;
+            } catch (error: any) {
+                // Handle unique constraint violation
+                if (error?.code === 'ORA-00001' || error?.message?.includes('unique constraint')) {
+                    // Check which field caused the violation
+                    if (error?.message?.includes('TYPE_CODE') || error?.constraint?.includes('TYPE_CODE')) {
+                        throw AppError.conflict('Sample type with this code already exists');
+                    }
+                    if (error?.message?.includes('TYPE_NAME') || error?.constraint?.includes('TYPE_NAME')) {
+                        throw AppError.conflict('Sample type with this name already exists');
+                    }
+                    throw AppError.conflict('Sample type with duplicate information already exists');
+                }
+                throw error; // Re-throw if not a unique constraint error
+            }
         });
     }
 
@@ -112,7 +138,8 @@ export class SampleTypeService extends BaseService {
                 throw AppError.notFound('Sample type not found');
             }
 
-            await this.sampleTypeRepository.delete(id);
+            // Hard delete - xóa hoàn toàn khỏi database
+            await manager.delete(SampleType, id);
         });
     }
 

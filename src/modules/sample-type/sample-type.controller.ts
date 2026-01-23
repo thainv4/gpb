@@ -78,8 +78,8 @@ export class SampleTypeController {
 
     @Delete(':id')
     @ApiOperation({
-        summary: 'Xóa loại mẫu',
-        description: 'Xóa loại mẫu khỏi hệ thống'
+        summary: 'Xóa hoàn toàn loại mẫu',
+        description: 'Xóa hoàn toàn loại mẫu khỏi database. Hành động này không thể hoàn tác.'
     })
     @ApiParam({ name: 'id', description: 'ID loại mẫu' })
     @ApiResponse({
