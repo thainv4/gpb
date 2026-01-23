@@ -41,7 +41,7 @@ export class StoredServiceRequest extends BaseEntity {
     @Column({ name: 'ICD_NAME', type: 'varchar2', length: 500, nullable: true })
     icdName?: string;
 
-    @Column({ name: 'ICD_SUB_CODE', type: 'varchar2', length: 20, nullable: true })
+    @Column({ name: 'ICD_SUB_CODE', type: 'varchar2', length: 50, nullable: true })
     icdSubCode?: string;
 
     @Column({ name: 'ICD_TEXT', type: 'varchar2', length: 1000, nullable: true })
