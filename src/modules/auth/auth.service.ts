@@ -3,6 +3,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { IUserRepository } from '../user/interfaces/user.repository.interface';
+import { IProfileRepository } from '../profile/interfaces/profile.repository.interface';
 import { User } from '../user/entities/user.entity';
 import { Profile } from '../profile/entities/profile.entity';
 import { LoginDto } from './dto/login.dto';
@@ -11,6 +12,7 @@ import { RegisterWithProfileDto } from './dto/register-with-profile.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { ProfileResponseDto } from './dto/profile-response.dto';
 import { PasswordService } from '../../shared/services/password.service';
 import { HisIntegrationService } from '../../shared/services/his-integration.service';
@@ -23,6 +25,8 @@ export class AuthService {
     constructor(
         @Inject('IUserRepository')
         private readonly userRepository: IUserRepository,
+        @Inject('IProfileRepository')
+        private readonly profileRepository: IProfileRepository,
         private readonly jwtService: JwtService,
         private readonly passwordService: PasswordService,
         private readonly hisIntegrationService: HisIntegrationService,
@@ -288,6 +292,53 @@ export class AuthService {
         // Save updated user
         const updatedUser = await this.userRepository.save(user);
         return this.mapUserToProfileDto(updatedUser);
+    }
+
+    // ========== COMMANDS (Write Operations) ==========
+
+    async changePassword(
+        userId: string,
+        changePasswordDto: ChangePasswordDto,
+        currentUser: CurrentUser,
+    ): Promise<void> {
+        return this.dataSource.transaction(async (manager) => {
+            // 1. Get user
+            const user = await this.userRepository.findById(userId);
+            if (!user) {
+                throw new NotFoundException('User not found');
+            }
+
+            // 2. Verify current password
+            const isCurrentPasswordValid = await this.passwordService.verifyPassword(
+                changePasswordDto.currentPassword,
+                user.passwordHash,
+            );
+            if (!isCurrentPasswordValid) {
+                throw AppError.unauthorized('Mật khẩu hiện tại không chính xác');
+            }
+
+            // 3. Validate new password strength
+            const passwordValidation = this.passwordService.validatePasswordStrength(changePasswordDto.newPassword);
+            if (!passwordValidation.isValid) {
+                throw AppError.passwordStrengthError(passwordValidation.errors);
+            }
+
+            // 4. Hash new password
+            const hashedNewPassword = await this.passwordService.hashPassword(changePasswordDto.newPassword);
+
+            // 5. Update User password
+            user.passwordHash = hashedNewPassword;
+            user.updatedBy = currentUser.id;
+            await manager.save(User, user);
+
+            // 6. Update Profile mappedPassword if profile exists
+            const profile = await this.profileRepository.findByUserId(userId);
+            if (profile) {
+                profile.mappedPassword = changePasswordDto.newPassword; // Store plain text for HIS integration
+                profile.updatedBy = currentUser.id;
+                await manager.save(Profile, profile);
+            }
+        });
     }
 
     // ========== PRIVATE METHODS ==========

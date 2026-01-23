@@ -7,6 +7,7 @@ import { RegisterWithProfileDto } from './dto/register-with-profile.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { ProfileResponseDto } from './dto/profile-response.dto';
 import { DualAuthGuard } from './guards/dual-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -218,5 +219,51 @@ export class AuthController {
         }
         const result = await this.authService.updateProfile(req.user.id, updateProfileDto);
         return ResponseBuilder.success(result);
+    }
+
+    @Post('change-password')
+    @UseGuards(DualAuthGuard)
+    @ApiBearerAuth('JWT-auth')
+    @ApiOperation({
+        summary: 'Change password',
+        description: 'Change password for both User table (passwordHash) and Profile table (mappedPassword) in a single transaction'
+    })
+    @ApiBody({ type: ChangePasswordDto })
+    @ApiResponse({
+        status: 200,
+        description: 'Password changed successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                success: { type: 'boolean', example: true },
+                status_code: { type: 'number', example: 200 },
+                data: {
+                    type: 'object',
+                    properties: {
+                        message: { type: 'string', example: 'Password changed successfully' }
+                    }
+                }
+            }
+        }
+    })
+    @ApiResponse({ status: 401, description: 'Unauthorized - invalid JWT token or incorrect current password' })
+    @ApiResponse({ status: 404, description: 'User not found' })
+    @ApiResponse({ status: 400, description: 'Bad request - validation failed' })
+    async changePassword(
+        @Request() req: Request & { user?: any; authType?: string },
+        @Body() changePasswordDto: ChangePasswordDto
+    ) {
+        if (!req.user) {
+            throw new UnauthorizedException('JWT authentication required to change password');
+        }
+        
+        const currentUser: ICurrentUser = {
+            id: req.user.id,
+            username: req.user.username,
+            email: req.user.email,
+        };
+        
+        await this.authService.changePassword(req.user.id, changePasswordDto, currentUser);
+        return ResponseBuilder.success({ message: 'Password changed successfully' });
     }
 }
