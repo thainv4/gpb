@@ -1,4 +1,4 @@
-import { Injectable, Inject, UnauthorizedException, ConflictException, NotFoundException, forwardRef } from '@nestjs/common';
+import { Injectable, Inject, UnauthorizedException, ConflictException, NotFoundException, BadRequestException, forwardRef } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
@@ -13,6 +13,8 @@ import { AuthResponseDto } from './dto/auth-response.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { RequestResetPasswordDto } from './dto/request-reset-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ProfileResponseDto } from './dto/profile-response.dto';
 import { PasswordService } from '../../shared/services/password.service';
 import { HisIntegrationService } from '../../shared/services/his-integration.service';
@@ -338,6 +340,85 @@ export class AuthService {
                 profile.updatedBy = currentUser.id;
                 await manager.save(Profile, profile);
             }
+        });
+    }
+
+    async requestPasswordReset(requestResetPasswordDto: RequestResetPasswordDto): Promise<{ message: string; resetToken: string }> {
+        let user: User | null = null;
+
+        // Tìm user theo email hoặc username
+        if (requestResetPasswordDto.email) {
+            user = await this.userRepository.findByEmail(requestResetPasswordDto.email);
+        } else if (requestResetPasswordDto.username) {
+            user = await this.userRepository.findByUsername(requestResetPasswordDto.username);
+        } else {
+            throw new BadRequestException('Email hoặc username phải được cung cấp');
+        }
+
+        if (!user) {
+            // Không tiết lộ user không tồn tại vì lý do bảo mật
+            return {
+                message: 'Nếu email/username tồn tại, bạn sẽ nhận được token reset password',
+                resetToken: '', // Không trả về token nếu user không tồn tại
+            };
+        }
+
+        if (!user.isAccountActive()) {
+            throw AppError.unauthorized('Tài khoản đã bị vô hiệu hóa');
+        }
+
+        // Tạo reset token (JWT với thời gian hết hạn 1 giờ)
+        const resetToken = this.jwtService.sign(
+            {
+                sub: user.id,
+                type: 'password_reset',
+                email: user.email,
+            },
+            {
+                expiresIn: '1h',
+            }
+        );
+
+        // TODO: Gửi email chứa reset token
+        // await this.emailService.sendPasswordResetEmail(user.email, resetToken);
+
+        return {
+            message: 'Reset token đã được tạo. Vui lòng kiểm tra email của bạn.',
+            resetToken, // Trong production, không nên trả về token trong response
+        };
+    }
+
+    async resetPassword(resetPasswordDto: ResetPasswordDto): Promise<{ password: string }> {
+        return this.dataSource.transaction(async (manager) => {
+            // Get user by username
+            const user = await this.userRepository.findByUsername(resetPasswordDto.username);
+            if (!user) {
+                throw new NotFoundException('User không tồn tại');
+            }
+
+            if (!user.isAccountActive()) {
+                throw AppError.unauthorized('Tài khoản đã bị vô hiệu hóa');
+            }
+
+            // Generate new secure password
+            const newPassword = this.passwordService.generateSecurePassword(12);
+
+            // Hash new password
+            const hashedNewPassword = await this.passwordService.hashPassword(newPassword);
+
+            // Update User password
+            user.passwordHash = hashedNewPassword;
+            await manager.save(User, user);
+
+            // Update Profile mappedPassword if profile exists
+            const profile = await this.profileRepository.findByUserId(user.id);
+            if (profile) {
+                profile.mappedPassword = newPassword; // Store plain text for HIS integration
+                await manager.save(Profile, profile);
+            }
+
+            // Return the new password
+            return { password: newPassword };
         });
     }
 

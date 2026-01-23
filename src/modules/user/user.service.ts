@@ -1,6 +1,8 @@
 import { Injectable, Inject, ConflictException, NotFoundException } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { InjectDataSource } from '@nestjs/typeorm';
+import { DataSource, IsNull } from 'typeorm';
 import { User } from './entities/user.entity';
+import { Profile } from '../profile/entities/profile.entity';
 import { IUserRepository } from './interfaces/user.repository.interface';
 import { CreateUserDto } from './dto/commands/create-user.dto';
 import { UpdateUserDto } from './dto/commands/update-user.dto';
@@ -29,6 +31,7 @@ export class UserService extends BaseService {
     constructor(
         @Inject('IUserRepository')
         private readonly userRepository: IUserRepository,
+        @InjectDataSource()
         dataSource: DataSource,
         private readonly passwordService: PasswordService,
         currentUserContext: CurrentUserContextService,
@@ -96,6 +99,16 @@ export class UserService extends BaseService {
                 throw new NotFoundException('User not found');
             }
 
+            // Xóa Profile nếu có
+            const profileRepo = manager.getRepository(Profile);
+            const profile = await profileRepo.findOne({
+                where: { userId: id, deletedAt: IsNull() },
+            });
+            if (profile) {
+                await profileRepo.softDelete(profile.id);
+            }
+
+            // Xóa User
             await this.userRepository.delete(id);
         });
     }

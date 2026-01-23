@@ -34,16 +34,19 @@ export class SampleTypeRepository implements ISampleTypeRepository {
     }
 
     async existsByCode(typeCode: string): Promise<boolean> {
+        // Check cả record đã bị soft delete vì unique constraint không phân biệt deletedAt
         const count = await this.sampleTypeRepository.count({
-            where: { typeCode, deletedAt: IsNull() },
+            where: { typeCode },
         });
         return count > 0;
     }
 
     async existsByName(typeName: string): Promise<boolean> {
-        const count = await this.sampleTypeRepository.count({
-            where: { typeName, deletedAt: IsNull() },
-        });
+        const count = await this.sampleTypeRepository
+            .createQueryBuilder('sampleType')
+            .where('UPPER(sampleType.typeName) = UPPER(:typeName)', { typeName })
+            .andWhere('sampleType.deletedAt IS NULL')
+            .getCount();
         return count > 0;
     }
 
@@ -52,7 +55,7 @@ export class SampleTypeRepository implements ISampleTypeRepository {
     }
 
     async delete(id: string): Promise<void> {
-        await this.sampleTypeRepository.softDelete(id);
+        await this.sampleTypeRepository.delete(id);
     }
 
     async findWithPagination(limit: number, offset: number, search?: string): Promise<[SampleType[], number]> {
@@ -92,12 +95,12 @@ export class SampleTypeRepository implements ISampleTypeRepository {
     }
 
     async getMaxTypeCodeNumber(prefix: string): Promise<number> {
-        // Tìm tất cả typeCode bắt đầu với prefix
+        // Tìm tất cả typeCode bắt đầu với prefix (kể cả đã bị soft delete)
+        // vì unique constraint không phân biệt deletedAt
         const sampleTypes = await this.sampleTypeRepository
             .createQueryBuilder('sampleType')
             .select('sampleType.typeCode', 'typeCode')
             .where('sampleType.typeCode LIKE :prefix', { prefix: `${prefix}%` })
-            .andWhere('sampleType.deletedAt IS NULL')
             .getRawMany();
 
         // Extract số từ typeCode (ví dụ: BP000001 -> 1, BP000025 -> 25)
