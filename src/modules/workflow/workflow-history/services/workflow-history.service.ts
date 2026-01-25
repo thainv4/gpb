@@ -586,15 +586,8 @@ export class WorkflowHistoryService {
             }
         }
 
-        // Normalize receptionCode: undefined => undefined, empty string => undefined, "null" string => null
-        let normalizedReceptionCode: string | undefined | null = undefined;
-        if (dto.receptionCode !== undefined) {
-            if (dto.receptionCode === '' || dto.receptionCode.toLowerCase() === 'null') {
-                normalizedReceptionCode = null; // Filter các request không có receptionCode
-            } else {
-                normalizedReceptionCode = dto.receptionCode; // Filter các request có receptionCode = giá trị này
-            }
-        }
+        // Normalize code: undefined => undefined, empty string => undefined
+        const normalizedCode = dto.code && dto.code.trim() !== '' ? dto.code.trim() : undefined;
 
         // Luôn áp dụng filterByMaxStateOrder: Filter theo stateOrder lớn nhất TRƯỚC, sau đó mới filter theo stateId
         
@@ -608,9 +601,8 @@ export class WorkflowHistoryService {
             fromDate,
             toDate,
             dto.isCurrent,
-            dto.hisServiceReqCode || '',
+            normalizedCode,
             normalizedFlag,
-            normalizedReceptionCode,
             10000, // Limit lớn để lấy tất cả (sẽ filter và paginate sau)
             0, // Offset = 0
             dto.order || 'DESC',

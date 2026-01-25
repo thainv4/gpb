@@ -196,8 +196,8 @@ export class WorkflowHistoryController {
             - Time Type: actionTimestamp, startedAt, completedAt, currentStateStartedAt
             - Time Range: fromDate, toDate (ISO format)
             - Current State: isCurrent (0 hoặc 1)
+            - Code: Mã tìm kiếm - có thể là HIS Service Request Code hoặc Reception Code (tìm trong cả 2 trường)
             - Flag: Flag của stored service request (để trống để lấy tất cả, null để lấy các request không có flag)
-            - Reception Code: Mã tiếp nhận mẫu (để trống để lấy tất cả, null để lấy các request không có receptionCode)
             - Response bao gồm thông tin Service Request và State (nested)
         `
     })
@@ -223,9 +223,8 @@ export class WorkflowHistoryController {
                 fromDate: query.fromDate,
                 toDate: query.toDate,
                 isCurrent: query.isCurrent,
-                hisServiceReqCode: query.hisServiceReqCode || 'all',
+                code: query.code || 'all',
                 flag: query.flag !== undefined ? query.flag : 'all',
-                receptionCode: query.receptionCode !== undefined ? query.receptionCode : 'all',
             },
         });
     }
