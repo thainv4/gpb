@@ -24,13 +24,12 @@ export class GetWorkflowHistoryByRoomStateDto {
     stateId?: string;
 
     @ApiPropertyOptional({ 
-        description: 'Mã service request từ HIS (để trống để lấy tất cả)', 
-        example: 'SR2024120001',
-        default: ''
+        description: 'Mã tìm kiếm - có thể là HIS Service Request Code hoặc Reception Code (để trống để lấy tất cả)', 
+        example: 'SR2024120001 hoặc BLOOD.20241024.0001'
     })
     @IsOptional()
     @IsString()
-    hisServiceReqCode?: string = '';
+    code?: string;
 
     @ApiPropertyOptional({ 
         description: 'Flag của stored service request (để trống để lấy tất cả, có thể null để lấy các request không có flag)', 
@@ -39,14 +38,6 @@ export class GetWorkflowHistoryByRoomStateDto {
     @IsOptional()
     @IsString()
     flag?: string;
-
-    @ApiPropertyOptional({ 
-        description: 'Mã tiếp nhận mẫu (reception code) - để trống để lấy tất cả, có thể null để lấy các request không có receptionCode', 
-        example: 'BLOOD.20241024.0001'
-    })
-    @IsOptional()
-    @IsString()
-    receptionCode?: string;
 
     @ApiPropertyOptional({ 
         description: 'Loại room field để filter (actionRoomId, currentRoomId, transitionedByRoomId)', 
