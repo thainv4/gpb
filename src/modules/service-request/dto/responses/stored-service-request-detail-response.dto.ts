@@ -66,8 +66,11 @@ export class StoredServiceResponseDto {
     @ApiPropertyOptional({ description: 'Kết luận' })
     resultConclude?: string | null;
 
-    @ApiPropertyOptional({ description: 'Ghi chú kết quả' })
+    @ApiPropertyOptional({ description: 'Ghi chú kết quả (RESULT_NOTE)' })
     resultNote?: string | null;
+
+    @ApiPropertyOptional({ description: 'Ghi chú kết quả (RESULT_NOTES, trường riêng)' })
+    resultNotes?: string | null;
 
     @ApiPropertyOptional({ description: 'Bình luận về kết quả' })
     resultComment?: string | null;

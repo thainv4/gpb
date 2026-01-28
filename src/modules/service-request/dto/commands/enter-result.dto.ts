@@ -83,6 +83,18 @@ export class EnterResultDto {
     resultNote?: string | null;
 
     @ApiPropertyOptional({ 
+        description: 'Ghi chú kết quả (trường riêng, cột RESULT_NOTES)', 
+        example: 'Ghi chú về kết quả xét nghiệm', 
+        maxLength: 2000,
+        nullable: true
+    })
+    @IsOptional()
+    @ValidateIf((o, v) => v !== null)
+    @IsString()
+    @MaxLength(2000, { message: 'Ghi chú kết quả không được quá 2000 ký tự' })
+    resultNotes?: string | null;
+
+    @ApiPropertyOptional({ 
         description: 'Bình luận về kết quả', 
         example: 'Bình luận về kết quả xét nghiệm', 
         maxLength: 2000,

@@ -4,6 +4,7 @@ import { ServiceRequestService } from '../services/service-request.service';
 import { StoredServiceRequestService } from '../services/stored-service-request.service';
 import { StoreServiceRequestDto } from '../dto/commands/store-service-request.dto';
 import { EnterResultDto } from '../dto/commands/enter-result.dto';
+import { GetResultResponseDto } from '../dto/responses/get-result-response.dto';
 import { ReviewResultDto } from '../dto/commands/review-result.dto';
 import { ApproveResultDto } from '../dto/commands/approve-result.dto';
 import { QcResultDto } from '../dto/commands/qc-result.dto';
@@ -151,7 +152,7 @@ export class ServiceRequestController {
     @Get('stored/services/:serviceId/result')
     @ApiOperation({ summary: 'Lấy kết quả xét nghiệm' })
     @ApiParam({ name: 'serviceId', description: 'ID của Service/Test' })
-    @ApiResponse({ status: 200, description: 'Lấy kết quả thành công', type: EnterResultDto })
+    @ApiResponse({ status: 200, description: 'Lấy kết quả thành công', type: GetResultResponseDto })
     @ApiResponse({ status: 404, description: 'Service không tìm thấy' })
     @ApiResponse({ status: 400, description: 'Dịch vụ đã được ký số' })
     async getResult(
