@@ -19,6 +19,7 @@ export interface IWorkflowHistoryRepository {
         isCurrent?: number,
         code?: string,
         flag?: string,
+        patientName?: string,
         limit?: number,
         offset?: number,
         order?: 'ASC' | 'DESC',

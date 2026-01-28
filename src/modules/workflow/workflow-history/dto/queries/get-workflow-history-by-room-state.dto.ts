@@ -40,6 +40,14 @@ export class GetWorkflowHistoryByRoomStateDto {
     flag?: string;
 
     @ApiPropertyOptional({ 
+        description: 'Tên bệnh nhân (tìm kiếm theo PATIENT_NAME, partial match, để trống để lấy tất cả)', 
+        example: 'Nguyễn Văn A'
+    })
+    @IsOptional()
+    @IsString()
+    patientName?: string;
+
+    @ApiPropertyOptional({ 
         description: 'Loại room field để filter (actionRoomId, currentRoomId, transitionedByRoomId)', 
         enum: ['actionRoomId', 'currentRoomId', 'transitionedByRoomId'],
         default: 'currentRoomId'

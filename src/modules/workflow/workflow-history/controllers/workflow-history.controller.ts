@@ -198,6 +198,7 @@ export class WorkflowHistoryController {
             - Current State: isCurrent (0 hoặc 1)
             - Code: Mã tìm kiếm - có thể là HIS Service Request Code hoặc Reception Code (tìm trong cả 2 trường)
             - Flag: Flag của stored service request (để trống để lấy tất cả, null để lấy các request không có flag)
+            - Patient Name: Tên bệnh nhân (partial match, để trống để lấy tất cả)
             - Response bao gồm thông tin Service Request và State (nested)
         `
     })
@@ -225,6 +226,7 @@ export class WorkflowHistoryController {
                 isCurrent: query.isCurrent,
                 code: query.code || 'all',
                 flag: query.flag !== undefined ? query.flag : 'all',
+                patientName: query.patientName || 'all',
             },
         });
     }
