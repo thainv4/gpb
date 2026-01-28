@@ -16,6 +16,8 @@ import { UpdateStainingMethodDto } from '../dto/commands/update-staining-method.
 import { UpdateNumOfBlockDto } from '../dto/commands/update-num-of-block.dto';
 import { StoredServiceRequestResponseDto } from '../dto/responses/stored-service-request-response.dto';
 import { StoredServiceRequestDetailResponseDto, StoredServiceResponseDto, WorkflowCurrentStateDto } from '../dto/responses/stored-service-request-detail-response.dto';
+import { ResultRequestDto } from '../dto/responses/result-request.dto';
+import { GetResultResponseDto } from '../dto/responses/get-result-response.dto';
 import { CurrentUser } from '../../../common/interfaces/current-user.interface';
 import { StoredServiceRequest } from '../entities/stored-service-request.entity';
 import { StoredServiceRequestService as StoredServiceRequestServiceEntity } from '../entities/stored-service-request-service.entity';
@@ -513,6 +515,7 @@ export class StoredServiceRequestService {
             resultDescription: service.description,
             resultConclude: service.conclude,
             resultNote: service.note,
+            resultNotes: service.notes ?? undefined,
             resultComment: service.resultComment,
             resultText: service.resultText,
             resultName: service.resultName,
@@ -615,6 +618,9 @@ export class StoredServiceRequestService {
             if (dto.resultNote !== undefined) {
                 service.note = dto.resultNote;
             }
+            if (dto.resultNotes !== undefined) {
+                service.notes = dto.resultNotes;
+            }
             if (dto.resultComment !== undefined) {
                 service.resultComment = dto.resultComment;
             }
@@ -637,7 +643,7 @@ export class StoredServiceRequestService {
     /**
      * Lấy kết quả xét nghiệm
      */
-    async getResult(serviceId: string): Promise<EnterResultDto> {
+    async getResult(serviceId: string): Promise<GetResultResponseDto> {
         // Find service
         const service = await this.serviceRepo.findById(serviceId);
         if (!service) {
@@ -666,10 +672,36 @@ export class StoredServiceRequestService {
             resultDescription: service.description ?? null,
             resultConclude: service.conclude ?? null,
             resultNote: service.note ?? null,
+            resultNotes: service.notes ?? null,
             resultComment: service.resultComment ?? null,
         };
 
-        return result;
+        const request: ResultRequestDto = {
+            storedRequestId: storedRequest.id,
+            serviceReqCode: storedRequest.serviceReqCode,
+            serviceId: service.id,
+            serviceCode: service.serviceCode ?? undefined,
+            serviceName: service.serviceName ?? undefined,
+            instructionDate: storedRequest.instructionDate ?? undefined,
+            instructionTime: storedRequest.instructionTime ?? undefined,
+            patientId: storedRequest.patientId ?? undefined,
+            patientCode: storedRequest.patientCode ?? undefined,
+            patientName: storedRequest.patientName ?? undefined,
+            patientDob: storedRequest.patientDob ?? undefined,
+            requestRoomCode: storedRequest.requestRoomCode ?? undefined,
+            requestRoomName: storedRequest.requestRoomName ?? undefined,
+            requestDepartmentCode: storedRequest.requestDepartmentCode ?? undefined,
+            requestDepartmentName: storedRequest.requestDepartmentName ?? undefined,
+            icdCode: storedRequest.icdCode ?? undefined,
+            icdName: storedRequest.icdName ?? undefined,
+            treatmentCode: storedRequest.treatmentCode ?? undefined,
+            note: storedRequest.note ?? undefined,
+        };
+
+        return {
+            ...result,
+            request,
+        };
     }
 
     /**
