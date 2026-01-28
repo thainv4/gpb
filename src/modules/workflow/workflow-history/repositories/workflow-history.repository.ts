@@ -191,6 +191,7 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
         isCurrent?: number,
         code?: string,
         flag?: string,
+        patientName?: string,
         limit: number = 10,
         offset: number = 0,
         order: 'ASC' | 'DESC' = 'DESC',
@@ -256,6 +257,20 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
                         { flag }
                     );
                 }
+            }
+
+            // Filter theo patientName nếu được cung cấp (partial match, case-insensitive)
+            if (patientName && patientName.trim() !== '') {
+                const patientNamePattern = `%${patientName.trim()}%`;
+                queryBuilder.andWhere(
+                    `EXISTS (
+                        SELECT 1 FROM BML_STORED_SERVICE_REQUESTS ssr 
+                        WHERE ssr.ID = wh.STORED_SERVICE_REQ_ID 
+                        AND UPPER(ssr.PATIENT_NAME) LIKE UPPER(:patientNamePattern)
+                        AND ssr.DELETED_AT IS NULL
+                    )`,
+                    { patientNamePattern }
+                );
             }
 
             // Chỉ filter theo state nếu stateId được cung cấp

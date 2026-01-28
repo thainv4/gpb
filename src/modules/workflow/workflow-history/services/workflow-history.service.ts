@@ -14,6 +14,7 @@ import { CurrentUser } from '../../../../common/interfaces/current-user.interfac
 import { StoredServiceRequest } from '../../../service-request/entities/stored-service-request.entity';
 import { StoredServiceRequestService } from '../../../service-request/entities/stored-service-request-service.entity';
 import { WorkflowState } from '../../entities/workflow-state.entity';
+import { Room } from '../../../room/entities/room.entity';
 
 @Injectable()
 export class WorkflowHistoryService {
@@ -589,6 +590,9 @@ export class WorkflowHistoryService {
         // Normalize code: undefined => undefined, empty string => undefined
         const normalizedCode = dto.code && dto.code.trim() !== '' ? dto.code.trim() : undefined;
 
+        // Normalize patientName: undefined => undefined, empty string => undefined
+        const normalizedPatientName = dto.patientName && dto.patientName.trim() !== '' ? dto.patientName.trim() : undefined;
+
         // Luôn áp dụng filterByMaxStateOrder: Filter theo stateOrder lớn nhất TRƯỚC, sau đó mới filter theo stateId
         
         // BƯỚC 1: Query từ repository KHÔNG có filter stateId (để filterByMaxStateOrder hoạt động đúng)
@@ -603,6 +607,7 @@ export class WorkflowHistoryService {
             dto.isCurrent,
             normalizedCode,
             normalizedFlag,
+            normalizedPatientName,
             10000, // Limit lớn để lấy tất cả (sẽ filter và paginate sau)
             0, // Offset = 0
             dto.order || 'DESC',
@@ -762,17 +767,35 @@ export class WorkflowHistoryService {
             console.error('Error loading creator users from BML_USERS table:', error);
         }
 
-        // Map to DTOs với creator info và receptionCode
+        // Load Room batch để lấy roomName theo currentRoomId (BML_ROOMS)
+        const roomMap = new Map<string, string>();
+        try {
+            if (items.length > 0) {
+                const roomIds = items
+                    .map(item => item.currentRoomId)
+                    .filter((id): id is string => !!id);
+                const uniqueRoomIds = [...new Set(roomIds)];
+                if (uniqueRoomIds.length > 0) {
+                    const roomRepo = this.dataSource.getRepository(Room);
+                    const rooms = await roomRepo.find({
+                        where: { id: In(uniqueRoomIds), deletedAt: IsNull() },
+                    });
+                    rooms.forEach(room => roomMap.set(room.id, room.roomName));
+                }
+            }
+        } catch (error) {
+            console.error('Error loading Room for roomName (currentRoomId):', error);
+        }
+
+        // Map to DTOs với creator info, receptionCode và roomName
         const mappedItems = items.map(item => {
             const dto = this.mapToResponseDto(item);
             dto.creator = item.createdBy ? creatorMap.get(item.createdBy) || null : null;
-            
-            // Thêm receptionCode vào serviceRequest nếu có
+            dto.roomName = item.currentRoomId ? (roomMap.get(item.currentRoomId) ?? null) : null;
             if (dto.serviceRequest) {
                 const receptionCode = itemReceptionCodeMap.get(item.id);
                 dto.serviceRequest.receptionCode = receptionCode !== undefined ? receptionCode : null;
             }
-            
             return dto;
         });
 

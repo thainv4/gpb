@@ -9,10 +9,11 @@ import { UserModule } from '../../user/user.module'; // Import để lấy IUser
 import { AuthModule } from '../../auth/auth.module'; // Import để sử dụng DualAuthGuard
 import { StoredServiceRequest } from '../../service-request/entities/stored-service-request.entity'; // Import entity để join
 import { StoredServiceRequestService } from '../../service-request/entities/stored-service-request-service.entity'; // Import entity để check documentId
+import { Room } from '../../room/entities/room.entity';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([WorkflowHistory, StoredServiceRequest, StoredServiceRequestService]), // ✅ Thêm StoredServiceRequestService để check documentId
+        TypeOrmModule.forFeature([WorkflowHistory, StoredServiceRequest, StoredServiceRequestService, Room]),
         WorkflowModule, // Để access IWorkflowStateRepository
         UserModule, // Để access IUserRepository
         AuthModule, // Import để sử dụng DualAuthGuard

@@ -87,6 +87,9 @@ export class WorkflowHistoryResponseDto extends BaseResponseDto {
     @ApiPropertyOptional({ description: 'JSON metadata' })
     metadata?: string | null;
 
+    @ApiPropertyOptional({ description: 'Tên phòng tương ứng currentRoomId (từ BML_ROOMS)' })
+    roomName?: string | null;
+
     // ========== NESTED INFO ==========
 
     @ApiPropertyOptional({ description: 'Thông tin Service Request', type: ServiceRequestSummaryDto })
