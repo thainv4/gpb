@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SampleReception } from './entities/sample-reception.entity';
+import { ReceptionCodeSeq } from './entities/reception-code-seq.entity';
 import { SampleReceptionRepository } from './sample-reception.repository';
 import { SampleReceptionService } from './sample-reception.service';
 import { SampleReceptionController } from './sample-reception.controller';
@@ -12,7 +13,7 @@ import { AuthModule } from '../auth/auth.module';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([SampleReception]),
+        TypeOrmModule.forFeature([SampleReception, ReceptionCodeSeq]),
         ServicesModule,
         DataLoaderModule,
         SampleTypeModule, // Import SampleTypeModule để sử dụng ISampleTypeRepository
