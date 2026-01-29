@@ -225,7 +225,7 @@ export class SampleReceptionRepository implements ISampleReceptionRepository {
         
         while (attempts < maxAttempts) {
             const paddedSequence = nextSequence.toString().padStart(codeWidth, '0');
-            const receptionCode = `${codePrefix}${dateStr}${paddedSequence}`;
+            const receptionCode = `${codePrefix}${dateStr}.${paddedSequence}`;
             
             // Check uniqueness với query builder và pessimistic lock
             // Dùng query builder thay vì findOne vì Oracle không cho phép FOR UPDATE với findOne
@@ -293,7 +293,7 @@ export class SampleReceptionRepository implements ISampleReceptionRepository {
         
         while (attempts < maxAttempts) {
             const paddedSequence = nextSequence.toString().padStart(codeWidth, '0');
-            const receptionCode = `${codePrefix}${dateStr}${paddedSequence}`;
+            const receptionCode = `${codePrefix}${dateStr}.${paddedSequence}`;
             
             // Check uniqueness với query builder và pessimistic lock
             const existing = await manager
