@@ -278,7 +278,7 @@ export class SampleReceptionService extends BaseService {
         const dateStr = this.formatDateByResetPeriod(targetDate, sampleType.resetPeriod);
         const nextSequence = await this.getNextSequenceNumber(sampleType.id, targetDate, sampleType.resetPeriod);
         const paddedSequence = nextSequence.toString().padStart(sampleType.codeWidth, '0');
-        const receptionCode = `${sampleType.codePrefix}${dateStr}${paddedSequence}`;
+        const receptionCode = `${sampleType.codePrefix}${dateStr}.${paddedSequence}`;
 
         return {
             receptionCode,
