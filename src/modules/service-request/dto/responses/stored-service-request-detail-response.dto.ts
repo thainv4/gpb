@@ -253,6 +253,9 @@ export class StoredServiceRequestDetailResponseDto {
     @ApiPropertyOptional({ description: 'Note' })
     note?: string;
 
+    @ApiPropertyOptional({ description: 'Flag (VD: URGENT)' })
+    flag?: string | null;
+
     // Request Room & Department
     @ApiPropertyOptional({ description: 'Request Room ID' })
     requestRoomId?: string;

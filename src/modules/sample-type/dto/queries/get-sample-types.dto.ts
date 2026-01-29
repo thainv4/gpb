@@ -8,7 +8,7 @@ export class GetSampleTypesDto {
     @Type(() => Number)
     @IsNumber()
     @Min(1)
-    @Max(100)
+    @Max(1000)
     limit?: number = 10;
 
     @ApiPropertyOptional({ description: 'Vị trí bắt đầu', example: 0, minimum: 0 })
