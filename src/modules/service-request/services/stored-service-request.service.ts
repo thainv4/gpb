@@ -384,6 +384,7 @@ export class StoredServiceRequestService {
             treatmentId: storedRequest.treatmentId,
             treatmentCode: storedRequest.treatmentCode,
             note: storedRequest.note,
+            flag: storedRequest.flag ?? null,
             requestRoomId: storedRequest.requestRoomId?.toString(),
             requestRoomCode: storedRequest.requestRoomCode,
             requestRoomName: storedRequest.requestRoomName,
