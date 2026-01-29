@@ -36,7 +36,7 @@ export class GetWorkflowHistoryDto {
     @Type(() => Number)
     @IsNumber({}, { message: 'Limit phải là số' })
     @Min(1, { message: 'Limit phải lớn hơn 0' })
-    @Max(100, { message: 'Limit không được quá 100' })
+    @Max(10000, { message: 'Limit không được quá 10000' })
     limit?: number = 10;
 
     @ApiPropertyOptional({ description: 'Vị trí bắt đầu (offset)', example: 0, default: 0 })
