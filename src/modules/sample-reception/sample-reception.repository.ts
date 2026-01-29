@@ -2,7 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, Between, EntityManager } from 'typeorm';
 import { SampleReception } from './entities/sample-reception.entity';
+import { ReceptionCodeSeq } from './entities/reception-code-seq.entity';
 import { ISampleReceptionRepository } from './interfaces/sample-reception.repository.interface';
+import { isUniqueConstraintError } from '../../common/helpers/db.helper';
 
 @Injectable()
 export class SampleReceptionRepository implements ISampleReceptionRepository {
@@ -191,20 +193,15 @@ export class SampleReceptionRepository implements ISampleReceptionRepository {
             manager
         );
         
-        // BƯỚC 2: Tìm MAX sequence number TOÀN BẢNG cho cùng prefix và date
-        // Đây là sequence cao nhất đã được dùng bởi BẤT KỲ SampleType nào
-        // LƯU Ý: Oracle không cho phép FOR UPDATE với aggregate functions (MAX)
-        // Nên không dùng lock ở đây, sẽ lock khi verify uniqueness
-        const pattern = `${codePrefix}${dateStr}%`;
+        // BƯỚC 2: Tìm MAX sequence number TOÀN BẢNG cho cùng prefix và date. Format: {prefix}{dateStr}.{seq} (vd: T2601.2341).
+        const pattern = `${codePrefix}${dateStr}.%`;
         const prefixLength = codePrefix.length;
         const dateLength = dateStr.length;
-        const startPos = prefixLength + dateLength + 1; // Vị trí bắt đầu của sequence trong code
-        
-        // Query để tìm MAX sequence number từ receptionCode
-        // Không dùng lock vì Oracle không cho phép FOR UPDATE với MAX()
+        const startPos = prefixLength + dateLength + 2; // sequence bắt đầu sau dấu chấm
+
         const maxSequenceResult = await manager
             .createQueryBuilder()
-            .select(`MAX(TO_NUMBER(SUBSTR(RECEPTION_CODE, ${startPos}, ${codeWidth})))`, 'MAX_SEQ')
+            .select(`MAX(TO_NUMBER(SUBSTR(reception.RECEPTION_CODE, ${startPos}, ${codeWidth})))`, 'MAX_SEQ')
             .from('BML_SAMPLE_RECEPTIONS', 'reception')
             .where('reception.RECEPTION_CODE LIKE :pattern', { pattern })
             .andWhere('reception.DELETED_AT IS NULL')
@@ -216,111 +213,98 @@ export class SampleReceptionRepository implements ISampleReceptionRepository {
             : 0;
         
         // BƯỚC 3: Chọn sequence = MAX(baseSequence, maxUsedSequence + 1)
-        // Đảm bảo sequence >= baseSequence và > maxUsedSequence
-        let nextSequence = Math.max(baseSequence, maxUsedSequence + 1);
-        
-        // BƯỚC 4: Verify uniqueness (có thể vẫn bị trùng nếu có gap hoặc race condition)
-        let attempts = 0;
-        const maxAttempts = 100;
-        
-        while (attempts < maxAttempts) {
-            const paddedSequence = nextSequence.toString().padStart(codeWidth, '0');
-            const receptionCode = `${codePrefix}${dateStr}.${paddedSequence}`;
-            
-            // Check uniqueness với query builder và pessimistic lock
-            // Dùng query builder thay vì findOne vì Oracle không cho phép FOR UPDATE với findOne
-            const existing = await manager
-                .createQueryBuilder(SampleReception, 'reception')
-                .where('reception.receptionCode = :receptionCode', { receptionCode })
-                .andWhere('reception.deletedAt IS NULL')
-                .setLock('pessimistic_write')
-                .getOne();
-            
-            if (!existing) {
-                // Tìm thấy code unique!
-                return { 
-                    sequenceNumber: nextSequence, 
-                    receptionCode 
-                };
-            }
-            
-            // Nếu trùng, tăng sequence và thử lại
-            nextSequence++;
-            attempts++;
-        }
-        
-        // Nếu vượt quá maxAttempts → Throw error
-        throw new Error(
-            `Unable to generate unique reception code after ${maxAttempts} attempts. ` +
-            `Base sequence: ${baseSequence}, Max used: ${maxUsedSequence}, Last attempted: ${nextSequence}`
-        );
+        const nextSequence = Math.max(baseSequence, maxUsedSequence + 1);
+        const paddedSequence = nextSequence.toString().padStart(codeWidth, '0');
+        const receptionCode = `${codePrefix}${dateStr}.${paddedSequence}`;
+
+        // Không check trùng ở đây: SELECT FOR UPDATE trên row không tồn tại không lock gì,
+        // dễ race. Dựa vào INSERT + unique constraint; conflict → service retry cả tx.
+        return { sequenceNumber: nextSequence, receptionCode };
     }
 
     async getNextUniqueSequenceNumberByPrefix(
         codePrefix: string,
         dateStr: string,
         codeWidth: number,
-        date: Date,
-        resetPeriod: string,
+        _date: Date,
+        _resetPeriod: string,
         manager: EntityManager
     ): Promise<{ sequenceNumber: number; receptionCode: string }> {
-        // Tìm MAX sequence number TOÀN BẢNG cho cùng prefix và date
-        const pattern = `${codePrefix}${dateStr}%`;
+        return this.getNextSequenceFromSeqTable(codePrefix, dateStr, codeWidth, manager);
+    }
+
+    /**
+     * Sinh code từ BML_RECEPTION_CODE_SEQ: lock dòng (prefix, dateStr) → tăng LAST_SEQ → return.
+     * Tránh conflict; không cần retry do trùng code.
+     * Nếu chưa có dòng: seed từ MAX(BML_SAMPLE_RECEPTIONS) rồi INSERT.
+     */
+    private async getNextSequenceFromSeqTable(
+        prefix: string,
+        dateStr: string,
+        codeWidth: number,
+        manager: EntityManager
+    ): Promise<{ sequenceNumber: number; receptionCode: string }> {
+        const repo = manager.getRepository(ReceptionCodeSeq);
+
+        let row = await repo
+            .createQueryBuilder('seq')
+            .where('seq.prefix = :prefix', { prefix })
+            .andWhere('seq.dateStr = :dateStr', { dateStr })
+            .setLock('pessimistic_write')
+            .getOne();
+
+        if (!row) {
+            const maxUsed = await this.getMaxUsedSequenceByPrefix(prefix, dateStr, codeWidth, manager);
+            try {
+                const newRow = repo.create({ prefix, dateStr, lastSeq: maxUsed });
+                await manager.save(ReceptionCodeSeq, newRow);
+                row = newRow;
+            } catch (e: any) {
+                if (!isUniqueConstraintError(e)) throw e;
+                row = await repo
+                    .createQueryBuilder('seq')
+                    .where('seq.prefix = :prefix', { prefix })
+                    .andWhere('seq.dateStr = :dateStr', { dateStr })
+                    .setLock('pessimistic_write')
+                    .getOne();
+                if (!row) throw new Error('ReceptionCodeSeq: row missing after insert conflict');
+            }
+        }
+
+        const maxUsed = await this.getMaxUsedSequenceByPrefix(prefix, dateStr, codeWidth, manager);
+        const lastSeq = Math.max(row.lastSeq ?? 0, maxUsed);
+        const next = lastSeq + 1;
+        row.lastSeq = next;
+        await manager.save(ReceptionCodeSeq, row);
+
+        const padded = next.toString().padStart(codeWidth, '0');
+        const receptionCode = `${prefix}${dateStr}.${padded}`;
+        return { sequenceNumber: next, receptionCode };
+    }
+
+    /**
+     * MAX sequence đã dùng cho prefix+dateStr. Format: {prefix}{dateStr}.{sequence} (vd: T2601.2341).
+     * Sequence bắt đầu sau dấu chấm → startPos = prefixLength + dateLength + 2.
+     */
+    private async getMaxUsedSequenceByPrefix(
+        codePrefix: string,
+        dateStr: string,
+        codeWidth: number,
+        manager: EntityManager
+    ): Promise<number> {
+        const pattern = `${codePrefix}${dateStr}.%`;
         const prefixLength = codePrefix.length;
         const dateLength = dateStr.length;
-        const startPos = prefixLength + dateLength + 1; // Vị trí bắt đầu của sequence trong code
-        
-        // Query để tìm MAX sequence number từ receptionCode
-        const maxSequenceResult = await manager
+        const startPos = prefixLength + dateLength + 2; // sau dấu chấm
+        const maxResult = await manager
             .createQueryBuilder()
-            .select(`MAX(TO_NUMBER(SUBSTR(RECEPTION_CODE, ${startPos}, ${codeWidth})))`, 'MAX_SEQ')
-            .from('BML_SAMPLE_RECEPTIONS', 'reception')
-            .where('reception.RECEPTION_CODE LIKE :pattern', { pattern })
-            .andWhere('reception.DELETED_AT IS NULL')
+            .select(`MAX(TO_NUMBER(SUBSTR(r.RECEPTION_CODE, ${startPos}, ${codeWidth})))`, 'MAX_SEQ')
+            .from('BML_SAMPLE_RECEPTIONS', 'r')
+            .where('r.RECEPTION_CODE LIKE :pattern', { pattern })
+            .andWhere('r.DELETED_AT IS NULL')
             .getRawOne();
-        
-        // Nếu không có code nào tồn tại → Bắt đầu từ 1
-        const maxUsedSequence = maxSequenceResult?.MAX_SEQ 
-            ? Number.parseInt(String(maxSequenceResult.MAX_SEQ), 10) 
-            : 0;
-        
-        // Bắt đầu từ maxUsedSequence + 1
-        let nextSequence = maxUsedSequence + 1;
-        
-        // Verify uniqueness
-        let attempts = 0;
-        const maxAttempts = 100;
-        
-        while (attempts < maxAttempts) {
-            const paddedSequence = nextSequence.toString().padStart(codeWidth, '0');
-            const receptionCode = `${codePrefix}${dateStr}.${paddedSequence}`;
-            
-            // Check uniqueness với query builder và pessimistic lock
-            const existing = await manager
-                .createQueryBuilder(SampleReception, 'reception')
-                .where('reception.receptionCode = :receptionCode', { receptionCode })
-                .andWhere('reception.deletedAt IS NULL')
-                .setLock('pessimistic_write')
-                .getOne();
-            
-            if (!existing) {
-                // Tìm thấy code unique!
-                return { 
-                    sequenceNumber: nextSequence, 
-                    receptionCode 
-                };
-            }
-            
-            // Nếu trùng, tăng sequence và thử lại
-            nextSequence++;
-            attempts++;
-        }
-        
-        // Nếu vượt quá maxAttempts → Throw error
-        throw new Error(
-            `Unable to generate unique reception code after ${maxAttempts} attempts. ` +
-            `Max used: ${maxUsedSequence}, Last attempted: ${nextSequence}`
-        );
+        const v = maxResult?.MAX_SEQ;
+        return v != null ? Number.parseInt(String(v), 10) : 0;
     }
 
     async findByReceptionCode(receptionCode: string): Promise<SampleReception | null> {
