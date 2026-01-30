@@ -28,6 +28,9 @@ export class UserRoomResponseDto {
     @ApiProperty({ description: 'Mô tả phòng' })
     roomDescription: string;
 
+    @ApiProperty({ description: 'Tiền tố chọn (phòng)', required: false })
+    selectPrefix?: string;
+
     @ApiProperty({ description: 'ID khoa' })
     departmentId: string;
 
@@ -36,6 +39,9 @@ export class UserRoomResponseDto {
 
     @ApiProperty({ description: 'Mã khoa' })
     departmentCode: string;
+
+    @ApiProperty({ description: 'Loại form kết quả (department)', required: false })
+    resultFormType?: number;
 
     @ApiProperty({ description: 'ID cơ sở' })
     branchId: string;

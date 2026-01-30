@@ -24,6 +24,9 @@ export class Room extends BaseEntity {
     @Column({ name: 'DESCRIPTION', type: 'clob', nullable: true })
     description?: string;        // Mô tả phòng
 
+    @Column({ name: 'SELECT_PREFIX', type: 'varchar2', length: 20, nullable: true })
+    selectPrefix?: string;       // Tiền tố chọn (20 byte)
+
     @Column({ name: 'IS_ACTIVE', default: true })
     isActive: boolean;          // Trạng thái hoạt động
 
