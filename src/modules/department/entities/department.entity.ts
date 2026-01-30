@@ -44,6 +44,8 @@ export class Department extends BaseEntity {
     @Column({ name: 'SORT_ORDER', type: 'int', default: 0 })
     sortOrder: number;
 
+    @Column({ name: 'RESULT_FORM_TYPE', type: 'number', nullable: true })
+    resultFormType?: number;
 
     // Relationships
     @ManyToOne(() => Branch, branch => branch.departments)
