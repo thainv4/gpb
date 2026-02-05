@@ -153,6 +153,17 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
         });
     }
 
+    async findAllByStoredServiceReqId(storedServiceReqId: string): Promise<WorkflowHistory[]> {
+        return this.repo.find({
+            where: {
+                storedServiceReqId,
+                deletedAt: IsNull(),
+            },
+            relations: ['toState'],
+            order: { actionTimestamp: 'DESC' },
+        });
+    }
+
     async save(entity: WorkflowHistory): Promise<WorkflowHistory> {
         return this.repo.save(entity);
     }
