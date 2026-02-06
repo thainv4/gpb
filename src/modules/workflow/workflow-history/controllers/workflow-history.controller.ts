@@ -8,6 +8,7 @@ import { DeleteByStateAndRequestDto } from '../dto/commands/delete-by-state-and-
 import { GetWorkflowHistoryDto } from '../dto/queries/get-workflow-history.dto';
 import { GetWorkflowHistoryByRoomStateDto } from '../dto/queries/get-workflow-history-by-room-state.dto';
 import { WorkflowHistoryResponseDto } from '../dto/responses/workflow-history-response.dto';
+import { WorkflowHistoryActionInfoResponseDto } from '../dto/responses/workflow-history-action-info-response.dto';
 import { ResponseBuilder } from '../../../../common/builders/response.builder';
 import { DualAuthGuard } from '../../../auth/guards/dual-auth.guard';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
@@ -272,6 +273,18 @@ export class WorkflowHistoryController {
             storedServiceReqId,
             stateType || 'toStateId'
         );
+        return ResponseBuilder.success(result);
+    }
+
+    @Get('action-info/:storedServiceReqId')
+    @ApiOperation({
+        summary: 'Lấy danh sách action info theo storedServiceReqId',
+        description: 'Tham số: storedServiceReqId. Trả về danh sách các bản ghi với actionUsername, actionUserFullName và createdAt.',
+    })
+    @ApiParam({ name: 'storedServiceReqId', description: 'ID của stored service request' })
+    @ApiResponse({ status: 200, description: 'Lấy thành công', type: [WorkflowHistoryActionInfoResponseDto] })
+    async getActionInfoByStoredServiceReqId(@Param('storedServiceReqId') storedServiceReqId: string) {
+        const result = await this.workflowHistoryService.getActionInfoByStoredServiceReqId(storedServiceReqId);
         return ResponseBuilder.success(result);
     }
 

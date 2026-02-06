@@ -10,6 +10,7 @@ import { GetWorkflowHistoryDto } from '../dto/queries/get-workflow-history.dto';
 import { GetWorkflowHistoryByRoomStateDto } from '../dto/queries/get-workflow-history-by-room-state.dto';
 import { WorkflowHistory } from '../entities/workflow-history.entity';
 import { WorkflowHistoryResponseDto, GetWorkflowHistoryResult } from '../dto/responses/workflow-history-response.dto';
+import { WorkflowHistoryActionInfoResponseDto } from '../dto/responses/workflow-history-action-info-response.dto';
 import { CurrentUser } from '../../../../common/interfaces/current-user.interface';
 import { StoredServiceRequest } from '../../../service-request/entities/stored-service-request.entity';
 import { StoredServiceRequestService } from '../../../service-request/entities/stored-service-request-service.entity';
@@ -478,6 +479,43 @@ export class WorkflowHistoryService {
             limit: query.limit ?? 10,
             offset: query.offset ?? 0,
         };
+    }
+
+    /**
+     * Lấy danh sách action info theo storedServiceReqId
+     * Trả về array với mỗi item có { actionUsername, actionUserFullName, createdAt }
+     */
+    async getActionInfoByStoredServiceReqId(storedServiceReqId: string): Promise<WorkflowHistoryActionInfoResponseDto[]> {
+        const workflowHistories = await this.workflowHistoryRepo.findAllByStoredServiceReqId(storedServiceReqId);
+        
+        if (workflowHistories.length === 0) {
+            return [];
+        }
+
+        // Lấy danh sách unique actionUserIds
+        const uniqueUserIds = [...new Set(workflowHistories.map(wf => wf.actionUserId).filter(Boolean))];
+        
+        // Batch query users
+        const userMap = new Map<string, { fullName: string }>();
+        if (uniqueUserIds.length > 0) {
+            try {
+                const users = await this.userRepo.findByIds(uniqueUserIds);
+                users.forEach(user => {
+                    userMap.set(user.id, { fullName: user.fullName });
+                });
+            } catch (error) {
+                console.error('Error loading users from BML_USERS:', error);
+            }
+        }
+
+        // Map sang DTO
+        return workflowHistories.map(wf => ({
+            actionUsername: wf.actionUsername ?? null,
+            actionUserFullName: userMap.get(wf.actionUserId)?.fullName ?? null,
+            stateName: wf.toState?.stateName ?? null,
+            stateOrder: wf.toState?.stateOrder ?? null,
+            createdAt: wf.createdAt,
+        }));
     }
 
     /**
