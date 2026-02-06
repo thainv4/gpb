@@ -73,7 +73,9 @@ FROM
   LEFT JOIN HIS_SERE_SERV A ON HSR.ID = A.SERVICE_REQ_ID
   LEFT JOIN HIS_TREATMENT B ON HSR.TREATMENT_ID=B.ID
 WHERE
-  HSR.SERVICE_REQ_CODE = :1 AND A.IS_DELETE = 0`;
+  HSR.SERVICE_REQ_CODE = :1 
+  AND A.IS_DELETE = 0
+  AND A.IS_NO_EXECUTE is null`;
 
     const rows: any[] = await this.dataSource.query(sql, [serviceReqCode]);
 
