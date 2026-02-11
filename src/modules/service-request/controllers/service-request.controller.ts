@@ -13,6 +13,7 @@ import { UpdateReceptionCodeDto } from '../dto/commands/update-reception-code.dt
 import { UpdateFlagDto } from '../dto/commands/update-flag.dto';
 import { UpdateStainingMethodDto } from '../dto/commands/update-staining-method.dto';
 import { UpdateNumOfBlockDto } from '../dto/commands/update-num-of-block.dto';
+import { UpdateStoredServiceRequestDto } from '../dto/commands/update-stored-service-request.dto';
 import { GetServiceRequestsDto } from '../dto/queries/get-service-requests.dto';
 import { SearchServiceRequestsDto } from '../dto/queries/search-service-requests.dto';
 import { ServiceRequestResponseDto } from '../dto/responses/service-request-response.dto';
@@ -305,11 +306,68 @@ export class ServiceRequestController {
         });
     }
 
+    @Patch('stored/:id')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Cập nhật stored service request (flag, stainingMethodId, numOfBlock)',
+        description: 'Cập nhật một hoặc nhiều trường của stored service request. Chỉ các field được gửi lên sẽ được cập nhật. Có thể gửi null để xóa giá trị.'
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'ID của stored service request',
+        example: 'f32c11f9-cab8-4f72-9776-5b41a1bc89e8'
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Cập nhật thành công'
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Không tìm thấy stored service request'
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Dữ liệu không hợp lệ'
+    })
+    async updateStoredServiceRequest(
+        @Param('id') id: string,
+        @Body() dto: UpdateStoredServiceRequestDto,
+        @CurrentUser() currentUser: ICurrentUser | null
+    ) {
+        if (!currentUser) {
+            throw new BadRequestException(
+                'JWT authentication required. HIS token is not supported for write operations.'
+            );
+        }
+
+        await this.storedServiceRequestService.updateStoredServiceRequest(
+            id,
+            dto,
+            currentUser
+        );
+
+        // Build response message với các field đã cập nhật
+        const updatedFields: string[] = [];
+        if (dto.flag !== undefined) updatedFields.push('flag');
+        if (dto.stainingMethodId !== undefined) updatedFields.push('stainingMethodId');
+        if (dto.numOfBlock !== undefined) updatedFields.push('numOfBlock');
+
+        return ResponseBuilder.success({
+            message: `Stored service request đã được cập nhật thành công${updatedFields.length > 0 ? `: ${updatedFields.join(', ')}` : ''}`,
+            id: id,
+            updatedFields: updatedFields,
+            ...(dto.flag !== undefined && { flag: dto.flag }),
+            ...(dto.stainingMethodId !== undefined && { stainingMethodId: dto.stainingMethodId }),
+            ...(dto.numOfBlock !== undefined && { numOfBlock: dto.numOfBlock }),
+        });
+    }
+
     @Patch('stored/:id/flag')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ 
-        summary: 'Cập nhật flag của stored service request',
-        description: 'Chỉnh sửa flag cho một stored service request cụ thể. Có thể gửi null để xóa flag.'
+        summary: '[DEPRECATED] Cập nhật flag của stored service request',
+        description: '[DEPRECATED] Sử dụng PATCH /stored/:id thay thế. Chỉnh sửa flag cho một stored service request cụ thể. Có thể gửi null để xóa flag.',
+        deprecated: true
     })
     @ApiParam({ 
         name: 'id', 
@@ -355,8 +413,9 @@ export class ServiceRequestController {
     @Patch('stored/:id/staining-method')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
-        summary: 'Cập nhật phương pháp nhuộm (stainingMethodId) cho stored service request',
-        description: 'Gán hoặc xóa ID phương pháp nhuộm cho một stored service request cụ thể.'
+        summary: '[DEPRECATED] Cập nhật phương pháp nhuộm (stainingMethodId) cho stored service request',
+        description: '[DEPRECATED] Sử dụng PATCH /stored/:id thay thế. Gán hoặc xóa ID phương pháp nhuộm cho một stored service request cụ thể.',
+        deprecated: true
     })
     @ApiParam({
         name: 'id',
@@ -402,8 +461,9 @@ export class ServiceRequestController {
     @Patch('stored/:id/num-of-block')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
-        summary: 'Cập nhật số lượng block (numOfBlock) cho stored service request',
-        description: 'Gán hoặc xóa số lượng block cho một stored service request cụ thể. Có thể gửi null để xóa.'
+        summary: '[DEPRECATED] Cập nhật số lượng block (numOfBlock) cho stored service request',
+        description: '[DEPRECATED] Sử dụng PATCH /stored/:id thay thế. Gán hoặc xóa số lượng block cho một stored service request cụ thể. Có thể gửi null để xóa.',
+        deprecated: true
     })
     @ApiParam({
         name: 'id',

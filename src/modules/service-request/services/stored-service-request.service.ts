@@ -14,6 +14,7 @@ import { UpdateReceptionCodeDto } from '../dto/commands/update-reception-code.dt
 import { UpdateFlagDto } from '../dto/commands/update-flag.dto';
 import { UpdateStainingMethodDto } from '../dto/commands/update-staining-method.dto';
 import { UpdateNumOfBlockDto } from '../dto/commands/update-num-of-block.dto';
+import { UpdateStoredServiceRequestDto } from '../dto/commands/update-stored-service-request.dto';
 import { StoredServiceRequestResponseDto } from '../dto/responses/stored-service-request-response.dto';
 import { StoredServiceRequestDetailResponseDto, StoredServiceResponseDto, WorkflowCurrentStateDto } from '../dto/responses/stored-service-request-detail-response.dto';
 import { ResultRequestDto } from '../dto/responses/result-request.dto';
@@ -903,7 +904,52 @@ export class StoredServiceRequestService {
     }
 
     /**
+     * Cập nhật stored service request (gộp flag, stainingMethodId, numOfBlock)
+     */
+    async updateStoredServiceRequest(
+        id: string,
+        dto: UpdateStoredServiceRequestDto,
+        currentUser: CurrentUser
+    ): Promise<void> {
+        return this.dataSource.transaction(async (manager) => {
+            // 1. Tìm stored service request
+            const storedRequest = await this.storedRepo.findById(id);
+            
+            if (!storedRequest) {
+                throw new NotFoundException(
+                    `Không tìm thấy stored service request với ID: ${id}`
+                );
+            }
+
+            // 2. Cập nhật các field được gửi lên (partial update)
+            let hasChanges = false;
+
+            if (dto.flag !== undefined) {
+                storedRequest.flag = dto.flag;
+                hasChanges = true;
+            }
+
+            if (dto.stainingMethodId !== undefined) {
+                storedRequest.stainingMethodId = dto.stainingMethodId ?? null;
+                hasChanges = true;
+            }
+
+            if (dto.numOfBlock !== undefined) {
+                storedRequest.numOfBlock = dto.numOfBlock ?? null;
+                hasChanges = true;
+            }
+
+            // 3. Chỉ save nếu có thay đổi
+            if (hasChanges) {
+                storedRequest.updatedBy = currentUser.id;
+                await manager.save(StoredServiceRequest, storedRequest);
+            }
+        });
+    }
+
+    /**
      * Cập nhật flag cho stored service request
+     * @deprecated Use updateStoredServiceRequest instead
      */
     async updateFlag(
         id: string,
