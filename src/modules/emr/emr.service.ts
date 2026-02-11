@@ -10,6 +10,7 @@ import { DeleteEmrDocumentResponseDto } from './dto/responses/delete-emr-documen
 import { ProfileService } from '../profile/profile.service';
 import { IStoredServiceRequestServiceRepository } from '../service-request/interfaces/stored-service-request-service.repository.interface';
 import { IStoredServiceRequestRepository } from '../service-request/interfaces/stored-service-request.repository.interface';
+import { StoredServiceRequest } from '../service-request/entities/stored-service-request.entity';
 
 @Injectable()
 export class EmrService {
@@ -116,7 +117,35 @@ export class EmrService {
             );
 
             this.logger.log(`EMR CreateAndSignHsm API call successful. DocumentCode: ${response.data.Data?.DocumentCode || 'N/A'}`);
-            
+
+            // Tự động lưu Base64Data vào StoredServiceRequest sau khi ký thành công
+            if (response.data.Success && response.data.Data?.OriginalVersion?.Base64Data) {
+                try {
+                    const storedRequest = await this.findStoredRequestByDto(createAndSignHsmDto);
+                    if (storedRequest) {
+                        storedRequest.signedDocumentBase64 =
+                            response.data.Data.Signs[0].Version.Base64Data;
+                        await this.storedRequestRepo.save(storedRequest);
+                        this.logger.log(
+                            `Saved signed document (base64) to StoredServiceRequest: ${storedRequest.id}, ` +
+                                `TreatmentCode: ${storedRequest.treatmentCode}`
+                        );
+                    } else {
+                        this.logger.warn(
+                            `StoredServiceRequest not found for TreatmentCode: ${createAndSignHsmDto.TreatmentCode}, ` +
+                                `HisCode: ${createAndSignHsmDto.HisCode || 'N/A'}. Base64Data NOT saved.`
+                        );
+                    }
+                } catch (saveError: any) {
+                    this.logger.error(
+                        `Failed to save base64Data to StoredServiceRequest: ${saveError?.message || saveError}`,
+                        saveError?.stack
+                    );
+                }
+            } else {
+                this.logger.warn('EMR API response missing Base64Data, skipping save');
+            }
+
             return response.data;
 
         } catch (error: any) {
@@ -166,6 +195,47 @@ export class EmrService {
                 },
                 HttpStatus.INTERNAL_SERVER_ERROR
             );
+        }
+    }
+
+    /**
+     * Tìm StoredServiceRequest theo HisCode hoặc TreatmentCode
+     */
+    private async findStoredRequestByDto(
+        dto: CreateAndSignHsmDto
+    ): Promise<StoredServiceRequest | null> {
+        try {
+            // Priority 1: Tìm theo HisCode (ID của StoredServiceRequestService)
+            if (dto.HisCode) {
+                const service = await this.serviceRepo.findById(dto.HisCode);
+                if (service) {
+                    const storedRequest = await this.storedRequestRepo.findById(
+                        service.storedServiceRequestId
+                    );
+                    if (storedRequest) {
+                        this.logger.debug(`Found StoredServiceRequest by HisCode: ${dto.HisCode}`);
+                        return storedRequest;
+                    }
+                }
+            }
+
+            // Priority 2: Tìm theo TreatmentCode
+            if (dto.TreatmentCode) {
+                const storedRequest = await this.storedRequestRepo.findByTreatmentCode(
+                    dto.TreatmentCode
+                );
+                if (storedRequest) {
+                    this.logger.debug(
+                        `Found StoredServiceRequest by TreatmentCode: ${dto.TreatmentCode}`
+                    );
+                    return storedRequest;
+                }
+            }
+
+            return null;
+        } catch (error: any) {
+            this.logger.error(`Error finding StoredServiceRequest: ${error?.message || error}`);
+            return null;
         }
     }
 
