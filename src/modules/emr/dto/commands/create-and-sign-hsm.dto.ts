@@ -179,5 +179,13 @@ export class CreateAndSignHsmDto {
     @IsOptional()
     @IsNumber()
     FileType?: number;
+
+    @ApiProperty({ 
+        description: 'ID của StoredServiceRequest (BML_STORED_SERVICE_REQUESTS.ID = STORED_SERVICE_REQ_ID trong BML_STORED_SR_SERVICES)', 
+        required: false 
+    })
+    @IsOptional()
+    @IsString()
+    StoredServiceReqId?: string;
 }
 
