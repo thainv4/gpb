@@ -11,6 +11,7 @@ export interface IWorkflowHistoryRepository {
     findAllByStoredServiceReqId(storedServiceReqId: string): Promise<WorkflowHistory[]>;
     findByRoomAndState(
         roomId: string | undefined,
+        roomIds: string[] | undefined,
         stateId: string | undefined,
         roomType: 'actionRoomId' | 'currentRoomId' | 'transitionedByRoomId',
         stateType: 'toStateId' | 'fromStateId',

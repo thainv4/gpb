@@ -293,7 +293,8 @@ export class ServiceRequestService {
             icdText: firstItem.icdText,
             treatmentId: firstItem.treatmentId,
             treatmentCode: firstItem.treatmentCode,
-            note: firstItem.note,
+            requestUsername: firstItem.requestUsername,
+            requestLoginname: firstItem.requestLoginname,
             requestRoom: {
                 id: firstItem.requestRoomId,
                 code: firstItem.requestRoomCode,

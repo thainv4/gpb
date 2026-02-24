@@ -196,6 +196,12 @@ export class StoredServiceRequest extends BaseEntity {
     @Column({name: 'SIGNED_DOCUMENT_BASE64', type: 'clob', nullable: true})
     signedDocumentBase64?: string | null;    
 
+    @Column({name: 'REQUEST_LOGINNAME', type: 'varchar2', length: 50, nullable: true})
+    requestLoginname?: string | null;
+
+    @Column({name: 'REQUEST_USERNAME', type: 'varchar2', length: 100, nullable: true})
+    requestUsername?: string | null;
+
     // Relationships
     @OneToMany(() => StoredServiceRequestService, service => service.storedServiceRequest)
     services: StoredServiceRequestService[];

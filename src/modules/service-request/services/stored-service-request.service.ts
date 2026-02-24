@@ -123,6 +123,10 @@ export class StoredServiceRequestService {
             storedRequest.patientCareerName = enrichedData.patient.careerName ?? null;
             storedRequest.patientLisId = enrichedData.patient.lisPatientId ?? null;
 
+            // Request Info
+            storedRequest.requestLoginname = enrichedData.requestLoginname ?? null;
+            storedRequest.requestUsername = enrichedData.requestUsername ?? null;
+
             // Context When Storing (NEW)
             storedRequest.currentRoomId = dto.currentRoomId;
             storedRequest.currentDepartmentId = dto.currentDepartmentId;
@@ -384,8 +388,9 @@ export class StoredServiceRequestService {
             icdText: storedRequest.icdText,
             treatmentId: storedRequest.treatmentId,
             treatmentCode: storedRequest.treatmentCode,
-            note: storedRequest.note,
             flag: storedRequest.flag ?? null,
+            requestLoginname: storedRequest.requestLoginname,
+            requestUsername: storedRequest.requestUsername,
             requestRoomId: storedRequest.requestRoomId?.toString(),
             requestRoomCode: storedRequest.requestRoomCode,
             requestRoomName: storedRequest.requestRoomName,

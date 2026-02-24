@@ -3,6 +3,7 @@ import { DataSource, In, IsNull } from 'typeorm';
 import { IWorkflowHistoryRepository } from '../interfaces/workflow-history.repository.interface';
 import { IWorkflowStateRepository } from '../../interfaces/workflow-state.repository.interface';
 import { IUserRepository } from '../../../user/interfaces/user.repository.interface';
+import { IUserRoomRepository } from '../../../user-room/interfaces/user-room.repository.interface';
 import { StartWorkflowDto } from '../dto/commands/start-workflow.dto';
 import { TransitionStateDto } from '../dto/commands/transition-state.dto';
 import { UpdateCurrentStateDto } from '../dto/commands/update-current-state.dto';
@@ -26,6 +27,8 @@ export class WorkflowHistoryService {
         private readonly workflowStateRepo: IWorkflowStateRepository,
         @Inject('IUserRepository')
         private readonly userRepo: IUserRepository,
+        @Inject('IUserRoomRepository')
+        private readonly userRoomRepo: IUserRoomRepository,
         private readonly dataSource: DataSource,
     ) { }
 
@@ -598,10 +601,12 @@ export class WorkflowHistoryService {
     }
 
     /**
-     * Lấy danh sách workflow history theo Room ID và State ID
+     * Lấy danh sách workflow history theo Room ID và State ID.
+     * Khi roomId rỗng/null: lọc theo danh sách phòng của user (BML_USER_ROOMS).
      */
     async getByRoomAndState(
-        dto: GetWorkflowHistoryByRoomStateDto
+        dto: GetWorkflowHistoryByRoomStateDto,
+        currentUser: CurrentUser | null
     ): Promise<GetWorkflowHistoryResult> {
         // Parse dates
         const fromDate = dto.fromDate ? new Date(dto.fromDate) : undefined;
@@ -631,11 +636,23 @@ export class WorkflowHistoryService {
         // Normalize patientName: undefined => undefined, empty string => undefined
         const normalizedPatientName = dto.patientName && dto.patientName.trim() !== '' ? dto.patientName.trim() : undefined;
 
+        // Room filter: có roomId thì dùng 1 phòng; rỗng/null thì dùng danh sách phòng của user (BML_USER_ROOMS)
+        const normalizedRoomId = dto.roomId && dto.roomId.trim() !== '' ? dto.roomId.trim() : undefined;
+        let roomIds: string[] | undefined = undefined;
+        if (!normalizedRoomId && currentUser) {
+            const userRooms = await this.userRoomRepo.findActiveByUserId(currentUser.id);
+            roomIds = userRooms.map((ur) => ur.roomId);
+        }
+        if (!normalizedRoomId && !currentUser) {
+            roomIds = []; // Chưa đăng nhập và không chỉ định phòng → không trả về bản ghi
+        }
+
         // Luôn áp dụng filterByMaxStateOrder: Filter theo stateOrder lớn nhất TRƯỚC, sau đó mới filter theo stateId
         
         // BƯỚC 1: Query từ repository KHÔNG có filter stateId (để filterByMaxStateOrder hoạt động đúng)
         const [allItems] = await this.workflowHistoryRepo.findByRoomAndState(
-            dto.roomId,
+            normalizedRoomId,
+            roomIds,
             undefined, // Không filter theo stateId ở đây - để filterByMaxStateOrder hoạt động đúng
             dto.roomType || 'currentRoomId',
             dto.stateType || 'toStateId',
