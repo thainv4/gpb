@@ -349,4 +349,10 @@ export class ServiceRequestResponseDto {
 
     @ApiProperty({ description: 'Danh sách dịch vụ', type: [ServiceDto] })
     services: ServiceDto[];
+
+    @ApiPropertyOptional({ description: 'Tên người yêu cầu', example: 'admin' })
+    requestUsername?: string;
+
+    @ApiPropertyOptional({ description: 'Tên người đăng nhập', example: 'admin' })
+    requestLoginname?: string;
 }

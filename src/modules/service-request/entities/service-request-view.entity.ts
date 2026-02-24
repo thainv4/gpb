@@ -45,8 +45,11 @@ export class ServiceRequestView {
   @Column({ name: 'TDL_TREATMENT_CODE', type: 'varchar2', length: 50 })
   treatmentCode: string;
 
-  @Column({ name: 'NOTE', type: 'varchar2', length: 1000, nullable: true })
-  note?: string;
+  @Column({ name: 'REQUEST_LOGINNAME', type: 'varchar2', length: 50 })
+  requestLoginname: string;
+
+  @Column({ name: 'REQUEST_USERNAME', type: 'varchar2', length: 100 })
+  requestUsername: string;
 
   // Request Location
   @Column({ name: 'REQUEST_ROOM_ID', type: 'number' })

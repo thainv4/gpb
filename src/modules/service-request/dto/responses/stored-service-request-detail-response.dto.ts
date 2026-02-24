@@ -256,6 +256,12 @@ export class StoredServiceRequestDetailResponseDto {
     @ApiPropertyOptional({ description: 'Flag (VD: URGENT)' })
     flag?: string | null;
 
+    @ApiPropertyOptional({ description: 'Login name người yêu cầu' })
+    requestLoginname?: string | null;
+
+    @ApiPropertyOptional({ description: 'Tên hiển thị người yêu cầu' })
+    requestUsername?: string | null;
+
     // Request Room & Department
     @ApiPropertyOptional({ description: 'Request Room ID' })
     requestRoomId?: string;
