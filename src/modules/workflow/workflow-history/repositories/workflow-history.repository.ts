@@ -193,6 +193,7 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
 
     async findByRoomAndState(
         roomId: string | undefined,
+        roomIds: string[] | undefined,
         stateId: string | undefined,
         roomType: 'actionRoomId' | 'currentRoomId' | 'transitionedByRoomId',
         stateType: 'toStateId' | 'fromStateId',
@@ -216,9 +217,15 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
                 // .leftJoinAndSelect('wh.fromState', 'fromState')
                 .where('wh.deletedAt IS NULL');
 
-            // Chỉ filter theo room nếu roomId được cung cấp
-            if (roomId) {
+            // Filter theo room: roomId (một phòng) hoặc roomIds (danh sách phòng của user)
+            if (roomId && roomId.trim() !== '') {
                 queryBuilder.andWhere(`wh.${roomType} = :roomId`, { roomId });
+            } else if (roomIds !== undefined) {
+                if (roomIds.length > 0) {
+                    queryBuilder.andWhere(`wh.${roomType} IN (:...roomIds)`, { roomIds });
+                } else {
+                    queryBuilder.andWhere('1 = 0'); // User không có phòng nào → không trả về bản ghi
+                }
             }
 
             // Filter theo code nếu được cung cấp và không phải chuỗi rỗng

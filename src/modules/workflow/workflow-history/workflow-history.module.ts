@@ -6,6 +6,7 @@ import { WorkflowHistoryService } from './services/workflow-history.service';
 import { WorkflowHistoryRepository } from './repositories/workflow-history.repository';
 import { WorkflowModule } from '../workflow.module'; // Import để lấy IWorkflowStateRepository
 import { UserModule } from '../../user/user.module'; // Import để lấy IUserRepository
+import { UserRoomModule } from '../../user-room/user-room.module'; // Import để lấy IUserRoomRepository
 import { AuthModule } from '../../auth/auth.module'; // Import để sử dụng DualAuthGuard
 import { StoredServiceRequest } from '../../service-request/entities/stored-service-request.entity'; // Import entity để join
 import { StoredServiceRequestService } from '../../service-request/entities/stored-service-request-service.entity'; // Import entity để check documentId
@@ -16,6 +17,7 @@ import { Room } from '../../room/entities/room.entity';
         TypeOrmModule.forFeature([WorkflowHistory, StoredServiceRequest, StoredServiceRequestService, Room]),
         WorkflowModule, // Để access IWorkflowStateRepository
         UserModule, // Để access IUserRepository
+        UserRoomModule, // Để access IUserRoomRepository (filter theo phòng của user khi roomId rỗng)
         AuthModule, // Import để sử dụng DualAuthGuard
     ],
     controllers: [WorkflowHistoryController],

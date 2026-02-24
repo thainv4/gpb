@@ -205,8 +205,11 @@ export class WorkflowHistoryController {
     })
     @ApiResponse({ status: 200, description: 'Lấy danh sách thành công' })
     @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
-    async getByRoomAndState(@Query() query: GetWorkflowHistoryByRoomStateDto) {
-        const result = await this.workflowHistoryService.getByRoomAndState(query);
+    async getByRoomAndState(
+        @Query() query: GetWorkflowHistoryByRoomStateDto,
+        @CurrentUser() currentUser: ICurrentUser | null
+    ) {
+        const result = await this.workflowHistoryService.getByRoomAndState(query, currentUser);
         return ResponseBuilder.success({
             items: result.items,
             pagination: {
