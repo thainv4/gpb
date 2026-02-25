@@ -193,9 +193,6 @@ export class StoredServiceRequest extends BaseEntity {
     @Column({ name: 'STORED_BY', type: 'varchar2', length: 50, nullable: true })
     storedBy?: string;
 
-    @Column({name: 'SIGNED_DOCUMENT_BASE64', type: 'clob', nullable: true})
-    signedDocumentBase64?: string | null;    
-
     @Column({name: 'REQUEST_LOGINNAME', type: 'varchar2', length: 50, nullable: true})
     requestLoginname?: string | null;
 
