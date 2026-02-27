@@ -15,10 +15,12 @@ import { UpdateStainingMethodDto } from '../dto/commands/update-staining-method.
 import { UpdateNumOfBlockDto } from '../dto/commands/update-num-of-block.dto';
 import { UpdateStoredServiceRequestDto } from '../dto/commands/update-stored-service-request.dto';
 import { GetServiceRequestsDto } from '../dto/queries/get-service-requests.dto';
+import { GetResultConcludeByReceptionCodeDto } from '../dto/queries/get-result-conclude-by-reception-code.dto';
 import { SearchServiceRequestsDto } from '../dto/queries/search-service-requests.dto';
 import { ServiceRequestResponseDto } from '../dto/responses/service-request-response.dto';
 import { StoredServiceRequestResponseDto } from '../dto/responses/stored-service-request-response.dto';
 import { StoredServiceRequestDetailResponseDto, StoredServiceResponseDto } from '../dto/responses/stored-service-request-detail-response.dto';
+import { ResultConcludeResponseDto } from '../dto/responses/result-conclude-response.dto';
 import { ServiceRequestsListResponseDto, ServiceRequestStatsDto } from '../dto/responses/service-requests-list-response.dto';
 import { ResponseBuilder } from '../../../common/builders/response.builder';
 import { DualAuthGuard } from '../../auth/guards/dual-auth.guard';
@@ -123,6 +125,17 @@ export class ServiceRequestController {
         @Param('id') id: string,
     ) {
         const result = await this.storedServiceRequestService.getStoredServiceRequestById(id);
+        return ResponseBuilder.success(result);
+    }
+
+    @Get('stored/services/result-conclude')
+    @ApiOperation({
+        summary: 'Lấy resultConclude theo receptionCode (store_sr_service)',
+        description: 'Trả về danh sách kết luận (resultConclude) của các service/test ứng với mã tiếp nhận.',
+    })
+    @ApiResponse({ status: 200, description: 'Lấy thành công', type: ResultConcludeResponseDto })
+    async getResultConcludeByReceptionCode(@Query() query: GetResultConcludeByReceptionCodeDto) {
+        const result = await this.storedServiceRequestService.getResultConcludeByReceptionCode(query.receptionCode);
         return ResponseBuilder.success(result);
     }
 
