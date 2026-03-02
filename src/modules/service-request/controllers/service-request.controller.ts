@@ -14,6 +14,7 @@ import { UpdateFlagDto } from '../dto/commands/update-flag.dto';
 import { UpdateStainingMethodDto } from '../dto/commands/update-staining-method.dto';
 import { UpdateNumOfBlockDto } from '../dto/commands/update-num-of-block.dto';
 import { UpdateStoredServiceRequestDto } from '../dto/commands/update-stored-service-request.dto';
+    import { UpdateBarcodeMapGenGpbDto } from '../dto/commands/update-barcode-map-gen-gpb.dto';
 import { GetServiceRequestsDto } from '../dto/queries/get-service-requests.dto';
 import { GetResultConcludeByReceptionCodeDto } from '../dto/queries/get-result-conclude-by-reception-code.dto';
 import { SearchServiceRequestsDto } from '../dto/queries/search-service-requests.dto';
@@ -316,6 +317,42 @@ export class ServiceRequestController {
             serviceId: serviceId,
             receptionCode: dto.receptionCode,
             sampleTypeName: dto.sampleTypeName
+        });
+    }
+
+    @Patch('stored/:storedServiceReqId/barcode-map-gen-gpb')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Cập nhật BARCODE_MAP_GEN_GPB cho các service thuộc stored request',
+        description: 'Dùng id bảng BML_STORED_SERVICE_REQUESTS. Cập nhật trường barcodeMapGenGpb cho tất cả bản ghi trong BML_STORED_SR_SERVICES thuộc request này.',
+    })
+    @ApiParam({
+        name: 'storedServiceReqId',
+        description: 'ID của stored service request (BML_STORED_SERVICE_REQUESTS)',
+        example: 'f32c11f9-cab8-4f72-9776-5b41a1bc89e8',
+    })
+    @ApiResponse({ status: 200, description: 'Cập nhật thành công' })
+    @ApiResponse({ status: 404, description: 'Không tìm thấy stored service request' })
+    @ApiResponse({ status: 400, description: 'JWT authentication required' })
+    async updateBarcodeMapGenGpb(
+        @Param('storedServiceReqId') storedServiceReqId: string,
+        @Body() dto: UpdateBarcodeMapGenGpbDto,
+        @CurrentUser() currentUser: ICurrentUser | null
+    ) {
+        if (!currentUser) {
+            throw new BadRequestException(
+                'JWT authentication required. HIS token is not supported for write operations.'
+            );
+        }
+        await this.storedServiceRequestService.updateBarcodeMapGenGpb(
+            storedServiceReqId,
+            dto,
+            currentUser
+        );
+        return ResponseBuilder.success({
+            message: 'Barcode map gen GPB đã được cập nhật thành công',
+            storedServiceReqId,
+            barcodeMapGenGpb: dto.barcodeMapGenGpb ?? null,
         });
     }
 
