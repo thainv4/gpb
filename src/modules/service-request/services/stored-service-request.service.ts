@@ -929,6 +929,10 @@ export class StoredServiceRequestService {
         currentUser: CurrentUser
     ): Promise<void> {
         return this.dataSource.transaction(async (manager) => {
+            if (dto.barcodeMapGenGpb === undefined) {
+                return;
+            }
+
             const storedRequest = await this.storedRepo.findById(storedServiceReqId);
             if (!storedRequest) {
                 throw new NotFoundException(
@@ -937,9 +941,6 @@ export class StoredServiceRequestService {
             }
 
             const services = await this.serviceRepo.findByStoredServiceRequestId(storedServiceReqId);
-            if (dto.barcodeMapGenGpb === undefined) {
-                return;
-            }
             for (const svc of services) {
                 svc.barcodeMapGenGpb = dto.barcodeMapGenGpb ?? null;
                 svc.updatedBy = currentUser.id;
