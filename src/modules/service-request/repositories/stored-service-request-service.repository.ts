@@ -38,6 +38,13 @@ export class StoredServiceRequestServiceRepository implements IStoredServiceRequ
         });
     }
 
+    async findByReceptionCode(receptionCode: string): Promise<StoredServiceRequestService[]> {
+        return this.repo.find({
+            where: { receptionCode, deletedAt: IsNull() },
+            order: { testOrder: 'ASC', createdAt: 'ASC' },
+        });
+    }
+
     async findByDocumentId(documentId: number): Promise<StoredServiceRequestService | null> {
         return this.repo.findOne({
             where: { documentId, deletedAt: IsNull() },

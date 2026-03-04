@@ -177,6 +177,12 @@ export class StoredServiceRequestService extends BaseEntity {
     @Column({ name: 'DOCUMENT_ID', type: 'number', nullable: true })
     documentId?: number | null; // ID văn bản EMR (từ bảng EMR_DOCUMENT)
 
+    @Column({ name: 'BARCODE_MAP_GEN_GPB', type: 'varchar2', length: 50, nullable: true })
+    barcodeMapGenGpb?: string | null;
+
+    @Column({ name: 'RESULT_CONCLUDE_MAP_GEN_GPB', type: 'varchar2', length: 2000, nullable: true })
+    resultConcludeMapGenGpb?: string | null;
+    
     // Relationships
     @ManyToOne(() => StoredServiceRequest, sr => sr.services)
     @JoinColumn({ name: 'STORED_SERVICE_REQ_ID' })

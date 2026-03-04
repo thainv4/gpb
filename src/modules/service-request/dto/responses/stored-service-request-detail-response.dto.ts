@@ -150,6 +150,9 @@ export class StoredServiceResponseDto {
     @ApiPropertyOptional({ description: 'ID văn bản EMR (từ bảng EMR_DOCUMENT)' })
     documentId?: number | null;
 
+    @ApiPropertyOptional({ description: 'Barcode map gen GPB (BARCODE_MAP_GEN_GPB)' })
+    barcodeMapGenGpb?: string | null;
+
     // Staining Method
     @ApiPropertyOptional({ description: 'Tên phương pháp nhuộm' })
     stainingMethodName?: string | null;

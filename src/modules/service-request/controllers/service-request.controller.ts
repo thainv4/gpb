@@ -14,11 +14,14 @@ import { UpdateFlagDto } from '../dto/commands/update-flag.dto';
 import { UpdateStainingMethodDto } from '../dto/commands/update-staining-method.dto';
 import { UpdateNumOfBlockDto } from '../dto/commands/update-num-of-block.dto';
 import { UpdateStoredServiceRequestDto } from '../dto/commands/update-stored-service-request.dto';
+    import { UpdateGpbFieldsDto } from '../dto/commands/update-gpb-fields.dto';
 import { GetServiceRequestsDto } from '../dto/queries/get-service-requests.dto';
+import { GetResultConcludeByReceptionCodeDto } from '../dto/queries/get-result-conclude-by-reception-code.dto';
 import { SearchServiceRequestsDto } from '../dto/queries/search-service-requests.dto';
 import { ServiceRequestResponseDto } from '../dto/responses/service-request-response.dto';
 import { StoredServiceRequestResponseDto } from '../dto/responses/stored-service-request-response.dto';
 import { StoredServiceRequestDetailResponseDto, StoredServiceResponseDto } from '../dto/responses/stored-service-request-detail-response.dto';
+import { ResultConcludeResponseDto } from '../dto/responses/result-conclude-response.dto';
 import { ServiceRequestsListResponseDto, ServiceRequestStatsDto } from '../dto/responses/service-requests-list-response.dto';
 import { ResponseBuilder } from '../../../common/builders/response.builder';
 import { DualAuthGuard } from '../../auth/guards/dual-auth.guard';
@@ -123,6 +126,17 @@ export class ServiceRequestController {
         @Param('id') id: string,
     ) {
         const result = await this.storedServiceRequestService.getStoredServiceRequestById(id);
+        return ResponseBuilder.success(result);
+    }
+
+    @Get('stored/services/result-conclude')
+    @ApiOperation({
+        summary: 'Lấy resultConclude theo receptionCode (store_sr_service)',
+        description: 'Trả về danh sách kết luận (resultConclude) của các service/test ứng với mã tiếp nhận.',
+    })
+    @ApiResponse({ status: 200, description: 'Lấy thành công', type: ResultConcludeResponseDto })
+    async getResultConcludeByReceptionCode(@Query() query: GetResultConcludeByReceptionCodeDto) {
+        const result = await this.storedServiceRequestService.getResultConcludeByReceptionCode(query.receptionCode);
         return ResponseBuilder.success(result);
     }
 
@@ -303,6 +317,43 @@ export class ServiceRequestController {
             serviceId: serviceId,
             receptionCode: dto.receptionCode,
             sampleTypeName: dto.sampleTypeName
+        });
+    }
+
+    @Patch('stored/:storedServiceReqId/gpb-fields')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Cập nhật các trường GPB cho services thuộc stored request',
+        description: 'Cập nhật barcodeMapGenGpb và/hoặc resultConcludeMapGenGpb cho tất cả bản ghi BML_STORED_SR_SERVICES thuộc request. Gửi chỉ các field cần cập nhật.',
+    })
+    @ApiParam({
+        name: 'storedServiceReqId',
+        description: 'ID của stored service request (BML_STORED_SERVICE_REQUESTS)',
+        example: 'f32c11f9-cab8-4f72-9776-5b41a1bc89e8',
+    })
+    @ApiResponse({ status: 200, description: 'Cập nhật thành công' })
+    @ApiResponse({ status: 404, description: 'Không tìm thấy stored service request' })
+    @ApiResponse({ status: 400, description: 'JWT authentication required' })
+    async updateGpbFields(
+        @Param('storedServiceReqId') storedServiceReqId: string,
+        @Body() dto: UpdateGpbFieldsDto,
+        @CurrentUser() currentUser: ICurrentUser | null
+    ) {
+        if (!currentUser) {
+            throw new BadRequestException(
+                'JWT authentication required. HIS token is not supported for write operations.'
+            );
+        }
+        await this.storedServiceRequestService.updateGpbFields(
+            storedServiceReqId,
+            dto,
+            currentUser
+        );
+        return ResponseBuilder.success({
+            message: 'Các trường GPB đã được cập nhật thành công',
+            storedServiceReqId,
+            barcodeMapGenGpb: dto.barcodeMapGenGpb !== undefined ? dto.barcodeMapGenGpb : undefined,
+            resultConcludeMapGenGpb: dto.resultConcludeMapGenGpb !== undefined ? dto.resultConcludeMapGenGpb : undefined,
         });
     }
 

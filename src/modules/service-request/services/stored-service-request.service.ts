@@ -15,6 +15,7 @@ import { UpdateFlagDto } from '../dto/commands/update-flag.dto';
 import { UpdateStainingMethodDto } from '../dto/commands/update-staining-method.dto';
 import { UpdateNumOfBlockDto } from '../dto/commands/update-num-of-block.dto';
 import { UpdateStoredServiceRequestDto } from '../dto/commands/update-stored-service-request.dto';
+import { UpdateGpbFieldsDto } from '../dto/commands/update-gpb-fields.dto';
 import { StoredServiceRequestResponseDto } from '../dto/responses/stored-service-request-response.dto';
 import { StoredServiceRequestDetailResponseDto, StoredServiceResponseDto, WorkflowCurrentStateDto } from '../dto/responses/stored-service-request-detail-response.dto';
 import { ResultRequestDto } from '../dto/responses/result-request.dto';
@@ -547,6 +548,7 @@ export class StoredServiceRequestService {
             sampleCollectionTime: service.sampleCollectionTime,
             collectedByUserId: service.collectedByUserId,
             documentId: service.documentId,
+            barcodeMapGenGpb: service.barcodeMapGenGpb ?? null,
             stainingMethodName: stainingMethodName,
             testId: service.testId,
             isActive: service.isActive,
@@ -709,6 +711,15 @@ export class StoredServiceRequestService {
             ...result,
             request,
         };
+    }
+
+    /**
+     * Lấy resultConclude đầu tiên theo receptionCode (store_sr_service)
+     */
+    async getResultConcludeByReceptionCode(receptionCode: string): Promise<{ resultConclude: string | null }> {
+        const services = await this.serviceRepo.findByReceptionCode(receptionCode);
+        const resultConclude = services.length > 0 ? (services[0].conclude ?? null) : null;
+        return { resultConclude };
     }
 
     /**
@@ -905,6 +916,42 @@ export class StoredServiceRequestService {
 
             // 3. Lưu vào database
             await manager.save(StoredServiceRequestServiceEntity, storedService);
+        });
+    }
+
+    /**
+     * Cập nhật các trường GPB (barcodeMapGenGpb, resultConcludeMapGenGpb) cho tất cả services thuộc stored request (BML_STORED_SR_SERVICES)
+     * @param storedServiceReqId ID của bảng BML_STORED_SERVICE_REQUESTS
+     */
+    async updateGpbFields(
+        storedServiceReqId: string,
+        dto: UpdateGpbFieldsDto,
+        currentUser: CurrentUser
+    ): Promise<void> {
+        return this.dataSource.transaction(async (manager) => {
+            const storedRequest = await this.storedRepo.findById(storedServiceReqId);
+            if (!storedRequest) {
+                throw new NotFoundException(
+                    `Không tìm thấy stored service request với ID: ${storedServiceReqId}`
+                );
+            }
+
+            const hasUpdates = dto.barcodeMapGenGpb !== undefined || dto.resultConcludeMapGenGpb !== undefined;
+            if (!hasUpdates) {
+                return;
+            }
+
+            const services = await this.serviceRepo.findByStoredServiceRequestId(storedServiceReqId);
+            for (const svc of services) {
+                if (dto.barcodeMapGenGpb !== undefined) {
+                    svc.barcodeMapGenGpb = dto.barcodeMapGenGpb ?? null;
+                }
+                if (dto.resultConcludeMapGenGpb !== undefined) {
+                    svc.resultConcludeMapGenGpb = dto.resultConcludeMapGenGpb ?? null;
+                }
+                svc.updatedBy = currentUser.id;
+                await manager.save(StoredServiceRequestServiceEntity, svc);
+            }
         });
     }
 
