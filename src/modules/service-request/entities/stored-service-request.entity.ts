@@ -185,7 +185,7 @@ export class StoredServiceRequest extends BaseEntity {
     stainingMethodId?: string;
 
     @Column({ name: 'TESTING_METHOD_GEN_ID', type: 'varchar2', length: 36, nullable: true })
-    testingMethodGenId?: string;
+    testingMethodGenId?: string | null;
 
     @Column({ name: 'NUM_OF_BLOCKS', type: 'varchar2', length: 50, nullable: true })
     numOfBlock?: string;
