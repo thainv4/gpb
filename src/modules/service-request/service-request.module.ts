@@ -23,6 +23,7 @@ import { WorkflowModule } from '../workflow/workflow.module';
 import { AuthModule } from '../auth/auth.module';
 import { SampleReceptionModule } from '../sample-reception/sample-reception.module';
 import { StainingMethodModule } from '../staining-method/staining-method.module';
+import { TestingMethodGenModule } from '../testing-method-gen/testing-method-gen.module';
 
 @Module({
     imports: [
@@ -33,6 +34,7 @@ import { StainingMethodModule } from '../staining-method/staining-method.module'
         AuthModule, // Import để sử dụng DualAuthGuard
         SampleReceptionModule, // Import để inject ISampleReceptionRepository
         StainingMethodModule, // Import để inject IStainingMethodRepository
+        TestingMethodGenModule, // Import để inject ITestingMethodGenRepository
         TypeOrmModule.forFeature(
             [ServiceRequestView, HisSereServ],
             'hisConnection' // Use HIS database connection

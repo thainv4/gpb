@@ -157,6 +157,14 @@ export class StoredServiceResponseDto {
     @ApiPropertyOptional({ description: 'Tên phương pháp nhuộm' })
     stainingMethodName?: string | null;
 
+    // Testing Method Gen (từ stored request)
+    @ApiPropertyOptional({
+        description: 'Phương pháp xét nghiệm gen (từ stored request)',
+        nullable: true,
+        example: { id: 'uuid', methodName: 'Tên phương pháp' },
+    })
+    testingMethodGen?: { id: string; methodName: string } | null;
+
     // Child-specific fields
     @ApiPropertyOptional({ description: 'Test ID (cho child services)' })
     testId?: string | null;

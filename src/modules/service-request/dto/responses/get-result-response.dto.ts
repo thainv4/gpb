@@ -15,4 +15,11 @@ export class GetResultResponseDto extends EnterResultDto {
         type: ResultRequestDto,
     })
     request: ResultRequestDto;
+
+    @ApiPropertyOptional({
+        description: 'Phương pháp xét nghiệm gen (từ stored request)',
+        nullable: true,
+        example: { id: 'uuid', methodName: 'Tên phương pháp' },
+    })
+    testingMethodGen?: { id: string; methodName: string } | null;
 }
