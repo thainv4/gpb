@@ -4,6 +4,7 @@ import { IStoredServiceRequestRepository } from '../interfaces/stored-service-re
 import { IStoredServiceRequestServiceRepository } from '../interfaces/stored-service-request-service.repository.interface';
 import { ISampleReceptionRepository } from '../../sample-reception/interfaces/sample-reception.repository.interface';
 import { IStainingMethodRepository } from '../../staining-method/interfaces/staining-method.repository.interface';
+import { ITestingMethodGenRepository } from '../../testing-method-gen/interfaces/testing-method-gen.repository.interface';
 import { ServiceRequestService } from './service-request.service';
 import { StoreServiceRequestDto } from '../dto/commands/store-service-request.dto';
 import { EnterResultDto } from '../dto/commands/enter-result.dto';
@@ -38,6 +39,8 @@ export class StoredServiceRequestService {
         private readonly sampleReceptionRepository: ISampleReceptionRepository,
         @Inject('IStainingMethodRepository')
         private readonly stainingMethodRepository: IStainingMethodRepository,
+        @Inject('ITestingMethodGenRepository')
+        private readonly testingMethodGenRepository: ITestingMethodGenRepository,
         private readonly serviceRequestService: ServiceRequestService,
         private readonly workflowHistoryService: WorkflowHistoryService,
         @Inject('IWorkflowStateRepository')
@@ -492,6 +495,19 @@ export class StoredServiceRequestService {
             }
         }
 
+        // Lấy testingMethodGen từ storedServiceRequest nếu có
+        let testingMethodGen: { id: string; methodName: string } | null = null;
+        if (service.storedServiceRequest?.testingMethodGenId) {
+            try {
+                const gen = await this.testingMethodGenRepository.findById(service.storedServiceRequest.testingMethodGenId);
+                if (gen) {
+                    testingMethodGen = { id: gen.id, methodName: gen.methodName };
+                }
+            } catch (error) {
+                // Ignore errors, testingMethodGen will be null
+            }
+        }
+
         // Map children services nếu có
         let serviceTests: StoredServiceResponseDto[] | undefined = undefined;
         if (service.isChildService === 0 && service.children?.length > 0) {
@@ -550,6 +566,7 @@ export class StoredServiceRequestService {
             documentId: service.documentId,
             barcodeMapGenGpb: service.barcodeMapGenGpb ?? null,
             stainingMethodName: stainingMethodName,
+            testingMethodGen: testingMethodGen,
             testId: service.testId,
             isActive: service.isActive,
             serviceTests: serviceTests,
@@ -707,9 +724,22 @@ export class StoredServiceRequestService {
             note: storedRequest.note ?? undefined,
         };
 
+        let testingMethodGen: { id: string; methodName: string } | null = null;
+        if (storedRequest.testingMethodGenId) {
+            try {
+                const gen = await this.testingMethodGenRepository.findById(storedRequest.testingMethodGenId);
+                if (gen) {
+                    testingMethodGen = { id: gen.id, methodName: gen.methodName };
+                }
+            } catch (error) {
+                // Ignore, testingMethodGen stays null
+            }
+        }
+
         return {
             ...result,
             request,
+            testingMethodGen,
         };
     }
 
@@ -983,6 +1013,11 @@ export class StoredServiceRequestService {
 
             if (dto.stainingMethodId !== undefined) {
                 storedRequest.stainingMethodId = dto.stainingMethodId ?? null;
+                hasChanges = true;
+            }
+
+            if (dto.testingMethodGenId !== undefined) {
+                storedRequest.testingMethodGenId = dto.testingMethodGenId ?? null;
                 hasChanges = true;
             }
 

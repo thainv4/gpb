@@ -25,6 +25,17 @@ export class UpdateStoredServiceRequestDto {
     stainingMethodId?: string | null;
 
     @ApiPropertyOptional({
+        description: 'ID phương pháp xét nghiệm gen (BML_TESTING_METHOD_GEN.ID). Gửi null để xóa.',
+        example: 'a1b2c3d4-5678-4e90-abcd-ef1234567890',
+        nullable: true,
+        maxLength: 36,
+    })
+    @IsOptional()
+    @IsString()
+    @MaxLength(36, { message: 'testingMethodGenId không được dài quá 36 ký tự' })
+    testingMethodGenId?: string | null;
+
+    @ApiPropertyOptional({
         description: 'Số lượng block (text). Gửi null để xóa.',
         example: '5',
         nullable: true,

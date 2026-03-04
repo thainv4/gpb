@@ -360,7 +360,7 @@ export class ServiceRequestController {
     @Patch('stored/:id')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
-        summary: 'Cập nhật stored service request (flag, stainingMethodId, numOfBlock)',
+        summary: 'Cập nhật stored service request (flag, stainingMethodId, testingMethodGenId, numOfBlock)',
         description: 'Cập nhật một hoặc nhiều trường của stored service request. Chỉ các field được gửi lên sẽ được cập nhật. Có thể gửi null để xóa giá trị.'
     })
     @ApiParam({
@@ -401,6 +401,7 @@ export class ServiceRequestController {
         const updatedFields: string[] = [];
         if (dto.flag !== undefined) updatedFields.push('flag');
         if (dto.stainingMethodId !== undefined) updatedFields.push('stainingMethodId');
+        if (dto.testingMethodGenId !== undefined) updatedFields.push('testingMethodGenId');
         if (dto.numOfBlock !== undefined) updatedFields.push('numOfBlock');
 
         return ResponseBuilder.success({
@@ -409,6 +410,7 @@ export class ServiceRequestController {
             updatedFields: updatedFields,
             ...(dto.flag !== undefined && { flag: dto.flag }),
             ...(dto.stainingMethodId !== undefined && { stainingMethodId: dto.stainingMethodId }),
+            ...(dto.testingMethodGenId !== undefined && { testingMethodGenId: dto.testingMethodGenId }),
             ...(dto.numOfBlock !== undefined && { numOfBlock: dto.numOfBlock }),
         });
     }
