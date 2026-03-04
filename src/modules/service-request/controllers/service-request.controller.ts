@@ -14,7 +14,7 @@ import { UpdateFlagDto } from '../dto/commands/update-flag.dto';
 import { UpdateStainingMethodDto } from '../dto/commands/update-staining-method.dto';
 import { UpdateNumOfBlockDto } from '../dto/commands/update-num-of-block.dto';
 import { UpdateStoredServiceRequestDto } from '../dto/commands/update-stored-service-request.dto';
-    import { UpdateBarcodeMapGenGpbDto } from '../dto/commands/update-barcode-map-gen-gpb.dto';
+    import { UpdateGpbFieldsDto } from '../dto/commands/update-gpb-fields.dto';
 import { GetServiceRequestsDto } from '../dto/queries/get-service-requests.dto';
 import { GetResultConcludeByReceptionCodeDto } from '../dto/queries/get-result-conclude-by-reception-code.dto';
 import { SearchServiceRequestsDto } from '../dto/queries/search-service-requests.dto';
@@ -320,11 +320,11 @@ export class ServiceRequestController {
         });
     }
 
-    @Patch('stored/:storedServiceReqId/barcode-map-gen-gpb')
+    @Patch('stored/:storedServiceReqId/gpb-fields')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
-        summary: 'Cập nhật BARCODE_MAP_GEN_GPB cho các service thuộc stored request',
-        description: 'Dùng id bảng BML_STORED_SERVICE_REQUESTS. Cập nhật trường barcodeMapGenGpb cho tất cả bản ghi trong BML_STORED_SR_SERVICES thuộc request này.',
+        summary: 'Cập nhật các trường GPB cho services thuộc stored request',
+        description: 'Cập nhật barcodeMapGenGpb và/hoặc resultConcludeMapGenGpb cho tất cả bản ghi BML_STORED_SR_SERVICES thuộc request. Gửi chỉ các field cần cập nhật.',
     })
     @ApiParam({
         name: 'storedServiceReqId',
@@ -334,9 +334,9 @@ export class ServiceRequestController {
     @ApiResponse({ status: 200, description: 'Cập nhật thành công' })
     @ApiResponse({ status: 404, description: 'Không tìm thấy stored service request' })
     @ApiResponse({ status: 400, description: 'JWT authentication required' })
-    async updateBarcodeMapGenGpb(
+    async updateGpbFields(
         @Param('storedServiceReqId') storedServiceReqId: string,
-        @Body() dto: UpdateBarcodeMapGenGpbDto,
+        @Body() dto: UpdateGpbFieldsDto,
         @CurrentUser() currentUser: ICurrentUser | null
     ) {
         if (!currentUser) {
@@ -344,15 +344,16 @@ export class ServiceRequestController {
                 'JWT authentication required. HIS token is not supported for write operations.'
             );
         }
-        await this.storedServiceRequestService.updateBarcodeMapGenGpb(
+        await this.storedServiceRequestService.updateGpbFields(
             storedServiceReqId,
             dto,
             currentUser
         );
         return ResponseBuilder.success({
-            message: 'Barcode map gen GPB đã được cập nhật thành công',
+            message: 'Các trường GPB đã được cập nhật thành công',
             storedServiceReqId,
-            barcodeMapGenGpb: dto.barcodeMapGenGpb ?? null,
+            barcodeMapGenGpb: dto.barcodeMapGenGpb !== undefined ? dto.barcodeMapGenGpb : undefined,
+            resultConcludeMapGenGpb: dto.resultConcludeMapGenGpb !== undefined ? dto.resultConcludeMapGenGpb : undefined,
         });
     }
 

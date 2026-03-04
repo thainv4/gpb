@@ -179,6 +179,9 @@ export class StoredServiceRequestService extends BaseEntity {
 
     @Column({ name: 'BARCODE_MAP_GEN_GPB', type: 'varchar2', length: 50, nullable: true })
     barcodeMapGenGpb?: string | null;
+
+    @Column({ name: 'RESULT_CONCLUDE_MAP_GEN_GPB', type: 'varchar2', length: 2000, nullable: true })
+    resultConcludeMapGenGpb?: string | null;
     
     // Relationships
     @ManyToOne(() => StoredServiceRequest, sr => sr.services)
