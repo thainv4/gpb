@@ -75,6 +75,9 @@ export class StoredServiceResponseDto {
     @ApiPropertyOptional({ description: 'Bình luận về kết quả' })
     resultComment?: string | null;
 
+    @ApiPropertyOptional({ description: 'Khuyến nghị / gợi ý kết quả (RESULT_RECOMMENT)' })
+    resultRecomment?: string | null;
+
     @ApiPropertyOptional({ description: 'Kết quả xét nghiệm (CLOB)' })
     resultText?: string | null;
 

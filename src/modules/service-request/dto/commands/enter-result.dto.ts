@@ -105,5 +105,17 @@ export class EnterResultDto {
     @IsString()
     @MaxLength(2000, { message: 'Bình luận kết quả không được quá 2000 ký tự' })
     resultComment?: string | null;
+
+    @ApiPropertyOptional({ 
+        description: 'Khuyến nghị / gợi ý kết quả (RESULT_RECOMMENT)', 
+        example: 'Khuyến nghị theo dõi', 
+        maxLength: 2000,
+        nullable: true
+    })
+    @IsOptional()
+    @ValidateIf((o, v) => v !== null)
+    @IsString()
+    @MaxLength(2000, { message: 'resultRecomment không được quá 2000 ký tự' })
+    resultRecomment?: string | null;
 }
 
