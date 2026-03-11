@@ -10,6 +10,9 @@ export class WorkflowHistoryActionInfoResponseDto {
     @ApiPropertyOptional({ description: 'Họ tên đầy đủ của user (FULL_NAME từ bảng BML_USERS)' })
     actionUserFullName?: string | null;
 
+    @ApiPropertyOptional({ description: 'ID trạng thái workflow (TO_STATE_ID / BML_WORKFLOW_STATES)' })
+    stateId?: string | null;
+
     @ApiPropertyOptional({ description: 'Tên trạng thái workflow (STATE_NAME từ bảng BML_WORKFLOW_STATES)' })
     stateName?: string | null;
 

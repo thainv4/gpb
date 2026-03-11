@@ -92,6 +92,12 @@ export class UserController {
     // ========== QUERY ENDPOINTS (Read Operations) ==========
 
     @Get()
+    @ApiOperation({ summary: 'Lấy danh sách user', description: 'Cho phép truyền search, limit, offset (phân trang).' })
+    @ApiQuery({ name: 'search', required: false, type: String, description: 'Tìm kiếm' })
+    @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Số bản ghi mỗi trang (1-100)', example: 100 })
+    @ApiQuery({ name: 'offset', required: false, type: Number, description: 'Vị trí bắt đầu', example: 0 })
+    @ApiQuery({ name: 'status', required: false, type: Boolean, description: 'Lọc theo trạng thái active' })
+    @ApiQuery({ name: 'departmentId', required: false, type: String, description: 'Lọc theo ID khoa/phòng ban (Profile.departmentId)' })
     async getUsers(@Query() query: GetUsersDto) {
         const result = await this.userService.getUsers(query);
         return ResponseBuilder.success(result);

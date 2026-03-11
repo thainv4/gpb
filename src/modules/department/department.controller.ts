@@ -132,7 +132,6 @@ export class DepartmentController {
         summary: 'Lấy danh sách khoa', 
         description: 'Lấy danh sách tất cả các khoa có phân trang, tìm kiếm và lọc. This endpoint is public and does not require authentication.' 
     })
-    @ApiQuery({ type: GetDepartmentsDto })
     @ApiResponse({ status: 200, description: 'Danh sách khoa được trả về thành công', type: DepartmentsListResponseDto })
     async getDepartments(@Query() query: GetDepartmentsDto) {
         const result = await this.departmentService.getDepartments(query);

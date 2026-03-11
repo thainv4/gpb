@@ -60,6 +60,13 @@ export class UserResponseDto {
     address?: string;
 
     @ApiProperty({
+        description: 'ID khoa/phòng ban (từ Profile)',
+        example: 'dept-uuid-here',
+        required: false
+    })
+    departmentId?: string | null;
+
+    @ApiProperty({
         description: 'Account creation timestamp',
         example: '2024-01-15T10:30:00.000Z'
     })

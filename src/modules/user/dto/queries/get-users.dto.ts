@@ -23,4 +23,8 @@ export class GetUsersDto {
     @IsBoolean()
     @Transform(({ value }) => value === 'true')
     status?: boolean;
+
+    @IsOptional()
+    @IsString()
+    departmentId?: string;
 }
