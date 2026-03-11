@@ -8,6 +8,7 @@ import { DataLoaderModule } from '../../shared/dataloaders/dataloader.module';
 import { ServicesModule } from '../../shared/services/services.module';
 import { CurrentUserContextService } from '../../common/services/current-user-context.service';
 import { AuthModule } from '../auth/auth.module';
+import { ProfileModule } from '../profile/profile.module';
 
 @Module({
     imports: [
@@ -15,6 +16,7 @@ import { AuthModule } from '../auth/auth.module';
         DataLoaderModule,
         ServicesModule,
         AuthModule, // Import để sử dụng DualAuthGuard
+        ProfileModule, // Import để lấy resultFormType từ user profile.department
     ],
     controllers: [UserRoomController],
     providers: [

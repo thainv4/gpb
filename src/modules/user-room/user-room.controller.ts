@@ -6,6 +6,7 @@ import { UpdateUserRoomDto } from './dto/commands/update-user-room.dto';
 import { GetUserRoomsDto } from './dto/queries/get-user-rooms.dto';
 import { UserRoomResponseDto } from './dto/responses/user-room-response.dto';
 import { GetUserRoomsResult } from './dto/responses/user-rooms-list-response.dto';
+import { MyRoomsResponseDto } from './dto/responses/my-rooms-response.dto';
 import { ResponseBuilder } from '../../common/builders/response.builder';
 import { DualAuthGuard } from '../auth/guards/dual-auth.guard';
 import { BadRequestException } from '@nestjs/common';
@@ -113,12 +114,12 @@ export class UserRoomController {
     @Get('my-rooms')
     @ApiOperation({
         summary: 'Lấy danh sách phòng của user hiện tại',
-        description: 'User lấy danh sách phòng được phân quyền cho mình'
+        description: 'User lấy danh sách phòng được phân quyền cho mình. resultFormType lấy từ Profile → Department, đưa ra ngoài (không nằm trong từng phần tử mảng).'
     })
-    @ApiResponse({ status: 200, description: 'Danh sách phòng của user hiện tại', type: [UserRoomResponseDto] })
+    @ApiResponse({ status: 200, description: 'resultFormType + danh sách phòng', type: MyRoomsResponseDto })
     async getMyRooms(@CurrentUser() currentUser: ICurrentUser) {
-        const userRooms = await this.userRoomService.getUserRoomsByUserId(currentUser.id);
-        return ResponseBuilder.success(userRooms);
+        const result = await this.userRoomService.getMyRooms(currentUser.id);
+        return ResponseBuilder.success(result);
     }
 
     @Get(':userRoomId')
