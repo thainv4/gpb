@@ -515,6 +515,7 @@ export class WorkflowHistoryService {
         return workflowHistories.map(wf => ({
             actionUsername: wf.actionUsername ?? null,
             actionUserFullName: userMap.get(wf.actionUserId)?.fullName ?? null,
+            stateId: wf.toStateId ?? null,
             stateName: wf.toState?.stateName ?? null,
             stateOrder: wf.toState?.stateOrder ?? null,
             createdAt: wf.createdAt,

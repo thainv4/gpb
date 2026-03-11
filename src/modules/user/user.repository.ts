@@ -14,12 +14,14 @@ export class UserRepository implements IUserRepository {
     async findById(id: string): Promise<User | null> {
         return this.userRepository.findOne({
             where: { id, deletedAt: IsNull() },
+            relations: ['profile'],
         });
     }
 
     async findByEmail(email: string): Promise<User | null> {
         return this.userRepository.findOne({
             where: { email, deletedAt: IsNull() },
+            relations: ['profile'],
         });
     }
 
@@ -44,9 +46,22 @@ export class UserRepository implements IUserRepository {
         });
     }
 
-    async findActiveUsers(limit: number, offset: number): Promise<[User[], number]> {
+    async findActiveUsers(limit: number, offset: number, departmentId?: string): Promise<[User[], number]> {
+        if (departmentId) {
+            const qb = this.userRepository
+                .createQueryBuilder('user')
+                .leftJoinAndSelect('user.profile', 'profile')
+                .where('user.isActive = :isActive', { isActive: true })
+                .andWhere('user.deletedAt IS NULL')
+                .andWhere('profile.departmentId = :departmentId', { departmentId })
+                .orderBy('user.createdAt', 'DESC')
+                .take(limit)
+                .skip(offset);
+            return qb.getManyAndCount();
+        }
         return this.userRepository.findAndCount({
             where: { isActive: true, deletedAt: IsNull() },
+            relations: ['profile'],
             take: limit,
             skip: offset,
             order: { createdAt: 'DESC' },
