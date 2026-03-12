@@ -67,6 +67,13 @@ export class UserResponseDto {
     departmentId?: string | null;
 
     @ApiProperty({
+        description: 'Tên khoa/phòng ban (từ Profile → Department)',
+        example: 'Khoa Tim Mạch',
+        required: false
+    })
+    departmentName?: string | null;
+
+    @ApiProperty({
         description: 'Account creation timestamp',
         example: '2024-01-15T10:30:00.000Z'
     })
