@@ -137,9 +137,14 @@ export class UserService extends BaseService {
     }
 
     async getUsers(query: GetUsersDto): Promise<GetUsersResult> {
-        const { limit = 10, offset = 0, search, status, departmentId } = query;
+        const { limit = 20, offset = 0, search, status, departmentId } = query;
 
-        const [users, total] = await this.userRepository.findActiveUsers(limit, offset, departmentId);
+        const [users, total] = await this.userRepository.findActiveUsers(
+            limit,
+            offset,
+            departmentId,
+            search,
+        );
 
         return {
             users: users.map(user => this.mapUserToResponseDto(user)),

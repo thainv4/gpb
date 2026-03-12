@@ -7,5 +7,10 @@ export interface IUserRepository {
     findByIds(ids: string[]): Promise<User[]>;
     save(user: User): Promise<User>;
     delete(id: string): Promise<void>;
-    findActiveUsers(limit: number, offset: number, departmentId?: string): Promise<[User[], number]>;
+    findActiveUsers(
+        limit: number,
+        offset: number,
+        departmentId?: string,
+        search?: string,
+    ): Promise<[User[], number]>;
 }

@@ -46,18 +46,33 @@ export class UserRepository implements IUserRepository {
         });
     }
 
-    async findActiveUsers(limit: number, offset: number, departmentId?: string): Promise<[User[], number]> {
-        if (departmentId) {
+    async findActiveUsers(
+        limit: number,
+        offset: number,
+        departmentId?: string,
+        search?: string,
+    ): Promise<[User[], number]> {
+        const useFilters = !!departmentId || !!search?.trim();
+        if (useFilters) {
             const qb = this.userRepository
                 .createQueryBuilder('user')
                 .leftJoinAndSelect('user.profile', 'profile')
                 .leftJoinAndSelect('profile.department', 'department')
                 .where('user.isActive = :isActive', { isActive: true })
                 .andWhere('user.deletedAt IS NULL')
-                .andWhere('profile.departmentId = :departmentId', { departmentId })
                 .orderBy('user.createdAt', 'DESC')
                 .take(limit)
                 .skip(offset);
+            if (departmentId) {
+                qb.andWhere('profile.departmentId = :departmentId', { departmentId });
+            }
+            if (search?.trim()) {
+                const searchPattern = `%${search.trim()}%`;
+                qb.andWhere(
+                    '(LOWER(user.fullName) LIKE LOWER(:searchPattern) OR LOWER(user.username) LIKE LOWER(:searchPattern))',
+                    { searchPattern },
+                );
+            }
             return qb.getManyAndCount();
         }
         return this.userRepository.findAndCount({
