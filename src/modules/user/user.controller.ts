@@ -93,7 +93,7 @@ export class UserController {
 
     @Get()
     @ApiOperation({ summary: 'Lấy danh sách user', description: 'Cho phép truyền search, limit, offset (phân trang).' })
-    @ApiQuery({ name: 'search', required: false, type: String, description: 'Tìm kiếm' })
+    @ApiQuery({ name: 'search', required: false, type: String, description: 'Tìm theo họ tên (fullName) hoặc username; không cần nhập đủ, tìm partial' })
     @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Số bản ghi mỗi trang (1-100)', example: 100 })
     @ApiQuery({ name: 'offset', required: false, type: Number, description: 'Vị trí bắt đầu', example: 0 })
     @ApiQuery({ name: 'status', required: false, type: Boolean, description: 'Lọc theo trạng thái active' })
