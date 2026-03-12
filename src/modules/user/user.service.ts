@@ -169,6 +169,7 @@ export class UserService extends BaseService {
             dateOfBirth: user.dateOfBirth,
             address: user.address,
             departmentId: user.profile?.departmentId ?? null,
+            departmentName: user.profile?.department?.departmentName ?? null,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
         };
