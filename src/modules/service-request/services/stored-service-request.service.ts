@@ -298,28 +298,16 @@ export class StoredServiceRequestService {
         // Load workflow current state
         let workflowCurrentState: WorkflowCurrentStateDto | null = null;
         try {
-            const currentState = await this.workflowHistoryService.getCurrentState(storedRequest.id, null);
+            const currentState = await this.workflowHistoryService.getCurrentState(
+                storedRequest.id,
+                null,
+            );
             if (currentState) {
-                // Get state info from WorkflowState if needed
-                let stateCode: string | undefined;
-                let stateName: string | undefined;
-                if (currentState.toStateId) {
-                    try {
-                        const state = await this.workflowStateRepo.findById(currentState.toStateId);
-                        if (state) {
-                            stateCode = state.stateCode;
-                            stateName = state.stateName;
-                        }
-                    } catch (error) {
-                        // Ignore
-                    }
-                }
-
                 workflowCurrentState = {
                     id: currentState.id,
                     toStateId: currentState.toStateId,
-                    stateCode,
-                    stateName,
+                    stateCode: currentState.toState?.stateCode,
+                    stateName: currentState.toState?.stateName,
                     actionType: currentState.actionType,
                     startedAt: currentState.startedAt,
                     actionTimestamp: currentState.actionTimestamp,
@@ -333,11 +321,14 @@ export class StoredServiceRequestService {
             console.warn('Failed to load workflow current state:', error);
         }
 
-        // Load staining method name if stainingMethodId exists
+        // Load staining method name & testing method gen once per stored request
         let stainingMethodName: string | null = null;
+        let testingMethodGen: { id: string; methodName: string } | null = null;
         if (storedRequest.stainingMethodId) {
             try {
-                const stainingMethod = await this.stainingMethodRepository.findById(storedRequest.stainingMethodId);
+                const stainingMethod = await this.stainingMethodRepository.findById(
+                    storedRequest.stainingMethodId,
+                );
                 if (stainingMethod) {
                     stainingMethodName = stainingMethod.methodName;
                 }
@@ -346,6 +337,21 @@ export class StoredServiceRequestService {
                 console.warn('Failed to load staining method:', error);
             }
         }
+        if (storedRequest.testingMethodGenId) {
+            try {
+                const gen = await this.testingMethodGenRepository.findById(
+                    storedRequest.testingMethodGenId,
+                );
+                if (gen) {
+                    testingMethodGen = { id: gen.id, methodName: gen.methodName };
+                }
+            } catch (error) {
+                console.warn('Failed to load testing method gen:', error);
+            }
+        }
+
+        // Cache SampleReception lookups by receptionCode to avoid duplicate queries
+        const sampleTypeCache = new Map<string, string | null>();
 
         // Map services (parent + children)
         const servicesMap = new Map<string, StoredServiceResponseDto>();
@@ -354,7 +360,14 @@ export class StoredServiceRequestService {
         for (const service of storedRequest.services || []) {
             if (service.isChildService === 0) {
                 // Parent service
-                servicesMap.set(service.id, await this.mapServiceToDto(service));
+                servicesMap.set(
+                    service.id,
+                    await this.mapServiceToDto(service, {
+                        stainingMethodName,
+                        testingMethodGen,
+                        sampleTypeCache,
+                    }),
+                );
             }
         }
 
@@ -366,7 +379,13 @@ export class StoredServiceRequestService {
                     if (!parent.serviceTests) {
                         parent.serviceTests = [];
                     }
-                    parent.serviceTests.push(await this.mapServiceToDto(service));
+                    parent.serviceTests.push(
+                        await this.mapServiceToDto(service, {
+                            stainingMethodName,
+                            testingMethodGen,
+                            sampleTypeCache,
+                        }),
+                    );
                 }
             }
         }
@@ -451,68 +470,97 @@ export class StoredServiceRequestService {
      */
     async getStoredServiceById(serviceId: string): Promise<StoredServiceResponseDto> {
         const service = await this.serviceRepo.findByIdWithRelations(serviceId);
-        
+
         if (!service) {
             throw new NotFoundException(`Stored Service với ID ${serviceId} không tìm thấy`);
         }
-        
+
+        // Preload staining method & testing method gen once per stored request (if available)
+        let stainingMethodName: string | null = null;
+        let testingMethodGen: { id: string; methodName: string } | null = null;
+        if (service.storedServiceRequest?.stainingMethodId) {
+            try {
+                const method = await this.stainingMethodRepository.findById(
+                    service.storedServiceRequest.stainingMethodId,
+                );
+                if (method) {
+                    stainingMethodName = method.methodName;
+                }
+            } catch (error) {
+                console.warn('Failed to load staining method for service:', error);
+            }
+        }
+        if (service.storedServiceRequest?.testingMethodGenId) {
+            try {
+                const gen = await this.testingMethodGenRepository.findById(
+                    service.storedServiceRequest.testingMethodGenId,
+                );
+                if (gen) {
+                    testingMethodGen = { id: gen.id, methodName: gen.methodName };
+                }
+            } catch (error) {
+                console.warn('Failed to load testing method gen for service:', error);
+            }
+        }
+        const sampleTypeCache = new Map<string, string | null>();
+
         // Load children nếu là parent service
         if (service.isChildService === 0) {
             const children = await this.serviceRepo.findByParentServiceId(serviceId);
             service.children = children;
         }
-        
-        return await this.mapServiceToDto(service);
+
+        return await this.mapServiceToDto(service, {
+            stainingMethodName,
+            testingMethodGen,
+            sampleTypeCache,
+        });
     }
 
     /**
      * Map Service Entity to DTO
      */
-    private async mapServiceToDto(service: StoredServiceRequestServiceEntity): Promise<StoredServiceResponseDto> {
-        // Lấy sampleTypeId từ SampleReception nếu có receptionCode
+    private async mapServiceToDto(
+        service: StoredServiceRequestServiceEntity,
+        context: {
+            stainingMethodName: string | null;
+            testingMethodGen: { id: string; methodName: string } | null;
+            sampleTypeCache: Map<string, string | null>;
+        },
+    ): Promise<StoredServiceResponseDto> {
+        const { stainingMethodName, testingMethodGen, sampleTypeCache } = context;
+
+        // Lấy sampleTypeId từ SampleReception nếu có receptionCode (dùng cache để tránh query trùng)
         let sampleTypeId: string | null = null;
         if (service.receptionCode) {
-            try {
-                const sampleReception = await this.sampleReceptionRepository.findByCode(service.receptionCode);
-                if (sampleReception?.sampleTypeId) {
-                    sampleTypeId = sampleReception.sampleTypeId;
+            if (sampleTypeCache.has(service.receptionCode)) {
+                sampleTypeId = sampleTypeCache.get(service.receptionCode) ?? null;
+            } else {
+                try {
+                    const sampleReception =
+                        await this.sampleReceptionRepository.findByReceptionCode(
+                            service.receptionCode,
+                        );
+                    sampleTypeId = sampleReception?.sampleTypeId ?? null;
+                    sampleTypeCache.set(service.receptionCode, sampleTypeId);
+                } catch (error) {
+                    // Ignore errors, sampleTypeId will be null
+                    sampleTypeCache.set(service.receptionCode, null);
                 }
-            } catch (error) {
-                // Ignore errors, sampleTypeId will be null
             }
         }
 
-        // Lấy stainingMethodName từ storedServiceRequest nếu có
-        let stainingMethodName: string | null = null;
-        if (service.storedServiceRequest?.stainingMethodId) {
-            try {
-                const method = await this.stainingMethodRepository.findById(service.storedServiceRequest.stainingMethodId);
-                if (method) {
-                    stainingMethodName = method.methodName;
-                }
-            } catch (error) {
-                // Ignore errors, stainingMethodName will be null
-            }
-        }
-
-        // Lấy testingMethodGen từ storedServiceRequest nếu có
-        let testingMethodGen: { id: string; methodName: string } | null = null;
-        if (service.storedServiceRequest?.testingMethodGenId) {
-            try {
-                const gen = await this.testingMethodGenRepository.findById(service.storedServiceRequest.testingMethodGenId);
-                if (gen) {
-                    testingMethodGen = { id: gen.id, methodName: gen.methodName };
-                }
-            } catch (error) {
-                // Ignore errors, testingMethodGen will be null
-            }
-        }
-
-        // Map children services nếu có
+        // Map children services nếu có (dùng lại cùng context/caches)
         let serviceTests: StoredServiceResponseDto[] | undefined = undefined;
         if (service.isChildService === 0 && service.children?.length > 0) {
             serviceTests = await Promise.all(
-                service.children.map(child => this.mapServiceToDto(child))
+                service.children.map(child =>
+                    this.mapServiceToDto(child, {
+                        stainingMethodName,
+                        testingMethodGen,
+                        sampleTypeCache,
+                    }),
+                ),
             );
         }
 
