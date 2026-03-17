@@ -1,0 +1,19 @@
+---
+description: Quy ước tối ưu query & hiệu năng
+globs: src/**/*.ts
+alwaysApply: false
+---
+
+# Truy vấn & hiệu năng
+
+- Hạn chế N+1 query; ưu tiên join/batch query hoặc dùng relation loader của ORM.
+- Không lặp lại cùng một query lớn trong vòng lặp; thay bằng một query tổng hợp nếu có thể.
+- Với API trả về danh sách lớn:
+  - Luôn có **paging** (limit/offset hoặc cursor-based).
+  - Không trả về field nặng, không cần thiết (ví dụ blob, history rất dài) khi không dùng.
+
+# Bộ nhớ & xử lý lớn
+
+- Khi xử lý tập dữ liệu lớn (file import, batch process), ưu tiên:
+  - Stream hoặc chia nhỏ batch.
+  - Ghi chú rõ **giới hạn kích thước** mong muốn.
