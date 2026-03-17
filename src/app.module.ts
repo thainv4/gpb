@@ -37,6 +37,7 @@ import { HisPacsModule } from './modules/his-pacs/his-pacs.module';
 import { StainingMethodModule } from './modules/staining-method/staining-method.module';
 import { TestingMethodGenModule } from './modules/testing-method-gen/testing-method-gen.module';
 import { StoreSignedDocumentModule } from './modules/store-signed-document/store-signed-document.module';
+import { DeviceOutboundModule } from './modules/device-outbound/device-outbound.module';
 import { HealthController } from './health.controller';
 
 // Shared
@@ -98,6 +99,7 @@ import { ServicesModule } from './shared/services/services.module';
         StainingMethodModule,
         TestingMethodGenModule,
         StoreSignedDocumentModule,
+        DeviceOutboundModule,
     ],
     controllers: [HealthController],
     providers: [],

@@ -1,0 +1,21 @@
+---
+description: Chuẩn code cốt lõi cho project
+alwaysApply: true
+---
+
+# Chuẩn chung
+
+- Luôn ưu tiên **đọc dễ** hơn “viết nhanh”.
+- Tất cả code backend dùng **TypeScript strict**, hạn chế `any` trừ khi bất khả kháng (và phải ghi chú rõ lý do).
+- Tên biến, hàm, class phải **có nghĩa, rõ domain**, tránh viết tắt quá mức.
+
+# Lỗi & logging
+
+- Không nuốt lỗi im lặng (không `catch (e) {}` trống).
+- Khi log lỗi, luôn log kèm **context** (id request, userId, payload quan trọng).
+- Ưu tiên dùng logger chung của project thay vì `console.log`.
+
+# Kiểm thử
+
+- Khi thêm logic phức tạp, nên gợi ý hoặc bổ sung test unit/e2e tương ứng.
+- Không viết code phụ thuộc trực tiếp thời gian/thứ tự mà không ghi chú rõ (ví dụ: cron, queue).
