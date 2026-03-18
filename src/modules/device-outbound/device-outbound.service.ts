@@ -4,6 +4,7 @@ import { IDeviceOutboundRepository } from './interfaces/device-outbound.reposito
 import { IStoredServiceRequestServiceRepository } from '../service-request/interfaces/stored-service-request-service.repository.interface';
 import { DeviceOutbound } from './entities/device-outbound.entity';
 import { CreateDeviceOutboundDto } from './dto/commands/create-device-outbound.dto';
+import { BatchCreateDeviceOutboundDto } from './dto/commands/batch-create-device-outbound.dto';
 import { UpdateDeviceOutboundDto } from './dto/commands/update-device-outbound.dto';
 import { GetDeviceOutboundListDto } from './dto/queries/get-device-outbound-list.dto';
 import { DeviceOutboundResponseDto } from './dto/responses/device-outbound-response.dto';
@@ -51,6 +52,43 @@ export class DeviceOutboundService extends BaseService {
 
         const saved = await this.deviceOutboundRepo.save(entity);
         return this.toResponseDto(saved);
+    }
+
+    /**
+     * Tạo nhiều bản ghi Device Outbound trong một lần gọi (batch).
+     * Thực hiện trong transaction, nếu một dòng lỗi thì rollback toàn bộ.
+     */
+    async createBatch(
+        dto: BatchCreateDeviceOutboundDto,
+        currentUser: CurrentUser,
+    ): Promise<DeviceOutboundResponseDto[]> {
+        this.currentUserContext.setCurrentUser(currentUser);
+
+        const receptionCode = dto.receptionCode.trim();
+        const serviceCode = dto.serviceCode.trim();
+
+        return this.dataSource.transaction(async (manager) => {
+            const repo = manager.getRepository(DeviceOutbound);
+            const results: DeviceOutboundResponseDto[] = [];
+
+            for (const item of dto.items) {
+                const blockId = `${receptionCode}A.${item.blockNumber}`;
+                const slideId = `${receptionCode}A.${item.blockNumber}.${item.slideNumber}`;
+
+                const entity = new DeviceOutbound();
+                entity.receptionCode = receptionCode;
+                entity.serviceCode = serviceCode;
+                entity.blockId = blockId;
+                entity.slideId = slideId;
+                entity.method = item.method;
+                this.setAuditFields(entity, false);
+
+                const saved = await repo.save(entity);
+                results.push(this.toResponseDto(saved));
+            }
+
+            return results;
+        });
     }
 
     /**

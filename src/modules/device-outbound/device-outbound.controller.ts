@@ -13,6 +13,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { DeviceOutboundService } from './device-outbound.service';
 import { CreateDeviceOutboundDto } from './dto/commands/create-device-outbound.dto';
+import { BatchCreateDeviceOutboundDto } from './dto/commands/batch-create-device-outbound.dto';
 import { UpdateDeviceOutboundDto } from './dto/commands/update-device-outbound.dto';
 import { GetDeviceOutboundListDto } from './dto/queries/get-device-outbound-list.dto';
 import { DeviceOutboundResponseDto } from './dto/responses/device-outbound-response.dto';
@@ -49,6 +50,27 @@ export class DeviceOutboundController {
             );
         }
         const result = await this.deviceOutboundService.create(dto, currentUser);
+        return ResponseBuilder.success(result, HttpStatus.CREATED);
+    }
+
+    @Post('batch')
+    @ApiOperation({
+        summary: 'Tạo nhiều bản ghi xuất thiết bị (batch)',
+        description:
+            'Tạo nhiều bản ghi Device Outbound trong một lần gọi. Block_ID và Slide_id được tính tự động từ receptionCode, blockNumber, slideNumber. Thực hiện trong transaction, nếu một dòng lỗi thì rollback toàn bộ.',
+    })
+    @ApiResponse({ status: 201, description: 'Tạo thành công', type: [DeviceOutboundResponseDto] })
+    @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
+    async createBatch(
+        @Body() dto: BatchCreateDeviceOutboundDto,
+        @CurrentUser() currentUser: ICurrentUser | null,
+    ) {
+        if (!currentUser) {
+            throw new BadRequestException(
+                'JWT authentication required for device outbound. HIS token is not supported for write operations.',
+            );
+        }
+        const result = await this.deviceOutboundService.createBatch(dto, currentUser);
         return ResponseBuilder.success(result, HttpStatus.CREATED);
     }
 
