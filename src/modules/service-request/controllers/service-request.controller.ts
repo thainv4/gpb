@@ -14,15 +14,17 @@ import { UpdateFlagDto } from '../dto/commands/update-flag.dto';
 import { UpdateStainingMethodDto } from '../dto/commands/update-staining-method.dto';
 import { UpdateNumOfBlockDto } from '../dto/commands/update-num-of-block.dto';
 import { UpdateStoredServiceRequestDto } from '../dto/commands/update-stored-service-request.dto';
-    import { UpdateGpbFieldsDto } from '../dto/commands/update-gpb-fields.dto';
+import { UpdateGpbFieldsDto } from '../dto/commands/update-gpb-fields.dto';
 import { GetServiceRequestsDto } from '../dto/queries/get-service-requests.dto';
+import { GetStoredServiceRequestTrendDto } from '../dto/queries/get-stored-service-request-trend.dto';
 import { GetResultConcludeByReceptionCodeDto } from '../dto/queries/get-result-conclude-by-reception-code.dto';
 import { SearchServiceRequestsDto } from '../dto/queries/search-service-requests.dto';
 import { ServiceRequestResponseDto } from '../dto/responses/service-request-response.dto';
 import { StoredServiceRequestResponseDto } from '../dto/responses/stored-service-request-response.dto';
 import { StoredServiceRequestDetailResponseDto, StoredServiceResponseDto } from '../dto/responses/stored-service-request-detail-response.dto';
 import { ResultConcludeResponseDto } from '../dto/responses/result-conclude-response.dto';
-import { ServiceRequestsListResponseDto, ServiceRequestStatsDto } from '../dto/responses/service-requests-list-response.dto';
+import { StoredServiceRequestTrendResponseDto } from '../dto/responses/stored-service-request-trend-response.dto';
+import { ServiceRequestsListResponseDto } from '../dto/responses/service-requests-list-response.dto';
 import { ResponseBuilder } from '../../../common/builders/response.builder';
 import { DualAuthGuard } from '../../auth/guards/dual-auth.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
@@ -52,14 +54,6 @@ export class ServiceRequestController {
     async searchServiceRequests(@Query() query: SearchServiceRequestsDto) {
         const result = await this.serviceRequestService.searchServiceRequests(query);
         return ResponseBuilder.successWithPagination(result.serviceRequests, result.total, result.limit, result.offset);
-    }
-
-    @Get('stats')
-    @ApiOperation({ summary: 'Thống kê yêu cầu dịch vụ' })
-    @ApiResponse({ status: 200, type: ServiceRequestStatsDto })
-    async getServiceRequestStats(@Query() query: GetServiceRequestsDto) {
-        const result = await this.serviceRequestService.getStatistics();
-        return ResponseBuilder.success(result);
     }
 
     // Removed LIS mapping specific endpoints for now
@@ -115,6 +109,17 @@ export class ServiceRequestController {
         }
         const result = await this.storedServiceRequestService.storeServiceRequest(dto, currentUser);
         return ResponseBuilder.success(result, HttpStatus.CREATED);
+    }
+
+    @Get('stored/statistics/trend')
+    @ApiOperation({
+        summary: 'Thống kê số lượng chỉ định đã lưu theo ngày/tháng',
+        description: 'Thống kê dựa trên thời điểm CREATED_AT của bảng BML_STORED_SERVICE_REQUESTS, có thể lọc theo khoảng thời gian, phòng hiện tại và khoa hiện tại.',
+    })
+    @ApiResponse({ status: 200, description: 'Lấy thống kê thành công', type: StoredServiceRequestTrendResponseDto })
+    async getStoredServiceRequestTrend(@Query() query: GetStoredServiceRequestTrendDto) {
+        const result = await this.storedServiceRequestService.getStoredServiceRequestTrend(query);
+        return ResponseBuilder.success(result);
     }
 
     @Get('stored/:id')

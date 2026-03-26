@@ -102,10 +102,10 @@ export class AuthService {
 
     async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
         // Validate password strength
-        const passwordValidation = this.passwordService.validatePasswordStrength(registerDto.password);
-        if (!passwordValidation.isValid) {
-            throw AppError.passwordStrengthError(passwordValidation.errors);
-        }
+        // const passwordValidation = this.passwordService.validatePasswordStrength(registerDto.password);
+        // if (!passwordValidation.isValid) {
+        //     throw AppError.passwordStrengthError(passwordValidation.errors);
+        // }
 
         // Check if user already exists
         const existingUser = await this.userRepository.findByEmail(registerDto.email);
@@ -142,10 +142,10 @@ export class AuthService {
         // Sử dụng transaction để đảm bảo atomicity
         return this.dataSource.transaction(async (manager) => {
             // 1. Validate password strength
-            const passwordValidation = this.passwordService.validatePasswordStrength(registerDto.password);
-            if (!passwordValidation.isValid) {
-                throw AppError.passwordStrengthError(passwordValidation.errors);
-            }
+            // const passwordValidation = this.passwordService.validatePasswordStrength(registerDto.password);
+            // if (!passwordValidation.isValid) {
+            //     throw AppError.passwordStrengthError(passwordValidation.errors);
+            // }
 
             // 2. Check if user already exists by email (only if email is provided)
             if (registerDto.email) {
@@ -320,10 +320,10 @@ export class AuthService {
             }
 
             // 3. Validate new password strength
-            const passwordValidation = this.passwordService.validatePasswordStrength(changePasswordDto.newPassword);
-            if (!passwordValidation.isValid) {
-                throw AppError.passwordStrengthError(passwordValidation.errors);
-            }
+            // const passwordValidation = this.passwordService.validatePasswordStrength(changePasswordDto.newPassword);
+            // if (!passwordValidation.isValid) {
+            //     throw AppError.passwordStrengthError(passwordValidation.errors);
+            // }
 
             // 4. Hash new password
             const hashedNewPassword = await this.passwordService.hashPassword(changePasswordDto.newPassword);

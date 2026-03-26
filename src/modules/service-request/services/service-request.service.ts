@@ -96,10 +96,6 @@ export class ServiceRequestService {
         return Promise.all(Object.values(groupedData).map(data => this.mapServiceRequestToResponseDto(data)));
     }
 
-    async getStatistics(): Promise<any> {
-        return this.serviceRequestRepository.getStatistics();
-    }
-
     private groupServiceRequestsByCode(serviceRequestData: ServiceRequestView[]): { [key: string]: ServiceRequestView[] } {
         const grouped: { [key: string]: ServiceRequestView[] } = {};
 

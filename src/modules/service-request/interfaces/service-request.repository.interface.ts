@@ -7,5 +7,4 @@ export interface IServiceRequestRepository {
     findAll(query: GetServiceRequestsDto): Promise<GetServiceRequestsResult>;
     findByPatientCode(patientCode: string): Promise<ServiceRequestView[]>;
     findByDateRange(fromDate: number, toDate: number): Promise<ServiceRequestView[]>;
-    getStatistics(): Promise<any>;
 }

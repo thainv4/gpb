@@ -58,5 +58,51 @@ export class StoredServiceRequestRepository implements IStoredServiceRequestRepo
     async hardDelete(id: string): Promise<void> {
         await this.repo.delete(id);
     }
+
+    async getStoredServiceRequestTrend(params: {
+        granularity: 'day' | 'month';
+        fromDate?: Date;
+        toDate?: Date;
+        currentRoomId?: string;
+        currentDepartmentId?: string;
+    }): Promise<Array<{ period: string; count: number }>> {
+        const periodFormat = params.granularity === 'month' ? 'YYYY-MM' : 'YYYY-MM-DD';
+
+        const qb = this.repo
+            .createQueryBuilder('sr')
+            .select(`TO_CHAR(sr.createdAt, '${periodFormat}')`, 'period')
+            .addSelect('COUNT(sr.id)', 'count')
+            .where('sr.deletedAt IS NULL');
+
+        if (params.fromDate) {
+            qb.andWhere('sr.createdAt >= :fromDate', { fromDate: params.fromDate });
+        }
+
+        if (params.toDate) {
+            qb.andWhere('sr.createdAt <= :toDate', { toDate: params.toDate });
+        }
+
+        if (params.currentRoomId) {
+            qb.andWhere('sr.currentRoomId = :currentRoomId', {
+                currentRoomId: params.currentRoomId,
+            });
+        }
+
+        if (params.currentDepartmentId) {
+            qb.andWhere('sr.currentDepartmentId = :currentDepartmentId', {
+                currentDepartmentId: params.currentDepartmentId,
+            });
+        }
+
+        const rows = await qb
+            .groupBy(`TO_CHAR(sr.createdAt, '${periodFormat}')`)
+            .orderBy('period', 'ASC')
+            .getRawMany<{ period: string; count: string | number }>();
+
+        return rows.map((row) => ({
+            period: row.period,
+            count: Number(row.count),
+        }));
+    }
 }
 
