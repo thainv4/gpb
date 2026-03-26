@@ -27,20 +27,3 @@ export class ServiceRequestsListResponseDto {
     @ApiProperty({ description: 'Có trang trước', example: false })
     hasPrev: boolean;
 }
-
-export class ServiceRequestStatsDto {
-    @ApiProperty({ description: 'Tổng số yêu cầu', example: 100 })
-    total: number;
-
-    @ApiProperty({ description: 'Số yêu cầu chờ xử lý', example: 25 })
-    pending: number;
-
-    @ApiProperty({ description: 'Số yêu cầu đã hoàn thành', example: 70 })
-    completed: number;
-
-    @ApiProperty({ description: 'Số yêu cầu đã hủy', example: 5 })
-    cancelled: number;
-
-    @ApiProperty({ description: 'Tổng giá trị', example: 15000000 })
-    totalAmount: number;
-}

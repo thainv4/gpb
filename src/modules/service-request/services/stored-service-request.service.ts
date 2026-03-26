@@ -17,10 +17,12 @@ import { UpdateStainingMethodDto } from '../dto/commands/update-staining-method.
 import { UpdateNumOfBlockDto } from '../dto/commands/update-num-of-block.dto';
 import { UpdateStoredServiceRequestDto } from '../dto/commands/update-stored-service-request.dto';
 import { UpdateGpbFieldsDto } from '../dto/commands/update-gpb-fields.dto';
+import { GetStoredServiceRequestTrendDto } from '../dto/queries/get-stored-service-request-trend.dto';
 import { StoredServiceRequestResponseDto } from '../dto/responses/stored-service-request-response.dto';
 import { StoredServiceRequestDetailResponseDto, StoredServiceResponseDto, WorkflowCurrentStateDto } from '../dto/responses/stored-service-request-detail-response.dto';
 import { ResultRequestDto } from '../dto/responses/result-request.dto';
 import { GetResultResponseDto } from '../dto/responses/get-result-response.dto';
+import { StoredServiceRequestTrendResponseDto } from '../dto/responses/stored-service-request-trend-response.dto';
 import { CurrentUser } from '../../../common/interfaces/current-user.interface';
 import { StoredServiceRequest } from '../entities/stored-service-request.entity';
 import { StoredServiceRequestService as StoredServiceRequestServiceEntity } from '../entities/stored-service-request-service.entity';
@@ -47,6 +49,27 @@ export class StoredServiceRequestService {
         private readonly workflowStateRepo: IWorkflowStateRepository,
         private readonly dataSource: DataSource,
     ) { }
+
+    async getStoredServiceRequestTrend(
+        query: GetStoredServiceRequestTrendDto,
+    ): Promise<StoredServiceRequestTrendResponseDto> {
+        const granularity = query.granularity ?? 'day';
+        const fromDate = query.fromDate ? new Date(query.fromDate) : undefined;
+        const toDate = query.toDate ? new Date(query.toDate) : undefined;
+
+        const items = await this.storedRepo.getStoredServiceRequestTrend({
+            granularity,
+            fromDate,
+            toDate,
+            currentRoomId: query.currentRoomId,
+            currentDepartmentId: query.currentDepartmentId,
+        });
+
+        return {
+            granularity,
+            items,
+        };
+    }
 
     async storeServiceRequest(
         dto: StoreServiceRequestDto,

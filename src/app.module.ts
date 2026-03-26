@@ -38,6 +38,7 @@ import { StainingMethodModule } from './modules/staining-method/staining-method.
 import { TestingMethodGenModule } from './modules/testing-method-gen/testing-method-gen.module';
 import { StoreSignedDocumentModule } from './modules/store-signed-document/store-signed-document.module';
 import { DeviceOutboundModule } from './modules/device-outbound/device-outbound.module';
+import { PivkaResultModule } from './modules/pivka-result/pivka-result.module';
 import { HealthController } from './health.controller';
 
 // Shared
@@ -100,6 +101,7 @@ import { ServicesModule } from './shared/services/services.module';
         TestingMethodGenModule,
         StoreSignedDocumentModule,
         DeviceOutboundModule,
+        PivkaResultModule,
     ],
     controllers: [HealthController],
     providers: [],

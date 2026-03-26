@@ -8,5 +8,12 @@ export interface IStoredServiceRequestRepository {
     save(entity: StoredServiceRequest): Promise<StoredServiceRequest>;
     remove(id: string): Promise<void>;
     hardDelete(id: string): Promise<void>; // Hard delete (xóa hoàn toàn)
+    getStoredServiceRequestTrend(params: {
+        granularity: 'day' | 'month';
+        fromDate?: Date;
+        toDate?: Date;
+        currentRoomId?: string;
+        currentDepartmentId?: string;
+    }): Promise<Array<{ period: string; count: number }>>;
 }
 

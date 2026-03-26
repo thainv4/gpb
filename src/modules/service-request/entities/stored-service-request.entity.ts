@@ -178,7 +178,7 @@ export class StoredServiceRequest extends BaseEntity {
     @Column({ name: 'RAW_RESPONSE_JSON', type: 'clob', nullable: true })
     rawResponseJson?: string | null;
 
-    @Column({ name: 'FLAG', type: 'varchar2', length: 50, nullable: true })
+    @Column({ name: 'FLAG', type: 'varchar2', length: 100, nullable: true })
     flag?: string;
 
     @Column({ name: 'STAINING_METHOD_ID', type: 'varchar2', length: 36, nullable: true })

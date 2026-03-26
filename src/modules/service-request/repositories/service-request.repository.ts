@@ -233,18 +233,4 @@ WHERE
     return this.dataSource.query(query, [fromDate, toDate]);
   }
 
-  async getStatistics(): Promise<any> {
-    const query = `
-            SELECT 
-                COUNT(DISTINCT ID) as totalRequests,
-                COUNT(DISTINCT TDL_PATIENT_ID) as totalPatients,
-                COUNT(DISTINCT HIS_SERE_SERV_ID) as totalServices,
-                SUM(PRICE) as totalRevenue,
-                AVG(PRICE) as averagePrice
-            FROM V_HIS_SERVICE_REQ
-        `;
-
-    const result = await this.dataSource.query(query);
-    return result[0] || {};
-  }
 }
