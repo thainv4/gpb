@@ -834,10 +834,14 @@ export class StoredServiceRequestService {
     /**
      * Lấy resultConclude đầu tiên theo receptionCode (store_sr_service)
      */
-    async getResultConcludeByReceptionCode(receptionCode: string): Promise<{ resultConclude: string | null }> {
+    async getResultConcludeByReceptionCode(receptionCode: string): Promise<{
+        resultConclude: string | null;
+        sampleTypeName: string | null;
+    }> {
         const services = await this.serviceRepo.findByReceptionCode(receptionCode);
         const resultConclude = services.length > 0 ? (services[0].conclude ?? null) : null;
-        return { resultConclude };
+        const sampleTypeName = services.length > 0 ? (services[0].sampleTypeName ?? null) : null;
+        return { resultConclude, sampleTypeName };
     }
 
     /**
