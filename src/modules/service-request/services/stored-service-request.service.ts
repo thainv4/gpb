@@ -153,6 +153,8 @@ export class StoredServiceRequestService {
             // Request Info
             storedRequest.requestLoginname = enrichedData.requestLoginname ?? null;
             storedRequest.requestUsername = enrichedData.requestUsername ?? null;
+            // HIS barcode stored at request header level
+            storedRequest.barcodeXn = enrichedData.barcodeXn ?? null;
 
             // Context When Storing (NEW)
             storedRequest.currentRoomId = dto.currentRoomId;
@@ -201,6 +203,7 @@ export class StoredServiceRequestService {
                 storedService.sampleTypeName = sampleTypeName;
                 storedService.sampleCollectionTime = new Date(dto.sampleCollectionTime);
                 storedService.collectedByUserId = dto.collectedByUserId ?? null;
+                storedService.testIndexCode = service.testIndexCodes ?? null;
 
                 storedService.createdBy = currentUser.id;
                 storedService.updatedBy = currentUser.id;
@@ -242,6 +245,7 @@ export class StoredServiceRequestService {
                         storedTest.sampleTypeName = sampleTypeName;
                         storedTest.sampleCollectionTime = new Date(dto.sampleCollectionTime);
                         storedTest.collectedByUserId = dto.collectedByUserId ?? null;
+                        storedTest.testIndexCode = null;
 
                         storedTest.createdBy = currentUser.id;
                         storedTest.updatedBy = currentUser.id;
@@ -416,6 +420,11 @@ export class StoredServiceRequestService {
         // Convert map to array (only parent services)
         const services = Array.from(servicesMap.values());
 
+        // Root-level fields: barcodeXn được lưu ở BML_STORED_SERVICE_REQUESTS
+        const rootBarcodeXn = storedRequest.barcodeXn ?? null;
+        const rootTestIndexCode =
+            services.find((s) => s.testIndexCode)?.testIndexCode ?? null;
+
         // Map to response DTO
         return {
             id: storedRequest.id,
@@ -437,6 +446,8 @@ export class StoredServiceRequestService {
             flag: storedRequest.flag ?? null,
             requestLoginname: storedRequest.requestLoginname,
             requestUsername: storedRequest.requestUsername,
+            barcodeXn: rootBarcodeXn,
+            testIndexCode: rootTestIndexCode,
             requestRoomId: storedRequest.requestRoomId?.toString(),
             requestRoomCode: storedRequest.requestRoomCode,
             requestRoomName: storedRequest.requestRoomName,
@@ -635,6 +646,7 @@ export class StoredServiceRequestService {
             sampleTypeId: sampleTypeId,
             sampleCollectionTime: service.sampleCollectionTime,
             collectedByUserId: service.collectedByUserId,
+            testIndexCode: service.testIndexCode ?? null,
             documentId: service.documentId,
             barcodeMapGenGpb: service.barcodeMapGenGpb ?? null,
             stainingMethodName: stainingMethodName,

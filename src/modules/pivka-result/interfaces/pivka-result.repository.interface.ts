@@ -2,6 +2,7 @@ import { PivkaResult } from '../entities/pivka-result.entity';
 
 export interface IPivkaResultRepository {
     findById(id: string): Promise<PivkaResult | null>;
+    findActiveByStoredSrServicesId(storedSrServicesId: string): Promise<PivkaResult | null>;
     save(entity: PivkaResult): Promise<PivkaResult>;
     delete(id: string): Promise<void>;
     softDelete(id: string): Promise<void>;

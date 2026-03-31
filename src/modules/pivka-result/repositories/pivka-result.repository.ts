@@ -17,6 +17,12 @@ export class PivkaResultRepository implements IPivkaResultRepository {
         });
     }
 
+    async findActiveByStoredSrServicesId(storedSrServicesId: string): Promise<PivkaResult | null> {
+        return this.repo.findOne({
+            where: { storedSrServicesId, deletedAt: IsNull() },
+        });
+    }
+
     async save(entity: PivkaResult): Promise<PivkaResult> {
         return this.repo.save(entity);
     }
