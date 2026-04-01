@@ -1042,7 +1042,7 @@ export class StoredServiceRequestService {
     }
 
     /**
-     * Cập nhật các trường GPB (barcodeMapGenGpb, resultConcludeMapGenGpb) cho tất cả services thuộc stored request (BML_STORED_SR_SERVICES)
+     * Cập nhật các trường GPB cho tất cả services thuộc stored request (BML_STORED_SR_SERVICES)
      * @param storedServiceReqId ID của bảng BML_STORED_SERVICE_REQUESTS
      */
     async updateGpbFields(
@@ -1058,7 +1058,10 @@ export class StoredServiceRequestService {
                 );
             }
 
-            const hasUpdates = dto.barcodeMapGenGpb !== undefined || dto.resultConcludeMapGenGpb !== undefined;
+            const hasUpdates =
+                dto.barcodeMapGenGpb !== undefined ||
+                dto.resultConcludeMapGenGpb !== undefined ||
+                dto.sampleTypeNameMapGenGpb !== undefined;
             if (!hasUpdates) {
                 return;
             }
@@ -1070,6 +1073,9 @@ export class StoredServiceRequestService {
                 }
                 if (dto.resultConcludeMapGenGpb !== undefined) {
                     svc.resultConcludeMapGenGpb = dto.resultConcludeMapGenGpb ?? null;
+                }
+                if (dto.sampleTypeNameMapGenGpb !== undefined) {
+                    svc.sampleTypeNameMapGenGpb = dto.sampleTypeNameMapGenGpb ?? null;
                 }
                 svc.updatedBy = currentUser.id;
                 await manager.save(StoredServiceRequestServiceEntity, svc);

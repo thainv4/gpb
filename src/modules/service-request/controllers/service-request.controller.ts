@@ -329,7 +329,7 @@ export class ServiceRequestController {
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
         summary: 'Cập nhật các trường GPB cho services thuộc stored request',
-        description: 'Cập nhật barcodeMapGenGpb và/hoặc resultConcludeMapGenGpb cho tất cả bản ghi BML_STORED_SR_SERVICES thuộc request. Gửi chỉ các field cần cập nhật.',
+        description: 'Cập nhật barcodeMapGenGpb, resultConcludeMapGenGpb và/hoặc sampleTypeNameMapGenGpb cho tất cả bản ghi BML_STORED_SR_SERVICES thuộc request. Gửi chỉ các field cần cập nhật.',
     })
     @ApiParam({
         name: 'storedServiceReqId',
@@ -359,6 +359,7 @@ export class ServiceRequestController {
             storedServiceReqId,
             barcodeMapGenGpb: dto.barcodeMapGenGpb !== undefined ? dto.barcodeMapGenGpb : undefined,
             resultConcludeMapGenGpb: dto.resultConcludeMapGenGpb !== undefined ? dto.resultConcludeMapGenGpb : undefined,
+            sampleTypeNameMapGenGpb: dto.sampleTypeNameMapGenGpb !== undefined ? dto.sampleTypeNameMapGenGpb : undefined,
         });
     }
 

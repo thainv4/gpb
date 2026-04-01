@@ -23,4 +23,15 @@ export class UpdateGpbFieldsDto {
     @IsString()
     @MaxLength(2000, { message: 'resultConcludeMapGenGpb không được quá 2000 ký tự' })
     resultConcludeMapGenGpb?: string | null;
+
+    @ApiPropertyOptional({
+        description: 'Sample type name map gen GPB (SAMPLE_TYPE_NAME_MAP_GEN_GPB)',
+        example: 'Mẫu mô GPB',
+        maxLength: 200,
+        nullable: true,
+    })
+    @IsOptional()
+    @IsString()
+    @MaxLength(200, { message: 'sampleTypeNameMapGenGpb không được quá 200 ký tự' })
+    sampleTypeNameMapGenGpb?: string | null;
 }
