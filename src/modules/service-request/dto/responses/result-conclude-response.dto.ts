@@ -7,4 +7,11 @@ export class ResultConcludeResponseDto {
         nullable: true,
     })
     resultConclude: string | null;
+
+    @ApiProperty({
+        description: 'Tên loại mẫu (sampleTypeName) đầu tiên ứng với receptionCode',
+        example: 'Mẫu máu',
+        nullable: true,
+    })
+    sampleTypeName: string | null;
 }

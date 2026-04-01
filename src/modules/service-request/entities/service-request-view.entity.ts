@@ -157,6 +157,13 @@ export class ServiceRequestView {
   @Column({ name: 'PRICE', type: 'decimal', precision: 15, scale: 2 })
   price: number;
 
+  // HIS barcode for sub-tests/examination (mapped from HSR.BARCODE)
+  @Column({ name: 'BARCODE', type: 'varchar2', length: 50, nullable: true })
+  barcodeXn?: string | null;
+
+  /** Mã chỉ số XN (HIS_TEST_INDEX.TEST_INDEX_CODE), gộp từ subquery LISTAGG — không phải cột view */
+  testIndexCodes?: string | null;
+
   // Business methods
   getRequestLocationDisplay(): string {
     return `${this.requestRoomName} - ${this.requestDepartmentName}`;

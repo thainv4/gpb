@@ -202,6 +202,10 @@ export class StoredServiceRequest extends BaseEntity {
     @Column({name: 'REQUEST_USERNAME', type: 'varchar2', length: 100, nullable: true})
     requestUsername?: string | null;
 
+    // HIS barcode for examination (stored at request header)
+    @Column({ name: 'BARCODE_XN', type: 'varchar2', length: 50, nullable: true })
+    barcodeXn?: string | null;
+
     // Relationships
     @OneToMany(() => StoredServiceRequestService, service => service.storedServiceRequest)
     services: StoredServiceRequestService[];

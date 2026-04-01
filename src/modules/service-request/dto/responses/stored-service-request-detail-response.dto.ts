@@ -149,6 +149,11 @@ export class StoredServiceResponseDto {
     @ApiPropertyOptional({ description: 'ID user lấy mẫu' })
     collectedByUserId?: string | null;
 
+    @ApiPropertyOptional({
+        description: 'Mã chỉ số XN (TEST_INDEX_CODE; có thể nhiều mã cách nhau dấu phẩy)',
+    })
+    testIndexCode?: string | null;
+
     // EMR Document ID
     @ApiPropertyOptional({ description: 'ID văn bản EMR (từ bảng EMR_DOCUMENT)' })
     documentId?: number | null;
@@ -275,6 +280,18 @@ export class StoredServiceRequestDetailResponseDto {
 
     @ApiPropertyOptional({ description: 'Tên hiển thị người yêu cầu' })
     requestUsername?: string | null;
+
+    @ApiPropertyOptional({
+        description:
+            'Barcode xét nghiệm XN (barcodeXn) — lưu tại BML_STORED_SERVICE_REQUESTS',
+    })
+    barcodeXn?: string | null;
+
+    @ApiPropertyOptional({
+        description:
+            'Mã chỉ số XN (TEST_INDEX_CODE) — lấy theo dịch vụ cha, có thể nhiều mã cách nhau dấu phẩy',
+    })
+    testIndexCode?: string | null;
 
     // Request Room & Department
     @ApiPropertyOptional({ description: 'Request Room ID' })

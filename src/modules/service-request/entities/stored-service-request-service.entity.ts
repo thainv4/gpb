@@ -183,6 +183,10 @@ export class StoredServiceRequestService extends BaseEntity {
     @Column({ name: 'BARCODE_MAP_GEN_GPB', type: 'varchar2', length: 50, nullable: true })
     barcodeMapGenGpb?: string | null;
 
+    /** Mã chỉ số XN từ HIS (HIS_TEST_INDEX), có thể nhiều mã cách nhau dấu phẩy */
+    @Column({ name: 'TEST_INDEX_CODE', type: 'varchar2', length: 1000, nullable: true })
+    testIndexCode?: string | null;
+
     @Column({ name: 'RESULT_CONCLUDE_MAP_GEN_GPB', type: 'varchar2', length: 2000, nullable: true })
     resultConcludeMapGenGpb?: string | null;
     

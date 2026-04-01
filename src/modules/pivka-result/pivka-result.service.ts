@@ -11,6 +11,8 @@ import { UpdatePivkaIiResultDto } from './dto/commands/update-pivka-ii-result.dt
 import { GetPivkaIiResultsDto } from './dto/queries/get-pivka-ii-results.dto';
 import { PivkaIiResultResponseDto } from './dto/responses/pivka-ii-result-response.dto';
 import { PivkaIiResultsListResponseDto } from './dto/responses/pivka-ii-results-list-response.dto';
+import { AppError } from '../../common/errors/app.error';
+import { isUniqueConstraintError } from '../../common/helpers/db.helper';
 
 export interface CurrentUser {
     id: string;
@@ -48,6 +50,12 @@ export class PivkaResultService extends BaseService {
             throw new NotFoundException(`Không tìm thấy BML_STORED_SR_SERVICES id='${dto.storedSrServicesId}'`);
         }
 
+        // Prevent duplicate active record for the same STORED_SR_SERVICES_ID
+        const existed = await this.repo.findActiveByStoredSrServicesId(dto.storedSrServicesId);
+        if (existed) {
+            throw AppError.duplicateEntry('STORED_SR_SERVICES_ID', dto.storedSrServicesId);
+        }
+
         const entity = new PivkaResult();
         entity.storedSrServicesId = dto.storedSrServicesId;
         entity.pivkaIiResult = dto.pivkaIiResult?.trim();
@@ -55,7 +63,16 @@ export class PivkaResultService extends BaseService {
         entity.afpL3 = dto.afpL3?.trim();
 
         this.setAuditFields(entity, false);
-        const saved = await this.repo.save(entity);
+        let saved: PivkaResult;
+        try {
+            saved = await this.repo.save(entity);
+        } catch (err) {
+            // Safety net for race conditions (unique index will enforce).
+            if (isUniqueConstraintError(err)) {
+                throw AppError.duplicateEntry('STORED_SR_SERVICES_ID', dto.storedSrServicesId);
+            }
+            throw err;
+        }
         return saved.id;
     }
 
@@ -78,6 +95,15 @@ export class PivkaResultService extends BaseService {
             if (!srService) {
                 throw new NotFoundException(`Không tìm thấy BML_STORED_SR_SERVICES id='${dto.storedSrServicesId}'`);
             }
+
+            // Prevent duplicates when re-linking to another STORED_SR_SERVICES_ID
+            if (dto.storedSrServicesId !== entity.storedSrServicesId) {
+                const existed = await this.repo.findActiveByStoredSrServicesId(dto.storedSrServicesId);
+                if (existed && existed.id !== entity.id) {
+                    throw AppError.duplicateEntry('STORED_SR_SERVICES_ID', dto.storedSrServicesId);
+                }
+            }
+
             entity.storedSrServicesId = dto.storedSrServicesId;
         }
 

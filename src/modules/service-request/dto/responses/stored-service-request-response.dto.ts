@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class StoredServiceRequestResponseDto {
     @ApiProperty({ description: 'ID Service Request đã lưu', example: 'uuid-stored-sr-001' })

@@ -233,6 +233,7 @@ export class ServiceRequestService {
                 serviceCode: first.serviceCode,
                 serviceName: first.serviceName,
                 price: first.price,
+                testIndexCodes: first.testIndexCodes ?? null,
                 lisServiceId,
                 unitOfMeasureId: parentUnitOfMeasureId ?? null,
                 unitOfMeasureCode: parentUom?.unitOfMeasureCode ?? null,
@@ -291,6 +292,7 @@ export class ServiceRequestService {
             treatmentCode: firstItem.treatmentCode,
             requestUsername: firstItem.requestUsername,
             requestLoginname: firstItem.requestLoginname,
+            barcodeXn: firstItem.barcodeXn ?? null,
             requestRoom: {
                 id: firstItem.requestRoomId,
                 code: firstItem.requestRoomCode,

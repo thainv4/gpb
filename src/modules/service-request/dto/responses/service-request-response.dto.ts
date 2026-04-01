@@ -279,6 +279,13 @@ export class ServiceDto {
     @ApiPropertyOptional({ description: 'Thứ tự dịch vụ', example: 1 })
     testOrder?: number | null;
 
+    @ApiPropertyOptional({
+        description:
+            'Mã chỉ số xét nghiệm (HIS_TEST_INDEX.TEST_INDEX_CODE), nhiều mã cách nhau dấu phẩy — theo dịch vụ HIS_SERE_SERV',
+        example: 'GLU,URE',
+    })
+    testIndexCodes?: string | null;
+
     @ApiPropertyOptional({ description: 'Dịch vụ LIS mapping', type: LisServiceDto })
     lisService?: LisServiceDto;
 
@@ -355,4 +362,7 @@ export class ServiceRequestResponseDto {
 
     @ApiPropertyOptional({ description: 'Tên người đăng nhập', example: 'admin' })
     requestLoginname?: string;
+
+    @ApiPropertyOptional({ description: 'Barcode xét nghiệm (barcodeXn)', example: 'XN_0001' })
+    barcodeXn?: string | null;
 }
