@@ -136,6 +136,17 @@ export class PivkaResultService extends BaseService {
         return this.mapToResponse(entity);
     }
 
+    async getByStoredSrServicesId(storedSrServicesId: string): Promise<PivkaIiResultResponseDto> {
+        const entity = await this.repo.findActiveByStoredSrServicesId(storedSrServicesId);
+        if (!entity) {
+            throw new NotFoundException(
+                `Pivka II/AFP result not found for STORED_SR_SERVICES_ID='${storedSrServicesId}'`,
+            );
+        }
+
+        return this.mapToResponse(entity);
+    }
+
     async getAll(query: GetPivkaIiResultsDto): Promise<PivkaIiResultsListResponseDto> {
         const limit = query.limit ?? 10;
         const offset = query.offset ?? 0;

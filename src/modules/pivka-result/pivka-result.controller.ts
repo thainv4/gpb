@@ -56,6 +56,16 @@ export class PivkaResultController {
         return ResponseBuilder.success({ message: 'Deleted' });
     }
 
+    @Get('by-stored-sr-service/:storedSrServicesId')
+    @ApiOperation({ summary: 'Chi tiết kết quả PIVKA-II/AFP theo BML_STORED_SR_SERVICES.ID' })
+    @ApiParam({ name: 'storedSrServicesId', description: 'UUID dòng dịch vụ lưu trữ (BML_STORED_SR_SERVICES)' })
+    @ApiResponse({ status: 200, type: PivkaIiResultResponseDto })
+    @ApiResponse({ status: 404, description: 'Không có bản ghi pivka active cho dòng dịch vụ này' })
+    async getByStoredSrServicesId(@Param('storedSrServicesId') storedSrServicesId: string) {
+        const data = await this.service.getByStoredSrServicesId(storedSrServicesId);
+        return ResponseBuilder.success(data);
+    }
+
     @Get(':id')
     @ApiOperation({ summary: 'Chi tiết kết quả PIVKA-II/AFP theo ID' })
     @ApiParam({ name: 'id', description: 'UUID' })
