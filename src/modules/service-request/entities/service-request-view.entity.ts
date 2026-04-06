@@ -39,6 +39,10 @@ export class ServiceRequestView {
   @Column({ name: 'ICD_TEXT', type: 'varchar2', length: 1000, nullable: true })
   icdText?: string;
 
+  /** Ghi chú chỉ định (HIS_SERVICE_REQ / V_HIS_SERVICE_REQ.TDL_INSTRUCTION_NOTE) */
+  @Column({ name: 'TDL_INSTRUCTION_NOTE', type: 'varchar2', length: 3000, nullable: true })
+  tdlInstructionNote?: string | null;
+
   @Column({ name: 'TREATMENT_ID', type: 'number' })
   treatmentId: number;
 

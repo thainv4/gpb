@@ -336,8 +336,11 @@ export class ServiceRequestResponseDto {
     @ApiProperty({ description: 'Mã điều trị', example: '000005230244' })
     treatmentCode: string;
 
-    @ApiPropertyOptional({ description: 'Ghi chú', example: null })
-    note?: string;
+    @ApiPropertyOptional({
+        description: 'Ghi chú chỉ định từ HIS (TDL_INSTRUCTION_NOTE trên yêu cầu dịch vụ)',
+        example: null,
+    })
+    note?: string | null;
 
     @ApiProperty({ description: 'Thông tin phòng yêu cầu', type: RequestRoomDto })
     requestRoom: RequestRoomDto;
