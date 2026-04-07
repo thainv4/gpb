@@ -31,4 +31,20 @@ export interface IWorkflowHistoryRepository {
     updateIsCurrent(storedServiceReqId: string, storedServiceId: string | null, isCurrent: number): Promise<void>;
     remove(id: string): Promise<void>;
     hardDelete(id: string): Promise<void>; // Hard delete (xóa hoàn toàn)
+
+    /** Phân bổ số ca (stored service request) theo state hiện tại (max STATE_ORDER trong các nhánh IS_CURRENT = 1). */
+    getDashboardStateDistribution(filters: {
+        fromCreatedAt?: Date;
+        toCreatedAt?: Date;
+        currentRoomId?: string;
+        currentDepartmentId?: string;
+    }): Promise<
+        Array<{
+            stateId: string;
+            stateCode: string;
+            stateName: string;
+            stateOrder: number;
+            count: number;
+        }>
+    >;
 }

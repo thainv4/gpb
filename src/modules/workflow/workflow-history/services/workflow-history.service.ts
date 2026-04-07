@@ -334,6 +334,7 @@ export class WorkflowHistoryService {
                 const stateNames = historiesWithHigherOrder
                     .map(wh => `${wh.toState?.stateName || 'Unknown'} (order: ${wh.toState?.stateOrder})`)
                     .join(', ');
+                    console.log("stateNames: ", stateNames);
                 throw new BadRequestException(
                     `Không thể xóa workflow history vì bệnh phẩm đang ở giai đoạn ${stateNames}.`
                 );

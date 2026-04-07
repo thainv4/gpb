@@ -9,7 +9,7 @@ export interface IStoredServiceRequestRepository {
     remove(id: string): Promise<void>;
     hardDelete(id: string): Promise<void>; // Hard delete (xóa hoàn toàn)
     getStoredServiceRequestTrend(params: {
-        granularity: 'day' | 'month';
+        granularity: 'day' | 'week' | 'month';
         fromDate?: Date;
         toDate?: Date;
         currentRoomId?: string;

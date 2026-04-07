@@ -39,6 +39,7 @@ import { TestingMethodGenModule } from './modules/testing-method-gen/testing-met
 import { StoreSignedDocumentModule } from './modules/store-signed-document/store-signed-document.module';
 import { DeviceOutboundModule } from './modules/device-outbound/device-outbound.module';
 import { PivkaResultModule } from './modules/pivka-result/pivka-result.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { HealthController } from './health.controller';
 
 // Shared
@@ -102,6 +103,7 @@ import { ServicesModule } from './shared/services/services.module';
         StoreSignedDocumentModule,
         DeviceOutboundModule,
         PivkaResultModule,
+        DashboardModule,
     ],
     controllers: [HealthController],
     providers: [],

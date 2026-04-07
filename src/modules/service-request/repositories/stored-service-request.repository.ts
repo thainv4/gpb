@@ -60,13 +60,18 @@ export class StoredServiceRequestRepository implements IStoredServiceRequestRepo
     }
 
     async getStoredServiceRequestTrend(params: {
-        granularity: 'day' | 'month';
+        granularity: 'day' | 'week' | 'month';
         fromDate?: Date;
         toDate?: Date;
         currentRoomId?: string;
         currentDepartmentId?: string;
     }): Promise<Array<{ period: string; count: number }>> {
-        const periodFormat = params.granularity === 'month' ? 'YYYY-MM' : 'YYYY-MM-DD';
+        const periodFormat =
+            params.granularity === 'month'
+                ? 'YYYY-MM'
+                : params.granularity === 'week'
+                  ? 'IYYY-IW'
+                  : 'YYYY-MM-DD';
 
         const qb = this.repo
             .createQueryBuilder('sr')
@@ -96,7 +101,7 @@ export class StoredServiceRequestRepository implements IStoredServiceRequestRepo
 
         const rows = await qb
             .groupBy(`TO_CHAR(sr.createdAt, '${periodFormat}')`)
-            .orderBy('period', 'ASC')
+            .orderBy(`TO_CHAR(sr.createdAt, '${periodFormat}')`, 'ASC')
             .getRawMany<{ period: string; count: string | number }>();
 
         return rows.map((row) => ({

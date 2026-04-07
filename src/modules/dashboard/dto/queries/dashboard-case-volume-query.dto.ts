@@ -2,9 +2,9 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
 
-export class GetStoredServiceRequestTrendDto {
+export class DashboardCaseVolumeQueryDto {
     @ApiPropertyOptional({
-        description: 'Độ phân giải thống kê (tuần: định dạng ISO IYYY-IW theo Oracle TO_CHAR)',
+        description: 'Gom nhóm theo ngày (YYYY-MM-DD), tuần ISO (IYYY-IW), hoặc tháng (YYYY-MM)',
         enum: ['day', 'week', 'month'],
         example: 'day',
         default: 'day',
@@ -14,7 +14,8 @@ export class GetStoredServiceRequestTrendDto {
     granularity?: 'day' | 'week' | 'month' = 'day';
 
     @ApiPropertyOptional({
-        description: 'Thời gian bắt đầu (ISO date string)',
+        description:
+            'CREATED_AT từ (ISO). Mặc định: 30 ngày trước `toDate` hoặc trước hiện tại nếu không có toDate.',
         example: '2026-03-01T00:00:00.000Z',
     })
     @IsOptional()
@@ -22,16 +23,15 @@ export class GetStoredServiceRequestTrendDto {
     fromDate?: string;
 
     @ApiPropertyOptional({
-        description: 'Thời gian kết thúc (ISO date string)',
-        example: '2026-03-31T23:59:59.999Z',
+        description: 'CREATED_AT đến (ISO). Mặc định: thời điểm gọi API.',
+        example: '2026-04-07T23:59:59.999Z',
     })
     @IsOptional()
     @IsDateString()
     toDate?: string;
 
     @ApiPropertyOptional({
-        description: 'Lọc theo phòng hiện tại khi lưu chỉ định (LIS room id)',
-        example: 'a3c4f3b7-1234-4f19-8d62-123456789abc',
+        description: 'Lọc theo phòng hiện tại (LIS room id), giống trend SR',
     })
     @IsOptional()
     @IsString()
@@ -39,8 +39,7 @@ export class GetStoredServiceRequestTrendDto {
     currentRoomId?: string;
 
     @ApiPropertyOptional({
-        description: 'Lọc theo khoa hiện tại khi lưu chỉ định (LIS department id)',
-        example: 'b2f1d7a1-2345-48f1-90e2-abcdef123456',
+        description: 'Lọc theo khoa hiện tại (LIS department id), giống trend SR',
     })
     @IsOptional()
     @IsString()
