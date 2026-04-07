@@ -4,14 +4,14 @@ import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
 
 export class GetStoredServiceRequestTrendDto {
     @ApiPropertyOptional({
-        description: 'Độ phân giải thống kê',
-        enum: ['day', 'month'],
+        description: 'Độ phân giải thống kê (tuần: định dạng ISO IYYY-IW theo Oracle TO_CHAR)',
+        enum: ['day', 'week', 'month'],
         example: 'day',
         default: 'day',
     })
     @IsOptional()
-    @IsEnum(['day', 'month'])
-    granularity?: 'day' | 'month' = 'day';
+    @IsEnum(['day', 'week', 'month'])
+    granularity?: 'day' | 'week' | 'month' = 'day';
 
     @ApiPropertyOptional({
         description: 'Thời gian bắt đầu (ISO date string)',

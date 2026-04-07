@@ -326,6 +326,79 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
         }
     }
 
+    async getDashboardStateDistribution(filters: {
+        fromCreatedAt?: Date;
+        toCreatedAt?: Date;
+        currentRoomId?: string;
+        currentDepartmentId?: string;
+    }): Promise<
+        Array<{
+            stateId: string;
+            stateCode: string;
+            stateName: string;
+            stateOrder: number;
+            count: number;
+        }>
+    > {
+        const binds: Record<string, Date | string> = {};
+        let dateConditions = '';
+        if (filters.fromCreatedAt) {
+            dateConditions += ' AND sr.CREATED_AT >= :fromCreatedAt';
+            binds.fromCreatedAt = filters.fromCreatedAt;
+        }
+        if (filters.toCreatedAt) {
+            dateConditions += ' AND sr.CREATED_AT <= :toCreatedAt';
+            binds.toCreatedAt = filters.toCreatedAt;
+        }
+        if (filters.currentRoomId) {
+            dateConditions += ' AND sr.CURRENT_ROOM_ID = :currentRoomId';
+            binds.currentRoomId = filters.currentRoomId;
+        }
+        if (filters.currentDepartmentId) {
+            dateConditions += ' AND sr.CURRENT_DEPARTMENT_ID = :currentDepartmentId';
+            binds.currentDepartmentId = filters.currentDepartmentId;
+        }
+
+        const sql = `
+            WITH ranked AS (
+                SELECT
+                    wh.STORED_SERVICE_REQ_ID AS stored_service_req_id,
+                    wh.TO_STATE_ID AS to_state_id,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY wh.STORED_SERVICE_REQ_ID
+                        ORDER BY st.STATE_ORDER DESC, wh.ACTION_TIMESTAMP DESC
+                    ) AS rn
+                FROM BML_WORKFLOW_HISTORY wh
+                INNER JOIN BML_WORKFLOW_STATES st ON st.ID = wh.TO_STATE_ID AND st.DELETED_AT IS NULL
+                INNER JOIN BML_STORED_SERVICE_REQUESTS sr ON sr.ID = wh.STORED_SERVICE_REQ_ID AND sr.DELETED_AT IS NULL
+                WHERE wh.IS_CURRENT = 1 AND wh.DELETED_AT IS NULL
+                ${dateConditions}
+            )
+            SELECT
+                ws.ID AS STATE_ID,
+                ws.STATE_CODE AS STATE_CODE,
+                ws.STATE_NAME AS STATE_NAME,
+                ws.STATE_ORDER AS STATE_ORDER,
+                COUNT(*) AS CNT
+            FROM ranked r
+            INNER JOIN BML_WORKFLOW_STATES ws ON ws.ID = r.to_state_id AND ws.DELETED_AT IS NULL
+            WHERE r.rn = 1
+            GROUP BY ws.ID, ws.STATE_CODE, ws.STATE_NAME, ws.STATE_ORDER
+            ORDER BY ws.STATE_ORDER ASC
+        `;
+
+        // Oracle oracledb.execute nhận bind object; EntityManager.query typings là any[].
+        const rows = (await this.repo.manager.query(sql, binds as any)) as Record<string, unknown>[];
+
+        return rows.map((row) => ({
+            stateId: String(row.STATE_ID),
+            stateCode: String(row.STATE_CODE),
+            stateName: String(row.STATE_NAME),
+            stateOrder: Number(row.STATE_ORDER),
+            count: Number(row.CNT),
+        }));
+    }
+
     private getTimeColumnName(timeType: string): string {
         const mapping: { [key: string]: string } = {
             'actionTimestamp': 'ACTION_TIMESTAMP',
