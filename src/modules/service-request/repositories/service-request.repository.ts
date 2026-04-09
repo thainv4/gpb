@@ -49,7 +49,6 @@ SELECT
   HSR.TDL_PATIENT_GENDER_ID PATIENT_GENDER_ID,
   HSR.TDL_PATIENT_GENDER_NAME PATIENT_GENDER_NAME,
   HSR.TDL_PATIENT_CAREER_NAME PATIENT_CAREER_NAME,
-  HSR.TDL_INSTRUCTION_NOTE,
   HSR.REQUEST_ROOM_ID,
   HSR.REQUEST_ROOM_CODE,
   HSR.REQUEST_ROOM_NAME,
@@ -70,6 +69,7 @@ SELECT
   A.TDL_SERVICE_CODE,
   A.TDL_SERVICE_NAME,
   A.PRICE,
+  SSE.INSTRUCTION_NOTE,
   (SELECT LISTAGG(TIX.TEST_INDEX_CODE, ',') WITHIN GROUP (ORDER BY TIX.TEST_INDEX_CODE)
    FROM V_HIS_SERE_SERV_TEIN TEIN
    INNER JOIN HIS_TEST_INDEX TIX ON TEIN.TEST_INDEX_ID = TIX.ID
@@ -79,12 +79,60 @@ SELECT
   ) TEST_INDEX_CODES,
   HSR.BARCODE
 FROM
-  V_HIS_SERVICE_REQ HSR
+  (
+    SELECT
+      ID,
+      SERVICE_REQ_CODE,
+      SERVICE_REQ_STT_ID,
+      SERVICE_REQ_STT_CODE,
+      SERVICE_REQ_TYPE_ID,
+      SERVICE_REQ_TYPE_CODE,
+      INTRUCTION_TIME,
+      INTRUCTION_DATE,
+      ICD_CODE,
+      ICD_NAME,
+      ICD_SUB_CODE,
+      ICD_TEXT,
+      TREATMENT_ID,
+      TDL_TREATMENT_CODE,
+      TDL_PATIENT_ID,
+      TDL_PATIENT_CODE,
+      TDL_PATIENT_NAME,
+      TDL_PATIENT_DOB,
+      TDL_PATIENT_CCCD_NUMBER,
+      TDL_PATIENT_CCCD_DATE,
+      TDL_PATIENT_CCCD_PLACE,
+      TDL_PATIENT_PROVINCE_CODE,
+      TDL_PATIENT_PROVINCE_NAME,
+      TDL_PATIENT_COMMUNE_CODE,
+      TDL_PATIENT_COMMUNE_NAME,
+      TDL_PATIENT_ADDRESS,
+      TDL_PATIENT_GENDER_ID,
+      TDL_PATIENT_GENDER_NAME,
+      TDL_PATIENT_CAREER_NAME,
+      REQUEST_ROOM_ID,
+      REQUEST_ROOM_CODE,
+      REQUEST_ROOM_NAME,
+      REQUEST_DEPARTMENT_ID,
+      REQUEST_DEPARTMENT_CODE,
+      REQUEST_DEPARTMENT_NAME,
+      EXECUTE_ROOM_ID,
+      EXECUTE_ROOM_CODE,
+      EXECUTE_ROOM_NAME,
+      EXECUTE_DEPARTMENT_ID,
+      EXECUTE_DEPARTMENT_CODE,
+      EXECUTE_DEPARTMENT_NAME,
+      REQUEST_LOGINNAME,
+      REQUEST_USERNAME,
+      BARCODE
+    FROM V_HIS_SERVICE_REQ
+    WHERE SERVICE_REQ_CODE = :1
+  ) HSR
   LEFT JOIN HIS_SERE_SERV A ON HSR.ID = A.SERVICE_REQ_ID
+  INNER JOIN HIS_SERE_SERV_EXT SSE ON A.ID = SSE.SERE_SERV_ID
   LEFT JOIN HIS_TREATMENT B ON HSR.TREATMENT_ID=B.ID
 WHERE
-  HSR.SERVICE_REQ_CODE = :1 
-  AND A.IS_DELETE = 0
+  A.IS_DELETE = 0
   AND A.IS_NO_EXECUTE is null`;
 
     const rows: any[] = await this.dataSource.query(sql, [serviceReqCode]);
@@ -122,7 +170,6 @@ WHERE
       patientGenderId: r.PATIENT_GENDER_ID,
       patientGenderName: r.PATIENT_GENDER_NAME,
       patientCareerName: r.PATIENT_CAREER_NAME,
-      tdlInstructionNote: r.TDL_INSTRUCTION_NOTE ?? null,
       requestRoomId: r.REQUEST_ROOM_ID,
       requestRoomCode: r.REQUEST_ROOM_CODE,
       requestRoomName: r.REQUEST_ROOM_NAME,
@@ -142,11 +189,25 @@ WHERE
       serviceCode: r.TDL_SERVICE_CODE,
       serviceName: r.TDL_SERVICE_NAME,
       price: r.PRICE,
+      instructionNote: r.INSTRUCTION_NOTE ?? null,
       testIndexCodes: r.TEST_INDEX_CODES ?? null,
       barcodeXn: r.BARCODE,
     })) as any;
 
     return mapped;
+  }
+
+  /** Bỏ TDL_INSTRUCTION_NOTE khỏi object trả về (SELECT * vẫn đọc cột trên DB). */
+  private stripTdlInstructionNote(rows: any[]): any[] {
+    return rows.map((row) => {
+      if (!row || typeof row !== "object") {
+        return row;
+      }
+      const copy = { ...row };
+      delete copy.TDL_INSTRUCTION_NOTE;
+      delete copy.tdl_instruction_note;
+      return copy;
+    });
   }
 
   async findAll(
@@ -215,7 +276,7 @@ WHERE
     const total = countResult[0]?.TOTAL || 0;
 
     return {
-      serviceRequests: dataResult,
+      serviceRequests: this.stripTdlInstructionNote(dataResult),
       total,
       limit,
       offset,
@@ -229,7 +290,8 @@ WHERE
             ORDER BY INTRUCTION_DATE DESC, ID
         `;
 
-    return this.dataSource.query(query, [patientCode]);
+    const rows = await this.dataSource.query(query, [patientCode]);
+    return this.stripTdlInstructionNote(rows);
   }
 
   async findByDateRange(
@@ -242,7 +304,8 @@ WHERE
             ORDER BY INTRUCTION_DATE DESC, ID
         `;
 
-    return this.dataSource.query(query, [fromDate, toDate]);
+    const rows = await this.dataSource.query(query, [fromDate, toDate]);
+    return this.stripTdlInstructionNote(rows);
   }
 
 }

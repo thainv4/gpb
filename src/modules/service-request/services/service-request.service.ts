@@ -112,10 +112,6 @@ export class ServiceRequestService {
 
     private async mapServiceRequestToResponseDto(serviceRequestData: ServiceRequestView[]): Promise<ServiceRequestResponseDto> {
         const firstItem = serviceRequestData[0];
-        const note =
-            firstItem.tdlInstructionNote ??
-            (firstItem as unknown as { TDL_INSTRUCTION_NOTE?: string | null }).TDL_INSTRUCTION_NOTE ??
-            null;
 
         // Group services by HIS_SERE_SERV_ID
         const servicesMap = new Map<number, ServiceRequestView[]>();
@@ -237,6 +233,7 @@ export class ServiceRequestService {
                 serviceCode: first.serviceCode,
                 serviceName: first.serviceName,
                 price: first.price,
+                instructionNote: first.instructionNote ?? null,
                 testIndexCodes: first.testIndexCodes ?? null,
                 lisServiceId,
                 unitOfMeasureId: parentUnitOfMeasureId ?? null,

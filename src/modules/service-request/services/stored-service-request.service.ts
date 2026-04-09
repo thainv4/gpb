@@ -106,7 +106,7 @@ export class StoredServiceRequestService {
             storedRequest.icdText = enrichedData.icdText ?? null;
             storedRequest.treatmentId = enrichedData.treatmentId;
             storedRequest.treatmentCode = enrichedData.treatmentCode;
-            storedRequest.note = enrichedData.note ?? null;
+            storedRequest.note = enrichedData.services?.[0]?.instructionNote ?? null;
 
             // Request Location
             storedRequest.requestRoomId = enrichedData.requestRoom.id ?? null;

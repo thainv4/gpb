@@ -39,10 +39,6 @@ export class ServiceRequestView {
   @Column({ name: 'ICD_TEXT', type: 'varchar2', length: 1000, nullable: true })
   icdText?: string;
 
-  /** Ghi chú chỉ định (HIS_SERVICE_REQ / V_HIS_SERVICE_REQ.TDL_INSTRUCTION_NOTE) */
-  @Column({ name: 'TDL_INSTRUCTION_NOTE', type: 'varchar2', length: 3000, nullable: true })
-  tdlInstructionNote?: string | null;
-
   @Column({ name: 'TREATMENT_ID', type: 'number' })
   treatmentId: number;
 
@@ -160,6 +156,9 @@ export class ServiceRequestView {
 
   @Column({ name: 'PRICE', type: 'decimal', precision: 15, scale: 2 })
   price: number;
+
+  /** Ghi chú chỉ định theo dòng HIS_SERE_SERV (HIS_SERE_SERV_EXT.INSTRUCTION_NOTE) — chỉ khi query join EXT */
+  instructionNote?: string | null;
 
   // HIS barcode for sub-tests/examination (mapped from HSR.BARCODE)
   @Column({ name: 'BARCODE', type: 'varchar2', length: 50, nullable: true })
