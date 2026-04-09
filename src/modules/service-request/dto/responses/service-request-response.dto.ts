@@ -252,6 +252,12 @@ export class ServiceDto {
     @ApiProperty({ description: 'Giá dịch vụ', example: 95300 })
     price: number;
 
+    @ApiPropertyOptional({
+        description: 'Ghi chú chỉ định theo dịch vụ (HIS_SERE_SERV_EXT.INSTRUCTION_NOTE)',
+        example: null,
+    })
+    instructionNote?: string | null;
+
     @ApiPropertyOptional({ description: 'ID dịch vụ trong LIS (UUID) nếu map được theo SERVICE_CODE và là dịch vụ cha (PARENT_SERVICE_ID null), ngược lại null' })
     lisServiceId?: string | null;
 
@@ -335,12 +341,6 @@ export class ServiceRequestResponseDto {
 
     @ApiProperty({ description: 'Mã điều trị', example: '000005230244' })
     treatmentCode: string;
-
-    @ApiPropertyOptional({
-        description: 'Ghi chú chỉ định từ HIS (TDL_INSTRUCTION_NOTE trên yêu cầu dịch vụ)',
-        example: null,
-    })
-    note?: string | null;
 
     @ApiProperty({ description: 'Thông tin phòng yêu cầu', type: RequestRoomDto })
     requestRoom: RequestRoomDto;

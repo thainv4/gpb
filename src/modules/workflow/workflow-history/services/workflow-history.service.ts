@@ -354,8 +354,7 @@ export class WorkflowHistoryService {
             if (servicesWithDocument.length > 0) {
                 const serviceCodes = servicesWithDocument.map(s => s.serviceCode || s.id).join(', ');
                 throw new BadRequestException(
-                    `Không thể xóa workflow history vì có ${servicesWithDocument.length} service(s) có documentId không null: ${serviceCodes}. ` +
-                    `Chỉ được xóa khi tất cả documentId của Service Request là null.`
+                    `Không thể xóa trạng thái này vì dịch vụ ${serviceCodes} đã được ký số.`
                 );
             }
 
