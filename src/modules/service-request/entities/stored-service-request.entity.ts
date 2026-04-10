@@ -206,6 +206,15 @@ export class StoredServiceRequest extends BaseEntity {
     @Column({ name: 'BARCODE_XN', type: 'varchar2', length: 50, nullable: true })
     barcodeXn?: string | null;
 
+    @Column({ name: 'BARCODE_GEN_GPB', type: 'varchar2', length: 50, nullable: true })
+    barcodeGenGpb?: string | null;
+
+    @Column({ name: 'RESULT_CONCLUDE_GEN_GPB', type: 'varchar2', length: 2000, nullable: true })
+    resultConcludeGenGpb?: string | null;
+
+    @Column({ name: 'SAMPLE_TYPE_NAME_GEN_GPB', type: 'varchar2', length: 200, nullable: true })
+    sampleTypeNameGenGpb?: string | null;
+
     // Relationships
     @OneToMany(() => StoredServiceRequestService, service => service.storedServiceRequest)
     services: StoredServiceRequestService[];
