@@ -328,8 +328,8 @@ export class ServiceRequestController {
     @Patch('stored/:storedServiceReqId/gpb-fields')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({
-        summary: 'Cập nhật các trường GPB cho services thuộc stored request',
-        description: 'Cập nhật barcodeMapGenGpb, resultConcludeMapGenGpb và/hoặc sampleTypeNameMapGenGpb cho tất cả bản ghi BML_STORED_SR_SERVICES thuộc request. Gửi chỉ các field cần cập nhật.',
+        summary: 'Cập nhật các trường GPB trên stored service request (header)',
+        description: 'Cập nhật barcodeGenGpb, resultConcludeGenGpb và/hoặc sampleTypeNameGenGpb trên BML_STORED_SERVICE_REQUESTS. Gửi chỉ các field cần cập nhật.',
     })
     @ApiParam({
         name: 'storedServiceReqId',
@@ -357,9 +357,9 @@ export class ServiceRequestController {
         return ResponseBuilder.success({
             message: 'Các trường GPB đã được cập nhật thành công',
             storedServiceReqId,
-            barcodeMapGenGpb: dto.barcodeMapGenGpb !== undefined ? dto.barcodeMapGenGpb : undefined,
-            resultConcludeMapGenGpb: dto.resultConcludeMapGenGpb !== undefined ? dto.resultConcludeMapGenGpb : undefined,
-            sampleTypeNameMapGenGpb: dto.sampleTypeNameMapGenGpb !== undefined ? dto.sampleTypeNameMapGenGpb : undefined,
+            barcodeGenGpb: dto.barcodeGenGpb !== undefined ? dto.barcodeGenGpb : undefined,
+            resultConcludeGenGpb: dto.resultConcludeGenGpb !== undefined ? dto.resultConcludeGenGpb : undefined,
+            sampleTypeNameGenGpb: dto.sampleTypeNameGenGpb !== undefined ? dto.sampleTypeNameGenGpb : undefined,
         });
     }
 

@@ -1,5 +1,5 @@
 import { Injectable, Inject, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, EntityManager, IsNull } from 'typeorm';
 import { IStoredServiceRequestRepository } from '../interfaces/stored-service-request.repository.interface';
 import { IStoredServiceRequestServiceRepository } from '../interfaces/stored-service-request-service.repository.interface';
 import { ISampleReceptionRepository } from '../../sample-reception/interfaces/sample-reception.repository.interface';
@@ -49,6 +49,46 @@ export class StoredServiceRequestService {
         private readonly workflowStateRepo: IWorkflowStateRepository,
         private readonly dataSource: DataSource,
     ) { }
+
+    /**
+     * Sync BARCODE_GEN_GPB, RESULT_CONCLUDE_GEN_GPB, SAMPLE_TYPE_NAME_GEN_GPB on
+     * BML_STORED_SERVICE_REQUESTS from parent rows (IS_CHILD_SERVICE = 0) on BML_STORED_SR_SERVICES.
+     * Call after insert/update of *_MAP_GEN_GPB fields.
+     */
+    private async syncGpbGenFieldsToStoredRequestHeader(
+        manager: EntityManager,
+        storedServiceReqId: string,
+    ): Promise<void> {
+        await manager.query(
+            `
+            UPDATE BML_STORED_SERVICE_REQUESTS r
+            SET
+                r.BARCODE_GEN_GPB = (
+                    SELECT MAX(s.BARCODE_MAP_GEN_GPB)
+                    FROM BML_STORED_SR_SERVICES s
+                    WHERE s.STORED_SERVICE_REQ_ID = r.ID
+                      AND s.IS_CHILD_SERVICE = 0
+                      AND s.DELETED_AT IS NULL
+                ),
+                r.RESULT_CONCLUDE_GEN_GPB = (
+                    SELECT MAX(s.RESULT_CONCLUDE_MAP_GEN_GPB)
+                    FROM BML_STORED_SR_SERVICES s
+                    WHERE s.STORED_SERVICE_REQ_ID = r.ID
+                      AND s.IS_CHILD_SERVICE = 0
+                      AND s.DELETED_AT IS NULL
+                ),
+                r.SAMPLE_TYPE_NAME_GEN_GPB = (
+                    SELECT MAX(s.SAMPLE_TYPE_NAME_MAP_GEN_GPB)
+                    FROM BML_STORED_SR_SERVICES s
+                    WHERE s.STORED_SERVICE_REQ_ID = r.ID
+                      AND s.IS_CHILD_SERVICE = 0
+                      AND s.DELETED_AT IS NULL
+                )
+            WHERE r.ID = :p_stored_req_id
+            `,
+            { p_stored_req_id: storedServiceReqId } as any,
+        );
+    }
 
     async getStoredServiceRequestTrend(
         query: GetStoredServiceRequestTrendDto,
@@ -255,6 +295,8 @@ export class StoredServiceRequestService {
                 }
             }
 
+            await this.syncGpbGenFieldsToStoredRequestHeader(manager, savedRequest.id);
+
             // 5. TỰ ĐỘNG START WORKFLOW (Bước 1 của workflow = SAMPLE_COLLECTION)
             let workflowStarted = false;
             try {
@@ -380,6 +422,12 @@ export class StoredServiceRequestService {
         // Cache SampleReception lookups by receptionCode to avoid duplicate queries
         const sampleTypeCache = new Map<string, string | null>();
 
+        const gpbHeader = {
+            barcodeGenGpb: storedRequest.barcodeGenGpb ?? null,
+            resultConcludeGenGpb: storedRequest.resultConcludeGenGpb ?? null,
+            sampleTypeNameGenGpb: storedRequest.sampleTypeNameGenGpb ?? null,
+        };
+
         // Map services (parent + children)
         const servicesMap = new Map<string, StoredServiceResponseDto>();
 
@@ -393,6 +441,7 @@ export class StoredServiceRequestService {
                         stainingMethodName,
                         testingMethodGen,
                         sampleTypeCache,
+                        gpbHeader,
                     }),
                 );
             }
@@ -411,6 +460,7 @@ export class StoredServiceRequestService {
                             stainingMethodName,
                             testingMethodGen,
                             sampleTypeCache,
+                            gpbHeader,
                         }),
                     );
                 }
@@ -448,6 +498,9 @@ export class StoredServiceRequestService {
             requestUsername: storedRequest.requestUsername,
             barcodeXn: rootBarcodeXn,
             testIndexCode: rootTestIndexCode,
+            barcodeGenGpb: storedRequest.barcodeGenGpb ?? null,
+            resultConcludeGenGpb: storedRequest.resultConcludeGenGpb ?? null,
+            sampleTypeNameGenGpb: storedRequest.sampleTypeNameGenGpb ?? null,
             requestRoomId: storedRequest.requestRoomId?.toString(),
             requestRoomCode: storedRequest.requestRoomCode,
             requestRoomName: storedRequest.requestRoomName,
@@ -544,10 +597,24 @@ export class StoredServiceRequestService {
             service.children = children;
         }
 
+        const req = service.storedServiceRequest;
+        const gpbHeader = req
+            ? {
+                  barcodeGenGpb: req.barcodeGenGpb ?? null,
+                  resultConcludeGenGpb: req.resultConcludeGenGpb ?? null,
+                  sampleTypeNameGenGpb: req.sampleTypeNameGenGpb ?? null,
+              }
+            : {
+                  barcodeGenGpb: null,
+                  resultConcludeGenGpb: null,
+                  sampleTypeNameGenGpb: null,
+              };
+
         return await this.mapServiceToDto(service, {
             stainingMethodName,
             testingMethodGen,
             sampleTypeCache,
+            gpbHeader,
         });
     }
 
@@ -560,9 +627,28 @@ export class StoredServiceRequestService {
             stainingMethodName: string | null;
             testingMethodGen: { id: string; methodName: string } | null;
             sampleTypeCache: Map<string, string | null>;
+            gpbHeader?: {
+                barcodeGenGpb: string | null;
+                resultConcludeGenGpb: string | null;
+                sampleTypeNameGenGpb: string | null;
+            };
         },
     ): Promise<StoredServiceResponseDto> {
-        const { stainingMethodName, testingMethodGen, sampleTypeCache } = context;
+        const { stainingMethodName, testingMethodGen, sampleTypeCache, gpbHeader } = context;
+
+        const gpb =
+            gpbHeader ??
+            (service.storedServiceRequest
+                ? {
+                      barcodeGenGpb: service.storedServiceRequest.barcodeGenGpb ?? null,
+                      resultConcludeGenGpb: service.storedServiceRequest.resultConcludeGenGpb ?? null,
+                      sampleTypeNameGenGpb: service.storedServiceRequest.sampleTypeNameGenGpb ?? null,
+                  }
+                : {
+                      barcodeGenGpb: null,
+                      resultConcludeGenGpb: null,
+                      sampleTypeNameGenGpb: null,
+                  });
 
         // Lấy sampleTypeId từ SampleReception nếu có receptionCode (dùng cache để tránh query trùng)
         let sampleTypeId: string | null = null;
@@ -593,6 +679,7 @@ export class StoredServiceRequestService {
                         stainingMethodName,
                         testingMethodGen,
                         sampleTypeCache,
+                        gpbHeader: context.gpbHeader,
                     }),
                 ),
             );
@@ -648,7 +735,9 @@ export class StoredServiceRequestService {
             collectedByUserId: service.collectedByUserId,
             testIndexCode: service.testIndexCode ?? null,
             documentId: service.documentId,
-            barcodeMapGenGpb: service.barcodeMapGenGpb ?? null,
+            barcodeGenGpb: gpb.barcodeGenGpb,
+            resultConcludeGenGpb: gpb.resultConcludeGenGpb,
+            sampleTypeNameGenGpb: gpb.sampleTypeNameGenGpb,
             stainingMethodName: stainingMethodName,
             testingMethodGen: testingMethodGen,
             testId: service.testId,
@@ -1042,7 +1131,7 @@ export class StoredServiceRequestService {
     }
 
     /**
-     * Cập nhật các trường GPB cho tất cả services thuộc stored request (BML_STORED_SR_SERVICES)
+     * Cập nhật các trường GPB trên header stored request (BML_STORED_SERVICE_REQUESTS)
      * @param storedServiceReqId ID của bảng BML_STORED_SERVICE_REQUESTS
      */
     async updateGpbFields(
@@ -1051,7 +1140,9 @@ export class StoredServiceRequestService {
         currentUser: CurrentUser
     ): Promise<void> {
         return this.dataSource.transaction(async (manager) => {
-            const storedRequest = await this.storedRepo.findById(storedServiceReqId);
+            const storedRequest = await manager.findOne(StoredServiceRequest, {
+                where: { id: storedServiceReqId, deletedAt: IsNull() },
+            });
             if (!storedRequest) {
                 throw new NotFoundException(
                     `Không tìm thấy stored service request với ID: ${storedServiceReqId}`
@@ -1059,27 +1150,24 @@ export class StoredServiceRequestService {
             }
 
             const hasUpdates =
-                dto.barcodeMapGenGpb !== undefined ||
-                dto.resultConcludeMapGenGpb !== undefined ||
-                dto.sampleTypeNameMapGenGpb !== undefined;
+                dto.barcodeGenGpb !== undefined ||
+                dto.resultConcludeGenGpb !== undefined ||
+                dto.sampleTypeNameGenGpb !== undefined;
             if (!hasUpdates) {
                 return;
             }
 
-            const services = await this.serviceRepo.findByStoredServiceRequestId(storedServiceReqId);
-            for (const svc of services) {
-                if (dto.barcodeMapGenGpb !== undefined) {
-                    svc.barcodeMapGenGpb = dto.barcodeMapGenGpb ?? null;
-                }
-                if (dto.resultConcludeMapGenGpb !== undefined) {
-                    svc.resultConcludeMapGenGpb = dto.resultConcludeMapGenGpb ?? null;
-                }
-                if (dto.sampleTypeNameMapGenGpb !== undefined) {
-                    svc.sampleTypeNameMapGenGpb = dto.sampleTypeNameMapGenGpb ?? null;
-                }
-                svc.updatedBy = currentUser.id;
-                await manager.save(StoredServiceRequestServiceEntity, svc);
+            if (dto.barcodeGenGpb !== undefined) {
+                storedRequest.barcodeGenGpb = dto.barcodeGenGpb ?? null;
             }
+            if (dto.resultConcludeGenGpb !== undefined) {
+                storedRequest.resultConcludeGenGpb = dto.resultConcludeGenGpb ?? null;
+            }
+            if (dto.sampleTypeNameGenGpb !== undefined) {
+                storedRequest.sampleTypeNameGenGpb = dto.sampleTypeNameGenGpb ?? null;
+            }
+            storedRequest.updatedBy = currentUser.id;
+            await manager.save(StoredServiceRequest, storedRequest);
         });
     }
 

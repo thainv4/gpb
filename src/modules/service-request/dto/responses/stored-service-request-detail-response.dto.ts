@@ -158,8 +158,20 @@ export class StoredServiceResponseDto {
     @ApiPropertyOptional({ description: 'ID văn bản EMR (từ bảng EMR_DOCUMENT)' })
     documentId?: number | null;
 
-    @ApiPropertyOptional({ description: 'Barcode map gen GPB (BARCODE_MAP_GEN_GPB)' })
-    barcodeMapGenGpb?: string | null;
+    @ApiPropertyOptional({
+        description: 'Barcode gen GPB (BARCODE_GEN_GPB trên BML_STORED_SERVICE_REQUESTS)',
+    })
+    barcodeGenGpb?: string | null;
+
+    @ApiPropertyOptional({
+        description: 'Result conclude gen GPB (RESULT_CONCLUDE_GEN_GPB trên header request)',
+    })
+    resultConcludeGenGpb?: string | null;
+
+    @ApiPropertyOptional({
+        description: 'Sample type name gen GPB (SAMPLE_TYPE_NAME_GEN_GPB trên header request)',
+    })
+    sampleTypeNameGenGpb?: string | null;
 
     // Staining Method
     @ApiPropertyOptional({ description: 'Tên phương pháp nhuộm' })
@@ -292,6 +304,21 @@ export class StoredServiceRequestDetailResponseDto {
             'Mã chỉ số XN (TEST_INDEX_CODE) — lấy theo dịch vụ cha, có thể nhiều mã cách nhau dấu phẩy',
     })
     testIndexCode?: string | null;
+
+    @ApiPropertyOptional({
+        description: 'Barcode gen GPB (BARCODE_GEN_GPB trên BML_STORED_SERVICE_REQUESTS)',
+    })
+    barcodeGenGpb?: string | null;
+
+    @ApiPropertyOptional({
+        description: 'Result conclude gen GPB (RESULT_CONCLUDE_GEN_GPB)',
+    })
+    resultConcludeGenGpb?: string | null;
+
+    @ApiPropertyOptional({
+        description: 'Sample type name gen GPB (SAMPLE_TYPE_NAME_GEN_GPB)',
+    })
+    sampleTypeNameGenGpb?: string | null;
 
     // Request Room & Department
     @ApiPropertyOptional({ description: 'Request Room ID' })
