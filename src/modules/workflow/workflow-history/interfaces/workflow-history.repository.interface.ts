@@ -27,6 +27,30 @@ export interface IWorkflowHistoryRepository {
         order?: 'ASC' | 'DESC',
         orderBy?: 'actionTimestamp' | 'createdAt' | 'startedAt'
     ): Promise<[WorkflowHistory[], number]>;
+
+    /**
+     * Danh sách workflow theo phòng/bộ lọc, sau khi chỉ giữ các dòng có TO_STATE.STATE_ORDER
+     * đạt max trong từng STORED_SERVICE_REQ_ID (cùng logic filterByMaxStateOrder cũ), rồi phân trang trong SQL.
+     */
+    findByRoomAndStateWithMaxToStateOrderPaginated(
+        roomId: string | undefined,
+        roomIds: string[] | undefined,
+        filterStateId: string | undefined,
+        roomType: 'actionRoomId' | 'currentRoomId' | 'transitionedByRoomId',
+        stateType: 'toStateId' | 'fromStateId',
+        timeType: 'actionTimestamp' | 'startedAt' | 'completedAt' | 'currentStateStartedAt',
+        fromDate: Date | undefined,
+        toDate: Date | undefined,
+        isCurrent: number | undefined,
+        code: string | undefined,
+        flag: string | null | undefined,
+        patientName: string | undefined,
+        limit: number,
+        offset: number,
+        order: 'ASC' | 'DESC',
+        orderBy: 'actionTimestamp' | 'createdAt' | 'startedAt',
+    ): Promise<{ items: WorkflowHistory[]; total: number }>;
+
     save(entity: WorkflowHistory): Promise<WorkflowHistory>;
     updateIsCurrent(storedServiceReqId: string, storedServiceId: string | null, isCurrent: number): Promise<void>;
     remove(id: string): Promise<void>;

@@ -20,15 +20,15 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
     }
 
     async findByStateIdAndStoredServiceReqId(
-        stateId: string, 
-        storedServiceReqId: string, 
+        stateId: string,
+        storedServiceReqId: string,
         stateType: 'toStateId' | 'fromStateId' = 'toStateId'
     ): Promise<WorkflowHistory | null> {
         const where: any = {
             storedServiceReqId,
             deletedAt: IsNull(),
         };
-        
+
         if (stateType === 'toStateId') {
             where.toStateId = stateId;
         } else {
@@ -324,6 +324,237 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
             console.error('Error in findByRoomAndState:', error);
             throw error;
         }
+    }
+
+    async findByRoomAndStateWithMaxToStateOrderPaginated(
+        roomId: string | undefined,
+        roomIds: string[] | undefined,
+        filterStateId: string | undefined,
+        roomType: 'actionRoomId' | 'currentRoomId' | 'transitionedByRoomId',
+        stateType: 'toStateId' | 'fromStateId',
+        timeType: 'actionTimestamp' | 'startedAt' | 'completedAt' | 'currentStateStartedAt' = 'actionTimestamp',
+        fromDate?: Date,
+        toDate?: Date,
+        isCurrent?: number,
+        code?: string,
+        flag?: string | null,
+        patientName?: string,
+        limit: number = 10,
+        offset: number = 0,
+        order: 'ASC' | 'DESC' = 'DESC',
+        orderBy: 'actionTimestamp' | 'createdAt' | 'startedAt' = 'actionTimestamp',
+    ): Promise<{ items: WorkflowHistory[]; total: number }> {
+        const roomCol = this.mapRoomTypeToOracleColumn(roomType);
+        const timeCol = this.getTimeColumnName(timeType);
+        const orderCol = this.getOrderColumnNameForFilteredAlias(orderBy);
+
+        const binds: Record<string, Date | string | number> = {};
+
+        let roomCondition = '';
+        if (roomId && roomId.trim() !== '') {
+            roomCondition = `AND wh.${roomCol} = :p_room_id`;
+            binds.p_room_id = roomId.trim();
+        } else if (roomIds !== undefined) {
+            if (roomIds.length === 0) {
+                roomCondition = 'AND 1 = 0';
+            } else {
+                const placeholders = roomIds.map((_, i) => {
+                    const key = `p_rid_${i}`;
+                    binds[key] = roomIds[i];
+                    return `:${key}`;
+                });
+                roomCondition = `AND wh.${roomCol} IN (${placeholders.join(', ')})`;
+            }
+        }
+
+        let codeCondition = '';
+        if (code && code.trim() !== '') {
+            codeCondition = `AND (
+                EXISTS (
+                    SELECT 1 FROM BML_STORED_SERVICE_REQUESTS ssr
+                    WHERE ssr.ID = wh.STORED_SERVICE_REQ_ID
+                    AND ssr.HIS_SERVICE_REQ_CODE = :p_code
+                    AND ssr.DELETED_AT IS NULL
+                )
+                OR EXISTS (
+                    SELECT 1 FROM BML_STORED_SR_SERVICES sss
+                    WHERE sss.STORED_SERVICE_REQ_ID = wh.STORED_SERVICE_REQ_ID
+                    AND sss.RECEPTION_CODE = :p_code
+                    AND sss.DELETED_AT IS NULL
+                )
+            )`;
+            binds.p_code = code.trim();
+        }
+
+        let flagCondition = '';
+        if (flag !== undefined) {
+            if (flag === null) {
+                flagCondition = `AND EXISTS (
+                    SELECT 1 FROM BML_STORED_SERVICE_REQUESTS ssr
+                    WHERE ssr.ID = wh.STORED_SERVICE_REQ_ID
+                    AND ssr.FLAG IS NULL
+                    AND ssr.DELETED_AT IS NULL
+                )`;
+            } else {
+                flagCondition = `AND EXISTS (
+                    SELECT 1 FROM BML_STORED_SERVICE_REQUESTS ssr
+                    WHERE ssr.ID = wh.STORED_SERVICE_REQ_ID
+                    AND ssr.FLAG = :p_flag
+                    AND ssr.DELETED_AT IS NULL
+                )`;
+                binds.p_flag = flag;
+            }
+        }
+
+        let patientCondition = '';
+        if (patientName && patientName.trim() !== '') {
+            patientCondition = `AND EXISTS (
+                SELECT 1 FROM BML_STORED_SERVICE_REQUESTS ssr
+                WHERE ssr.ID = wh.STORED_SERVICE_REQ_ID
+                AND UPPER(ssr.PATIENT_NAME) LIKE UPPER(:p_patient_pattern)
+                AND ssr.DELETED_AT IS NULL
+            )`;
+            binds.p_patient_pattern = `%${patientName.trim()}%`;
+        }
+
+        let timeFromCondition = '';
+        if (fromDate) {
+            timeFromCondition = `AND wh.${timeCol} >= :p_from_date`;
+            binds.p_from_date = fromDate;
+        }
+
+        let timeToCondition = '';
+        if (toDate) {
+            timeToCondition = `AND wh.${timeCol} <= :p_to_date`;
+            binds.p_to_date = toDate;
+        }
+
+        let isCurrentCondition = '';
+        if (isCurrent !== undefined) {
+            isCurrentCondition = 'AND wh.IS_CURRENT = :p_is_current';
+            binds.p_is_current = isCurrent;
+        }
+
+        let statePickCondition = '';
+        if (filterStateId) {
+            if (stateType === 'fromStateId') {
+                statePickCondition = 'AND f.FROM_STATE_ID = :p_filter_state_id';
+            } else {
+                statePickCondition = 'AND f.TO_STATE_ID = :p_filter_state_id';
+            }
+            binds.p_filter_state_id = filterStateId;
+        }
+
+        const cteBody = `
+WITH base AS (
+    SELECT
+        wh.ID AS WH_ID,
+        wh.STORED_SERVICE_REQ_ID,
+        st.STATE_ORDER AS TO_STATE_ORD,
+        wh.ACTION_TIMESTAMP AS ACTION_TS,
+        wh.CREATED_AT AS CRT_AT,
+        wh.STARTED_AT AS ST_AT,
+        wh.TO_STATE_ID,
+        wh.FROM_STATE_ID
+    FROM BML_WORKFLOW_HISTORY wh
+    LEFT JOIN BML_WORKFLOW_STATES st ON st.ID = wh.TO_STATE_ID AND st.DELETED_AT IS NULL
+    WHERE wh.DELETED_AT IS NULL
+    ${roomCondition}
+    ${codeCondition}
+    ${flagCondition}
+    ${patientCondition}
+    ${timeFromCondition}
+    ${timeToCondition}
+    ${isCurrentCondition}
+),
+ranked AS (
+    SELECT
+        b.*,
+        MAX(b.TO_STATE_ORD) OVER (PARTITION BY b.STORED_SERVICE_REQ_ID) AS MAX_TO_ORD
+    FROM base b
+),
+filtered AS (
+    SELECT
+        r.WH_ID,
+        r.ACTION_TS,
+        r.CRT_AT,
+        r.ST_AT,
+        r.TO_STATE_ID,
+        r.FROM_STATE_ID
+    FROM ranked r
+    WHERE r.MAX_TO_ORD IS NULL
+        OR (r.TO_STATE_ORD IS NOT NULL AND r.TO_STATE_ORD = r.MAX_TO_ORD)
+)`;
+
+        const countSql = `${cteBody}
+SELECT COUNT(1) AS CNT FROM filtered f
+WHERE 1 = 1
+${statePickCondition}`;
+
+        const safeOrder = order === 'ASC' ? 'ASC' : 'DESC';
+
+        const pageSql = `${cteBody}
+SELECT f.WH_ID FROM filtered f
+WHERE 1 = 1
+${statePickCondition}
+ORDER BY f.${orderCol} ${safeOrder} NULLS LAST
+OFFSET :p_offset ROWS FETCH NEXT :p_limit ROWS ONLY`;
+
+        try {
+            const countRows = (await this.repo.manager.query(countSql, binds as any)) as Array<{ CNT: string | number }>;
+            const total = Number(countRows[0]?.CNT ?? 0);
+
+            if (total === 0) {
+                return { items: [], total: 0 };
+            }
+
+            const pageBinds = {
+                ...binds,
+                p_offset: offset,
+                p_limit: limit,
+            };
+
+            const idRows = (await this.repo.manager.query(pageSql, pageBinds as any)) as Array<{ WH_ID: string }>;
+            const ids = idRows.map((r) => String(r.WH_ID)).filter(Boolean);
+
+            if (ids.length === 0) {
+                return { items: [], total };
+            }
+
+            const entities = await this.repo.find({
+                where: { id: In(ids) },
+            });
+
+            const orderMap = new Map(ids.map((id, idx) => [id, idx]));
+            entities.sort((a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0));
+
+            return { items: entities, total };
+        } catch (error) {
+            console.error('Error in findByRoomAndStateWithMaxToStateOrderPaginated:', error);
+            throw error;
+        }
+    }
+
+    private mapRoomTypeToOracleColumn(
+        roomType: 'actionRoomId' | 'currentRoomId' | 'transitionedByRoomId',
+    ): string {
+        const mapping: Record<string, string> = {
+            actionRoomId: 'ACTION_ROOM_ID',
+            currentRoomId: 'CURR_ROOM_ID',
+            transitionedByRoomId: 'TRANS_BY_ROOM_ID',
+        };
+        return mapping[roomType] || 'CURR_ROOM_ID';
+    }
+
+    private getOrderColumnNameForFilteredAlias(
+        orderBy: 'actionTimestamp' | 'createdAt' | 'startedAt',
+    ): string {
+        const mapping: Record<string, string> = {
+            actionTimestamp: 'ACTION_TS',
+            createdAt: 'CRT_AT',
+            startedAt: 'ST_AT',
+        };
+        return mapping[orderBy] || 'ACTION_TS';
     }
 
     async getDashboardStateDistribution(filters: {
