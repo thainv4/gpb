@@ -41,6 +41,7 @@ import { DeviceOutboundModule } from './modules/device-outbound/device-outbound.
 import { PivkaResultModule } from './modules/pivka-result/pivka-result.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { FrontendApiLogModule } from './modules/frontend-api-log/frontend-api-log.module';
+import { ServerTimeModule } from './modules/server-time/server-time.module';
 import { HealthController } from './health.controller';
 
 // Shared
@@ -106,6 +107,7 @@ import { ServicesModule } from './shared/services/services.module';
         PivkaResultModule,
         DashboardModule,
         FrontendApiLogModule,
+        ServerTimeModule,
     ],
     controllers: [HealthController],
     providers: [],
