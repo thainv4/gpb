@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import { createLogger, format, transports, Logger } from 'winston';
+import { createLogger, format, transports, Logger, transport as TransportStream } from 'winston';
 import { CreateFrontendApiLogDto } from './dto/commands/create-frontend-api-log.dto';
 import { CurrentUser } from '../../common/interfaces/current-user.interface';
+import { tryCreateSeqTransport } from '../../shared/logging/seq-transport';
 
 @Injectable()
 export class FrontendApiLogService {
@@ -13,6 +14,18 @@ export class FrontendApiLogService {
         const logDir = process.env.LOG_DIR || 'logs';
         if (!existsSync(logDir)) {
             mkdirSync(logDir, { recursive: true });
+        }
+
+        const baseTransports: TransportStream[] = [
+            new transports.File({
+                filename: join(logDir, 'frontend-api.log'),
+                maxsize: parseInt(process.env.LOG_MAX_FILE_SIZE || '10485760', 10),
+                maxFiles: parseInt(process.env.LOG_MAX_FILES || '5', 10),
+            }),
+        ];
+        const seqTransport = tryCreateSeqTransport();
+        if (seqTransport) {
+            baseTransports.push(seqTransport);
         }
 
         this.winstonLogger = createLogger({
@@ -26,13 +39,7 @@ export class FrontendApiLogService {
                 service: 'lis-gpb-backend',
                 component: 'frontend-api-log',
             },
-            transports: [
-                new transports.File({
-                    filename: join(logDir, 'frontend-api.log'),
-                    maxsize: parseInt(process.env.LOG_MAX_FILE_SIZE || '10485760', 10),
-                    maxFiles: parseInt(process.env.LOG_MAX_FILES || '5', 10),
-                }),
-            ],
+            transports: baseTransports,
         });
 
         if (process.env.NODE_ENV !== 'production') {
