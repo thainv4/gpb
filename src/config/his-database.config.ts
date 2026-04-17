@@ -13,6 +13,8 @@ export const getHisDatabaseConfig = (configService: ConfigService): TypeOrmModul
         entities: [
             'dist/modules/service-request/entities/service-request-view.entity.js',
             'dist/modules/service-request/entities/his-sere-serv.entity.js',
+            'dist/modules/his-ekip/entities/his-execute-role.entity.js',
+            'dist/modules/his-ekip/entities/his-ekip-user.entity.js',
         ],
         synchronize: false, // Never synchronize with HIS database
         logging: configService.get<string>('NODE_ENV') === 'development',

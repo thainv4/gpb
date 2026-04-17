@@ -1,6 +1,8 @@
 import { Injectable, LogLevel } from '@nestjs/common';
-import { writeFileSync, appendFileSync, existsSync, mkdirSync } from 'fs';
+import { appendFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { createLogger, format, Logger } from 'winston';
+import { tryCreateSeqTransport } from '../logging/seq-transport';
 
 export interface LogContext {
     traceId?: string;
@@ -35,9 +37,47 @@ export class AppLoggerService {
     private readonly logDir = process.env.LOG_DIR || 'logs';
     private readonly maxFileSize = parseInt(process.env.LOG_MAX_FILE_SIZE || '10485760'); // 10MB
     private readonly maxFiles = parseInt(process.env.LOG_MAX_FILES || '5');
+    private readonly seqLogger?: Logger;
 
     constructor() {
         this.ensureLogDirectory();
+        const seqTransport = tryCreateSeqTransport();
+        if (seqTransport) {
+            this.seqLogger = createLogger({
+                level: 'verbose',
+                format: format.combine(
+                    format.timestamp(),
+                    format.errors({ stack: true }),
+                    format.json(),
+                ),
+                defaultMeta: {
+                    service: this.serviceName,
+                    version: this.version,
+                    environment: this.environment,
+                    channel: 'app',
+                },
+                transports: [seqTransport],
+            });
+        }
+    }
+
+    private winstonLevelForNest(level: LogLevel): string {
+        return level === 'log' ? 'info' : level;
+    }
+
+    private forwardToSeq(level: LogLevel, logEntry: LogEntry): void {
+        if (!this.seqLogger) return;
+        this.seqLogger.log({
+            level: this.winstonLevelForNest(level),
+            message: logEntry.message,
+            context: logEntry.context,
+            stack: logEntry.stack,
+            nestLevel: logEntry.level,
+            service: logEntry.service,
+            version: logEntry.version,
+            environment: logEntry.environment,
+            appTimestamp: logEntry.timestamp,
+        });
     }
 
     private ensureLogDirectory(): void {
@@ -124,6 +164,7 @@ export class AppLoggerService {
         const logEntry = this.formatLogEntry('log', message, context);
         console.log(JSON.stringify(logEntry));
         this.writeToFile('log', logEntry);
+        this.forwardToSeq('log', logEntry);
     }
 
     error(message: string, stack?: string, context?: LogContext): void {
@@ -132,6 +173,7 @@ export class AppLoggerService {
         const logEntry = this.formatLogEntry('error', message, context, stack);
         console.error(JSON.stringify(logEntry));
         this.writeToFile('error', logEntry);
+        this.forwardToSeq('error', logEntry);
     }
 
     warn(message: string, context?: LogContext): void {
@@ -140,6 +182,7 @@ export class AppLoggerService {
         const logEntry = this.formatLogEntry('warn', message, context);
         console.warn(JSON.stringify(logEntry));
         this.writeToFile('warn', logEntry);
+        this.forwardToSeq('warn', logEntry);
     }
 
     debug(message: string, context?: LogContext): void {
@@ -148,6 +191,7 @@ export class AppLoggerService {
         const logEntry = this.formatLogEntry('debug', message, context);
         console.debug(JSON.stringify(logEntry));
         this.writeToFile('debug', logEntry);
+        this.forwardToSeq('debug', logEntry);
     }
 
     verbose(message: string, context?: LogContext): void {
@@ -156,6 +200,7 @@ export class AppLoggerService {
         const logEntry = this.formatLogEntry('verbose', message, context);
         console.log(JSON.stringify(logEntry));
         this.writeToFile('verbose', logEntry);
+        this.forwardToSeq('verbose', logEntry);
     }
 
     // Business-specific logging methods
