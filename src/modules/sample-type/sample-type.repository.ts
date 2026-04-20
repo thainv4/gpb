@@ -69,8 +69,8 @@ export class SampleTypeRepository implements ISampleTypeRepository {
 
         if (search) {
             queryBuilder.andWhere(
-                '(sampleType.typeCode LIKE :search OR sampleType.typeName LIKE :search OR sampleType.shortName LIKE :search)',
-                { search: `%${search}%` }
+                '(UPPER(sampleType.typeCode) LIKE UPPER(:search) OR UPPER(sampleType.typeName) LIKE UPPER(:search) OR UPPER(sampleType.shortName) LIKE UPPER(:search))',
+                { search: `%${search.trim()}%` }
             );
         }
 
