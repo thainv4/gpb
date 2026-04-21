@@ -43,7 +43,11 @@ export class DeviceStainingMethodRepository implements IDeviceStainingMethodRepo
             .offset(offset);
 
         if (search) {
-            qb.andWhere('LOWER(method.methodName) LIKE :search', { search: `%${search.toLowerCase()}%` });
+            const term = `%${search.toLowerCase()}%`;
+            qb.andWhere(
+                '(LOWER(method.methodName) LIKE :search OR LOWER(method.protocolNo) LIKE :search)',
+                { search: term },
+            );
         }
 
         return qb.getManyAndCount();

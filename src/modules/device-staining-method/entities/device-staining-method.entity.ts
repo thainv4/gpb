@@ -5,4 +5,7 @@ import { BaseEntity } from '../../../common/entities/base.entity';
 export class DeviceStainingMethod extends BaseEntity {
     @Column({ name: 'METHOD_NAME', type: 'nvarchar2', length: 50 })
     methodName: string;
+
+    @Column({ name: 'PROTOCOL_NO', type: 'varchar2', length: 100 })
+    protocolNo: string;
 }
