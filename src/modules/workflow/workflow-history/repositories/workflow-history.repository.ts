@@ -229,7 +229,7 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
             }
 
             // Filter theo code nếu được cung cấp và không phải chuỗi rỗng
-            // Tìm trong cả HIS_SERVICE_REQ_CODE và RECEPTION_CODE
+            // Tìm trong HIS_SERVICE_REQ_CODE, RECEPTION_CODE và PATIENT_CODE
             if (code && code.trim() !== '') {
                 queryBuilder.andWhere(
                     `(
@@ -238,6 +238,12 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
                             WHERE ssr.ID = wh.STORED_SERVICE_REQ_ID 
                             AND ssr.HIS_SERVICE_REQ_CODE = :code
                             AND ssr.DELETED_AT IS NULL
+                        )
+                        OR EXISTS (
+                            SELECT 1 FROM BML_STORED_SERVICE_REQUESTS ssr_pc
+                            WHERE ssr_pc.ID = wh.STORED_SERVICE_REQ_ID
+                            AND ssr_pc.PATIENT_CODE = :code
+                            AND ssr_pc.DELETED_AT IS NULL
                         )
                         OR EXISTS (
                             SELECT 1 FROM BML_STORED_SR_SERVICES sss 
@@ -375,6 +381,12 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
                     WHERE ssr.ID = wh.STORED_SERVICE_REQ_ID
                     AND ssr.HIS_SERVICE_REQ_CODE = :p_code
                     AND ssr.DELETED_AT IS NULL
+                )
+                OR EXISTS (
+                    SELECT 1 FROM BML_STORED_SERVICE_REQUESTS ssr_pc
+                    WHERE ssr_pc.ID = wh.STORED_SERVICE_REQ_ID
+                    AND ssr_pc.PATIENT_CODE = :p_code
+                    AND ssr_pc.DELETED_AT IS NULL
                 )
                 OR EXISTS (
                     SELECT 1 FROM BML_STORED_SR_SERVICES sss
