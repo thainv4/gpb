@@ -42,6 +42,7 @@ export class DeviceStainingMethodService extends BaseService {
         return this.transactionWithAudit(async manager => {
             const entity = new DeviceStainingMethod();
             entity.methodName = createDto.methodName.trim();
+            entity.protocolNo = createDto.protocolNo;
             this.setAuditFields(entity, false);
 
             const saved = await manager.save(DeviceStainingMethod, entity);
@@ -65,8 +66,12 @@ export class DeviceStainingMethodService extends BaseService {
                 }
             }
 
+            const nextProtocol =
+                updateDto.protocolNo !== undefined ? updateDto.protocolNo : existing.protocolNo;
+
             Object.assign(existing, {
                 methodName: updateDto.methodName ?? existing.methodName,
+                protocolNo: nextProtocol,
                 updatedBy: currentUser.id,
             });
 
@@ -117,6 +122,7 @@ export class DeviceStainingMethodService extends BaseService {
         return {
             id: entity.id,
             methodName: entity.methodName,
+            protocolNo: entity.protocolNo,
             createdAt: entity.createdAt,
             updatedAt: entity.updatedAt,
             createdBy: entity.createdBy ?? null,

@@ -7,6 +7,9 @@ export class DeviceStainingMethodResponseDto {
     @ApiProperty({ description: 'Tên phương pháp nhuộm' })
     methodName: string;
 
+    @ApiProperty({ description: 'Số/ký hiệu protocol trên thiết bị' })
+    protocolNo: string;
+
     @ApiProperty({ description: 'Ngày tạo' })
     createdAt: Date;
 

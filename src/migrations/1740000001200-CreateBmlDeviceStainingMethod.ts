@@ -17,6 +17,7 @@ export class CreateBmlDeviceStainingMethod1740000001200 implements MigrationInte
                 UPDATED_BY VARCHAR2(50) NULL,
                 VERSION NUMBER DEFAULT 1 NOT NULL,
                 METHOD_NAME NVARCHAR2(50) NOT NULL,
+                PROTOCOL_NO VARCHAR2(100) NOT NULL,
                 CONSTRAINT PK_BML_DEVICE_STAINING_METHOD PRIMARY KEY (ID)
             )
         `);
