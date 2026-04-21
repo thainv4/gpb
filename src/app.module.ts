@@ -36,6 +36,7 @@ import { HisSereServModule } from './modules/his-sere-serv/his-sere-serv.module'
 import { HisEkipModule } from './modules/his-ekip/his-ekip.module';
 import { HisPacsModule } from './modules/his-pacs/his-pacs.module';
 import { StainingMethodModule } from './modules/staining-method/staining-method.module';
+import { DeviceStainingMethodModule } from './modules/device-staining-method/device-staining-method.module';
 import { TestingMethodGenModule } from './modules/testing-method-gen/testing-method-gen.module';
 import { StoreSignedDocumentModule } from './modules/store-signed-document/store-signed-document.module';
 import { DeviceOutboundModule } from './modules/device-outbound/device-outbound.module';
@@ -103,6 +104,7 @@ import { ServicesModule } from './shared/services/services.module';
         HisEkipModule,
         HisPacsModule,
         StainingMethodModule,
+        DeviceStainingMethodModule,
         TestingMethodGenModule,
         StoreSignedDocumentModule,
         DeviceOutboundModule,
