@@ -24,8 +24,8 @@ export class GetWorkflowHistoryByRoomStateDto {
     stateId?: string;
 
     @ApiPropertyOptional({ 
-        description: 'Mã tìm kiếm - có thể là HIS Service Request Code hoặc Reception Code (để trống để lấy tất cả)', 
-        example: 'SR2024120001 hoặc BLOOD.20241024.0001'
+        description: 'Mã tìm kiếm - HIS Service Request Code, Reception Code hoặc mã bệnh nhân (PATIENT_CODE) (để trống để lấy tất cả)', 
+        example: 'SR2024120001 hoặc BLOOD.20241024.0001 hoặc PID001'
     })
     @IsOptional()
     @IsString()
