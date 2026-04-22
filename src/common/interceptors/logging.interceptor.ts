@@ -38,6 +38,19 @@ export class LoggingInterceptor implements NestInterceptor {
             tap((data) => {
                 const duration = Date.now() - startTime;
 
+                // `data` có thể là undefined khi controller dùng `@Res()` và tự ghi response (ví dụ stream file),
+                // hoặc chứa các giá trị không serializable (Buffer, Stream, vòng tham chiếu...). Tính responseSize
+                // an toàn để tránh làm crash pipeline RxJS.
+                let responseSize = 0;
+                if (data !== undefined && data !== null) {
+                    try {
+                        const serialized = JSON.stringify(data);
+                        responseSize = typeof serialized === 'string' ? serialized.length : 0;
+                    } catch {
+                        responseSize = 0;
+                    }
+                }
+
                 // Log successful execution
                 this.logger.debug(`Method success: ${operation}`, {
                     traceId: request.traceContext?.traceId,
@@ -45,7 +58,7 @@ export class LoggingInterceptor implements NestInterceptor {
                     operation,
                     duration,
                     userId: request.user?.id,
-                    responseSize: JSON.stringify(data).length,
+                    responseSize,
                 });
 
                 // Log performance if slow

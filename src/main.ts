@@ -51,6 +51,10 @@ async function bootstrap() {
             'TokenCode',             // EMR token code header
             'ApplicationCode',       // HIS application code header
         ],
+        exposedHeaders: [
+            'Content-Disposition', // Cho phép client đọc tên file khi tải xuống
+            'X-Total-Count',       // Tổng số dòng khi xuất báo cáo streaming
+        ],
         credentials: true,
     });
 

@@ -1,5 +1,7 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, BadRequestException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, BadRequestException, Res } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiBearerAuth, ApiProduces } from '@nestjs/swagger';
+import { Response } from 'express';
+import * as ExcelJS from 'exceljs';
 import { WorkflowHistoryService } from '../services/workflow-history.service';
 import { StartWorkflowDto } from '../dto/commands/start-workflow.dto';
 import { TransitionStateDto } from '../dto/commands/transition-state.dto';
@@ -7,6 +9,7 @@ import { UpdateCurrentStateDto } from '../dto/commands/update-current-state.dto'
 import { DeleteByStateAndRequestDto } from '../dto/commands/delete-by-state-and-request.dto';
 import { GetWorkflowHistoryDto } from '../dto/queries/get-workflow-history.dto';
 import { GetWorkflowHistoryByRoomStateDto } from '../dto/queries/get-workflow-history-by-room-state.dto';
+import { GetWorkflowHistoryReportExportDto } from '../dto/queries/get-workflow-history-report-export.dto';
 import { WorkflowHistoryResponseDto } from '../dto/responses/workflow-history-response.dto';
 import { WorkflowHistoryActionInfoResponseDto } from '../dto/responses/workflow-history-action-info-response.dto';
 import { ResponseBuilder } from '../../../../common/builders/response.builder';
@@ -233,6 +236,130 @@ export class WorkflowHistoryController {
                 patientName: query.patientName || 'all',
             },
         });
+    }
+
+    @Get('report-export')
+    @ApiOperation({
+        summary: 'Xuất báo cáo Excel (stream .xlsx trực tiếp)',
+        description:
+            'Server sinh file .xlsx và stream binary về client. Không giới hạn 10.000 dòng như phiên bản JSON cũ; ' +
+            'giới hạn an toàn mặc định là 200.000 dòng, có thể override qua query `maxRows` (tối đa 1.000.000). ' +
+            'Header `X-Total-Count` chứa tổng số dòng sẽ ghi vào file.',
+    })
+    @ApiProduces('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    @ApiResponse({ status: 200, description: 'Trả về file xlsx' })
+    async getReportExport(
+        @Query() query: GetWorkflowHistoryReportExportDto,
+        @CurrentUser() currentUser: ICurrentUser | null,
+        @Res() res: Response,
+    ): Promise<void> {
+        // ===== Bước 1: lấy danh sách WH_ID (chưa ghi gì vào response) =====
+        // Nếu bước này ném exception thì GlobalExceptionFilter xử lý bình thường (chưa có header/body nào được gửi).
+        let ids: string[];
+        try {
+            const prepared = await this.workflowHistoryService.prepareReportExport(query, currentUser);
+            ids = prepared.ids;
+        } catch (error) {
+            // Chưa gửi gì cả ⇒ để filter toàn cục xử lý để trả JSON lỗi chuẩn.
+            throw error;
+        }
+
+        // ===== Bước 2: set toàn bộ HTTP header TRƯỚC khi mở WorkbookWriter =====
+        // Sau khi WorkbookWriter được tạo và bắt đầu commit, Node sẽ flush header ⇒ không thể set thêm.
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const fileName = `lis-report-${yyyy}-${mm}-${dd}.xlsx`;
+
+        res.setHeader(
+            'Content-Type',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        );
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Access-Control-Expose-Headers', 'X-Total-Count, Content-Disposition');
+        res.setHeader('X-Total-Count', String(ids.length));
+
+        // ===== Bước 3: mở writer và stream rows =====
+        const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({
+            stream: res,
+            useStyles: true,
+            useSharedStrings: false,
+        });
+        const ws = workbook.addWorksheet('Báo cáo workflow', {
+            views: [{ state: 'frozen', ySplit: 1 }],
+        });
+        ws.columns = [
+            { header: 'STT', key: 'stt', width: 6 },
+            { header: 'Barcode (mã bệnh phẩm)', key: 'receptionCode', width: 18 },
+            { header: 'Mã y lệnh / Service req', key: 'serviceReqDisplay', width: 22 },
+            { header: 'Mã bệnh nhân', key: 'patientCode', width: 14 },
+            { header: 'Họ và tên', key: 'patientName', width: 28 },
+            { header: 'Chẩn đoán (ICD)', key: 'icdName', width: 36 },
+            { header: 'Bác sĩ chỉ định', key: 'requestUsername', width: 22 },
+            { header: 'Vị trí bệnh phẩm', key: 'sampleTypeName', width: 22 },
+            { header: 'Trạng thái', key: 'stateName', width: 22 },
+            { header: 'Thời gian trạng thái', key: 'stateActionAt', width: 22 },
+        ];
+
+        const headerRow = ws.getRow(1);
+        headerRow.font = { bold: true };
+        headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+        headerRow.commit();
+
+        ws.autoFilter = {
+            from: { row: 1, column: 1 },
+            to: { row: 1, column: ws.columnCount },
+        };
+
+        let stt = 0;
+        try {
+            await this.workflowHistoryService.streamReportRows(
+                ids,
+                (row) => {
+                    stt += 1;
+                    const serviceReqDisplay =
+                        (row.hisServiceReqCode && row.hisServiceReqCode.trim()) ||
+                        (row.serviceReqCode && row.serviceReqCode.trim()) ||
+                        '';
+                    ws.addRow({
+                        stt,
+                        receptionCode: row.receptionCode ?? '',
+                        serviceReqDisplay,
+                        patientCode: row.patientCode ?? '',
+                        patientName: row.patientName ?? '',
+                        icdName: row.icdName ?? '',
+                        requestUsername: row.requestUsername ?? '',
+                        sampleTypeName: row.sampleTypeName ?? '',
+                        stateName: row.stateName ?? '',
+                        stateActionAt: this.formatDateTimeVi(row.stateActionAt),
+                    }).commit();
+                },
+                { batchSize: 500 },
+            );
+
+            await ws.commit();
+            await workbook.commit();
+        } catch (error) {
+            // Tại đây WorkbookWriter đã bắt đầu ghi vào `res` ⇒ headers chắc chắn đã được flush.
+            // KHÔNG được set header / JSON hay re-throw (sẽ khiến GlobalExceptionFilter gọi res.json gây ERR_HTTP_HEADERS_SENT).
+            // Chiến lược: log lỗi và destroy response để client thấy kết nối đóng giữa chừng (file .xlsx sẽ bị hỏng ⇒ trình duyệt báo lỗi tải).
+            console.error('[getReportExport] Lỗi khi stream Excel sau khi đã gửi header:', error);
+            // Dùng destroy thay vì end() để đảm bảo kết nối được huỷ ngay, tránh client "treo".
+            if (!res.writableEnded) {
+                res.destroy(error instanceof Error ? error : new Error('Excel stream error'));
+            }
+            return; // KHÔNG throw để filter toàn cục không đụng vào response nữa.
+        }
+    }
+
+    private formatDateTimeVi(iso: string | null | undefined): string {
+        if (!iso) return '';
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return '';
+        const pad = (n: number) => String(n).padStart(2, '0');
+        return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     }
 
     @Get('by-state-and-service-req/:stateId/:storedServiceReqId')

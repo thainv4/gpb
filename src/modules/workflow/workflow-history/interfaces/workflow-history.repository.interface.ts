@@ -51,6 +51,28 @@ export interface IWorkflowHistoryRepository {
         orderBy: 'actionTimestamp' | 'createdAt' | 'startedAt',
     ): Promise<{ items: WorkflowHistory[]; total: number }>;
 
+    /**
+     * Danh sách WH_ID (phẳng) phục vụ xuất báo cáo Excel, đã áp filter + max-to-state-order + order.
+     * Trả tối đa maxRows.
+     */
+    findIdsForReportExport(
+        roomId: string | undefined,
+        roomIds: string[] | undefined,
+        filterStateId: string | undefined,
+        roomType: 'actionRoomId' | 'currentRoomId' | 'transitionedByRoomId',
+        stateType: 'toStateId' | 'fromStateId',
+        timeType: 'actionTimestamp' | 'startedAt' | 'completedAt' | 'currentStateStartedAt',
+        fromDate: Date | undefined,
+        toDate: Date | undefined,
+        isCurrent: number | undefined,
+        code: string | undefined,
+        flag: string | null | undefined,
+        patientName: string | undefined,
+        maxRows: number,
+        order: 'ASC' | 'DESC',
+        orderBy: 'actionTimestamp' | 'createdAt' | 'startedAt',
+    ): Promise<string[]>;
+
     save(entity: WorkflowHistory): Promise<WorkflowHistory>;
     updateIsCurrent(storedServiceReqId: string, storedServiceId: string | null, isCurrent: number): Promise<void>;
     remove(id: string): Promise<void>;

@@ -9,6 +9,8 @@ import { TransitionStateDto } from '../dto/commands/transition-state.dto';
 import { UpdateCurrentStateDto } from '../dto/commands/update-current-state.dto';
 import { GetWorkflowHistoryDto } from '../dto/queries/get-workflow-history.dto';
 import { GetWorkflowHistoryByRoomStateDto } from '../dto/queries/get-workflow-history-by-room-state.dto';
+import { GetWorkflowHistoryReportExportDto } from '../dto/queries/get-workflow-history-report-export.dto';
+import { WorkflowHistoryReportExportRowDto } from '../dto/responses/workflow-history-report-export-row.dto';
 import { WorkflowHistory } from '../entities/workflow-history.entity';
 import { WorkflowHistoryResponseDto, GetWorkflowHistoryResult } from '../dto/responses/workflow-history-response.dto';
 import { WorkflowHistoryActionInfoResponseDto } from '../dto/responses/workflow-history-action-info-response.dto';
@@ -17,6 +19,42 @@ import { StoredServiceRequest } from '../../../service-request/entities/stored-s
 import { StoredServiceRequestService } from '../../../service-request/entities/stored-service-request-service.entity';
 import { WorkflowState } from '../../entities/workflow-state.entity';
 import { Room } from '../../../room/entities/room.entity';
+
+type RoomStateTimeColumn =
+    | 'actionTimestamp'
+    | 'startedAt'
+    | 'completedAt'
+    | 'currentStateStartedAt';
+
+interface EnrichedRoomStateFetchParams {
+    normalizedRoomId?: string;
+    roomIds: string[] | undefined;
+    normalizedStateId?: string;
+    roomType: 'actionRoomId' | 'currentRoomId' | 'transitionedByRoomId';
+    stateType: 'toStateId' | 'fromStateId';
+    timeType: RoomStateTimeColumn;
+    fromDate?: Date;
+    toDate?: Date;
+    isCurrent?: number;
+    normalizedCode?: string;
+    normalizedFlag: string | undefined | null;
+    normalizedPatientName?: string;
+    limit: number;
+    offset: number;
+    order: 'ASC' | 'DESC';
+    orderBy: 'actionTimestamp' | 'createdAt' | 'startedAt';
+}
+
+interface EnrichedRoomStateFetchResult {
+    items: WorkflowHistory[];
+    total: number;
+    limit: number;
+    offset: number;
+    itemReceptionCodeMap: Map<string, string | null>;
+    itemSampleTypeMap: Map<string, string | null>;
+    creatorMap: Map<string, { id: string; userName: string; fullName: string }>;
+    roomMap: Map<string, string>;
+}
 
 @Injectable()
 export class WorkflowHistoryService {
@@ -607,37 +645,25 @@ export class WorkflowHistoryService {
      */
     async getByRoomAndState(
         dto: GetWorkflowHistoryByRoomStateDto,
-        currentUser: CurrentUser | null
+        currentUser: CurrentUser | null,
     ): Promise<GetWorkflowHistoryResult> {
-        // Parse dates
         const fromDate = dto.fromDate ? new Date(dto.fromDate) : undefined;
         const toDate = dto.toDate ? new Date(dto.toDate) : undefined;
-
-        // Validate date range
         if (fromDate && toDate && fromDate > toDate) {
             throw new BadRequestException('From date không được lớn hơn To date');
         }
-
-        // Normalize stateId: empty string hoặc undefined => undefined
         const normalizedStateId = dto.stateId && dto.stateId.trim() !== '' ? dto.stateId : undefined;
-
-        // Normalize flag: undefined => undefined, empty string => undefined, "null" string => null
         let normalizedFlag: string | undefined | null = undefined;
         if (dto.flag !== undefined) {
             if (dto.flag === '' || dto.flag.toLowerCase() === 'null') {
-                normalizedFlag = null; // Filter các request không có flag
+                normalizedFlag = null;
             } else {
-                normalizedFlag = dto.flag; // Filter các request có flag = giá trị này
+                normalizedFlag = dto.flag;
             }
         }
-
-        // Normalize code: undefined => undefined, empty string => undefined
         const normalizedCode = dto.code && dto.code.trim() !== '' ? dto.code.trim() : undefined;
-
-        // Normalize patientName: undefined => undefined, empty string => undefined
-        const normalizedPatientName = dto.patientName && dto.patientName.trim() !== '' ? dto.patientName.trim() : undefined;
-
-        // Room filter: có roomId thì dùng 1 phòng; rỗng/null thì dùng danh sách phòng của user (BML_USER_ROOMS)
+        const normalizedPatientName =
+            dto.patientName && dto.patientName.trim() !== '' ? dto.patientName.trim() : undefined;
         const normalizedRoomId = dto.roomId && dto.roomId.trim() !== '' ? dto.roomId.trim() : undefined;
         let roomIds: string[] | undefined = undefined;
         if (!normalizedRoomId && currentUser) {
@@ -645,80 +671,287 @@ export class WorkflowHistoryService {
             roomIds = userRooms.map((ur) => ur.roomId);
         }
         if (!normalizedRoomId && !currentUser) {
-            roomIds = []; // Chưa đăng nhập và không chỉ định phòng → không trả về bản ghi
+            roomIds = [];
         }
-
         const limit = dto.limit || 10;
         const offset = dto.offset || 0;
 
-        if (!normalizedRoomId && roomIds !== undefined && roomIds.length === 0) {
+        const ctx = await this.fetchEnrichedByRoomAndState({
+            normalizedRoomId,
+            roomIds,
+            normalizedStateId,
+            roomType: dto.roomType || 'currentRoomId',
+            stateType: dto.stateType || 'toStateId',
+            timeType: (dto.timeType || 'actionTimestamp') as RoomStateTimeColumn,
+            fromDate,
+            toDate,
+            isCurrent: dto.isCurrent,
+            normalizedCode,
+            normalizedFlag,
+            normalizedPatientName,
+            limit,
+            offset,
+            order: dto.order || 'DESC',
+            orderBy: dto.orderBy || 'actionTimestamp',
+        });
+
+        const mappedItems = ctx.items.map((item) => {
+            const res = this.mapToResponseDto(item);
+            res.creator = item.createdBy ? ctx.creatorMap.get(item.createdBy) || null : null;
+            res.roomName = item.currentRoomId ? ctx.roomMap.get(item.currentRoomId) ?? null : null;
+            if (res.serviceRequest) {
+                const receptionCode = ctx.itemReceptionCodeMap.get(item.id);
+                res.serviceRequest.receptionCode = receptionCode !== undefined ? receptionCode : null;
+            }
+            return res;
+        });
+
+        return {
+            items: mappedItems,
+            total: ctx.total,
+            limit: ctx.limit,
+            offset: ctx.offset,
+        };
+    }
+
+    /**
+     * Bước 1 của xuất báo cáo Excel theo kiểu stream:
+     * chuẩn hoá DTO → truy vấn danh sách WH_ID (đã sắp xếp, đã áp bộ lọc & max-to-state-order) và trả về.
+     *
+     * Phải được gọi TRƯỚC khi controller mở ExcelJS WorkbookWriter để caller có thể:
+     *  - Set `X-Total-Count` = `ids.length` trên response (không thể set sau khi body đã bắt đầu ghi).
+     *  - Quyết định có cần ghi sheet trống (khi `ids.length === 0`).
+     */
+    async prepareReportExport(
+        dto: GetWorkflowHistoryReportExportDto,
+        currentUser: CurrentUser | null,
+    ): Promise<{ ids: string[] }> {
+        const fromDate = dto.fromDate ? new Date(dto.fromDate) : undefined;
+        const toDate = dto.toDate ? new Date(dto.toDate) : undefined;
+        if (fromDate && toDate && fromDate > toDate) {
+            throw new BadRequestException('From date không được lớn hơn To date');
+        }
+        const normalizedStateId = dto.stateId && dto.stateId.trim() !== '' ? dto.stateId : undefined;
+        let normalizedFlag: string | undefined | null = undefined;
+        if (dto.flag !== undefined) {
+            if (dto.flag === '' || dto.flag.toLowerCase() === 'null') {
+                normalizedFlag = null;
+            } else {
+                normalizedFlag = dto.flag;
+            }
+        }
+        const normalizedCode = dto.code && dto.code.trim() !== '' ? dto.code.trim() : undefined;
+        const normalizedPatientName =
+            dto.patientName && dto.patientName.trim() !== '' ? dto.patientName.trim() : undefined;
+        const normalizedRoomId = dto.roomId && dto.roomId.trim() !== '' ? dto.roomId.trim() : undefined;
+        let roomIds: string[] | undefined = undefined;
+        if (!normalizedRoomId && currentUser) {
+            const userRooms = await this.userRoomRepo.findActiveByUserId(currentUser.id);
+            roomIds = userRooms.map((ur) => ur.roomId);
+        }
+        if (!normalizedRoomId && !currentUser) {
+            roomIds = [];
+        }
+
+        const maxRows = dto.maxRows ?? 200_000;
+        const order = dto.order || 'DESC';
+        const orderBy = dto.orderBy || 'actionTimestamp';
+
+        const ids = await this.workflowHistoryRepo.findIdsForReportExport(
+            normalizedRoomId,
+            roomIds,
+            normalizedStateId,
+            dto.roomType || 'currentRoomId',
+            dto.stateType || 'toStateId',
+            'actionTimestamp',
+            fromDate,
+            toDate,
+            dto.isCurrent,
+            normalizedCode,
+            normalizedFlag,
+            normalizedPatientName,
+            maxRows,
+            order,
+            orderBy,
+        );
+
+        return { ids };
+    }
+
+    /**
+     * Bước 2 của xuất báo cáo Excel theo kiểu stream:
+     * nhận danh sách WH_ID từ `prepareReportExport`, nạp dữ liệu theo chunk và emit từng dòng đã enrich
+     * qua `onRow`. Chỉ giữ trong RAM tối đa một chunk (mặc định 500 dòng).
+     */
+    async streamReportRows(
+        ids: string[],
+        onRow: (row: WorkflowHistoryReportExportRowDto) => void | Promise<void>,
+        opts: { batchSize?: number } = {},
+    ): Promise<void> {
+        if (ids.length === 0) return;
+
+        const batchSize = opts.batchSize ?? 500;
+        const whRepo = this.dataSource.getRepository(WorkflowHistory);
+        const ssrRepo = this.dataSource.getRepository(StoredServiceRequest);
+        const sssRepo = this.dataSource.getRepository(StoredServiceRequestService);
+        const stateRepo = this.dataSource.getRepository(WorkflowState);
+
+        for (let i = 0; i < ids.length; i += batchSize) {
+            const chunk = ids.slice(i, i + batchSize);
+
+            const entities = await whRepo.find({ where: { id: In(chunk) } });
+            const entityMap = new Map(entities.map((e) => [e.id, e]));
+            const orderedEntities = chunk
+                .map((id) => entityMap.get(id))
+                .filter((e): e is WorkflowHistory => !!e);
+
+            if (orderedEntities.length === 0) continue;
+
+            const storedReqIds = [...new Set(orderedEntities.map((e) => e.storedServiceReqId).filter(Boolean))];
+            const stateIdSet = new Set<string>();
+            orderedEntities.forEach((e) => {
+                if (e.toStateId) stateIdSet.add(e.toStateId);
+            });
+
+            const [storedReqs, services, states] = await Promise.all([
+                storedReqIds.length
+                    ? ssrRepo.find({ where: { id: In(storedReqIds), deletedAt: IsNull() } })
+                    : Promise.resolve([] as StoredServiceRequest[]),
+                storedReqIds.length
+                    ? sssRepo.find({
+                        where: { storedServiceRequestId: In(storedReqIds), deletedAt: IsNull() },
+                    })
+                    : Promise.resolve([] as StoredServiceRequestService[]),
+                stateIdSet.size
+                    ? stateRepo.find({ where: { id: In([...stateIdSet]), deletedAt: IsNull() } })
+                    : Promise.resolve([] as WorkflowState[]),
+            ]);
+
+            const storedReqMap = new Map(storedReqs.map((sr) => [sr.id, sr]));
+            const servicesMap = new Map<string, StoredServiceRequestService[]>();
+            services.forEach((s) => {
+                const arr = servicesMap.get(s.storedServiceRequestId);
+                if (arr) arr.push(s);
+                else servicesMap.set(s.storedServiceRequestId, [s]);
+            });
+            const stateMap = new Map(states.map((st) => [st.id, st]));
+
+            for (const item of orderedEntities) {
+                const sr = storedReqMap.get(item.storedServiceReqId);
+                const servicesForReq = servicesMap.get(item.storedServiceReqId) || [];
+
+                let receptionCode: string | null = null;
+                let sampleFromService: string | null = null;
+                if (item.storedServiceId) {
+                    const matching = servicesForReq.find((s) => s.id === item.storedServiceId);
+                    if (matching) {
+                        receptionCode = matching.receptionCode || null;
+                        sampleFromService =
+                            matching.sampleTypeName || matching.sampleTypeNameMapGenGpb || null;
+                    }
+                } else if (servicesForReq.length > 0) {
+                    const s0 = servicesForReq[0];
+                    receptionCode = s0.receptionCode || null;
+                    sampleFromService = s0.sampleTypeName || s0.sampleTypeNameMapGenGpb || null;
+                }
+                const sampleTypeName =
+                    (sampleFromService && String(sampleFromService).trim() !== ''
+                        ? sampleFromService
+                        : null) ||
+                    sr?.sampleTypeNameGenGpb ||
+                    null;
+
+                const toState = item.toStateId ? stateMap.get(item.toStateId) : undefined;
+                const ts = item.actionTimestamp;
+
+                await onRow({
+                    workflowHistoryId: item.id,
+                    receptionCode,
+                    hisServiceReqCode: sr?.hisServiceReqCode ?? '',
+                    serviceReqCode: sr?.serviceReqCode ?? '',
+                    patientCode: sr?.patientCode ?? null,
+                    patientName: sr?.patientName ?? null,
+                    icdName: sr?.icdName ?? null,
+                    requestUsername: sr?.requestUsername ?? null,
+                    sampleTypeName,
+                    stateName: toState?.stateName ?? null,
+                    stateActionAt: ts ? new Date(ts).toISOString() : null,
+                });
+            }
+        }
+    }
+
+    // ========== PRIVATE METHODS ==========
+
+    private async fetchEnrichedByRoomAndState(
+        p: EnrichedRoomStateFetchParams,
+    ): Promise<EnrichedRoomStateFetchResult> {
+        const itemReceptionCodeMap = new Map<string, string | null>();
+        const itemSampleTypeMap = new Map<string, string | null>();
+        const creatorMap = new Map<string, { id: string; userName: string; fullName: string }>();
+        const roomMap = new Map<string, string>();
+
+        if (!p.normalizedRoomId && p.roomIds !== undefined && p.roomIds.length === 0) {
             return {
                 items: [],
                 total: 0,
-                limit,
-                offset,
+                limit: p.limit,
+                offset: p.offset,
+                itemReceptionCodeMap,
+                itemSampleTypeMap,
+                creatorMap,
+                roomMap,
             };
         }
 
         const { items, total: finalTotal } =
             await this.workflowHistoryRepo.findByRoomAndStateWithMaxToStateOrderPaginated(
-                normalizedRoomId,
-                roomIds,
-                normalizedStateId,
-                dto.roomType || 'currentRoomId',
-                dto.stateType || 'toStateId',
-                dto.timeType || 'actionTimestamp',
-                fromDate,
-                toDate,
-                dto.isCurrent,
-                normalizedCode,
-                normalizedFlag,
-                normalizedPatientName,
-                limit,
-                offset,
-                dto.order || 'DESC',
-                dto.orderBy || 'actionTimestamp',
+                p.normalizedRoomId,
+                p.roomIds,
+                p.normalizedStateId,
+                p.roomType,
+                p.stateType,
+                p.timeType,
+                p.fromDate,
+                p.toDate,
+                p.isCurrent,
+                p.normalizedCode,
+                p.normalizedFlag,
+                p.normalizedPatientName,
+                p.limit,
+                p.offset,
+                p.order,
+                p.orderBy,
             );
 
-        // Load StoredServiceRequest batch để tránh N+1 queries
         try {
             if (items.length > 0) {
                 const storedReqRepo = this.dataSource.getRepository(StoredServiceRequest);
-                const storedReqIds = [...new Set(items.map(item => item.storedServiceReqId))];
+                const storedReqIds = [...new Set(items.map((item) => item.storedServiceReqId))];
                 const storedReqs = await storedReqRepo.find({
                     where: { id: In(storedReqIds), deletedAt: IsNull() },
                 });
-                const storedReqMap = new Map(storedReqs.map(sr => [sr.id, sr]));
-                
-                // Attach StoredServiceRequest to each WorkflowHistory item
-                items.forEach(item => {
+                const storedReqMap = new Map(storedReqs.map((sr) => [sr.id, sr]));
+                items.forEach((item) => {
                     item.storedServiceRequest = storedReqMap.get(item.storedServiceReqId);
                 });
             }
         } catch (error) {
-            // Log error nhưng không throw để API vẫn chạy được
             console.error('Error loading StoredServiceRequest:', error);
         }
 
-        // Load StoredServiceRequestService batch để lấy receptionCode
-        // Map key = workflow history item id để lấy receptionCode chính xác cho từng item
-        const itemReceptionCodeMap = new Map<string, string | null>();
         try {
             if (items.length > 0) {
                 const serviceRepo = this.dataSource.getRepository(StoredServiceRequestService);
-                const storedReqIds = [...new Set(items.map(item => item.storedServiceReqId))];
-                
-                // Load tất cả services cho các storedServiceReqId
+                const storedReqIds = [...new Set(items.map((item) => item.storedServiceReqId))];
                 const services = await serviceRepo.find({
-                    where: { 
+                    where: {
                         storedServiceRequestId: In(storedReqIds),
                         deletedAt: IsNull(),
                     },
                 });
-
-                // Tạo map services theo storedServiceRequestId
                 const serviceMap = new Map<string, StoredServiceRequestService[]>();
-                services.forEach(service => {
+                services.forEach((service) => {
                     const key = service.storedServiceRequestId;
                     if (!serviceMap.has(key)) {
                         serviceMap.set(key, []);
@@ -726,51 +959,48 @@ export class WorkflowHistoryService {
                     serviceMap.get(key)!.push(service);
                 });
 
-                // Tạo map receptionCode cho mỗi workflow history item
-                items.forEach(item => {
+                items.forEach((item) => {
                     const servicesForReq = serviceMap.get(item.storedServiceReqId) || [];
                     let receptionCode: string | null = null;
+                    let sampleFromService: string | null = null;
 
                     if (item.storedServiceId) {
-                        // Nếu có storedServiceId, tìm service tương ứng
-                        const matchingService = servicesForReq.find(s => s.id === item.storedServiceId);
+                        const matchingService = servicesForReq.find((s) => s.id === item.storedServiceId);
                         if (matchingService) {
                             receptionCode = matchingService.receptionCode || null;
+                            sampleFromService =
+                                matchingService.sampleTypeName ||
+                                matchingService.sampleTypeNameMapGenGpb ||
+                                null;
                         }
-                    } else {
-                        // Nếu không có storedServiceId, lấy từ service đầu tiên
-                        if (servicesForReq.length > 0) {
-                            receptionCode = servicesForReq[0].receptionCode || null;
-                        }
+                    } else if (servicesForReq.length > 0) {
+                        const s0 = servicesForReq[0];
+                        receptionCode = s0.receptionCode || null;
+                        sampleFromService = s0.sampleTypeName || s0.sampleTypeNameMapGenGpb || null;
                     }
 
-                    // Key = workflow history item id để map chính xác vào response
                     itemReceptionCodeMap.set(item.id, receptionCode);
+                    itemSampleTypeMap.set(item.id, sampleFromService);
                 });
             }
         } catch (error) {
-            // Log error nhưng không throw để API vẫn chạy được
-            console.error('Error loading StoredServiceRequestService for receptionCode:', error);
+            console.error('Error loading StoredServiceRequestService for reception/sampleType:', error);
         }
 
-        // Load WorkflowState batch để tránh N+1 queries
         try {
             if (items.length > 0) {
                 const stateRepo = this.dataSource.getRepository(WorkflowState);
                 const stateIds = new Set<string>();
-                items.forEach(item => {
+                items.forEach((item) => {
                     if (item.toStateId) stateIds.add(item.toStateId);
                     if (item.fromStateId) stateIds.add(item.fromStateId);
                 });
-                
                 if (stateIds.size > 0) {
                     const states = await stateRepo.find({
                         where: { id: In([...stateIds]), deletedAt: IsNull() },
                     });
-                    const stateMap = new Map(states.map(s => [s.id, s]));
-                    
-                    // Attach States to each WorkflowHistory item
-                    items.forEach(item => {
+                    const stateMap = new Map(states.map((s) => [s.id, s]));
+                    items.forEach((item) => {
                         if (item.toStateId && stateMap.has(item.toStateId)) {
                             item.toState = stateMap.get(item.toStateId);
                         }
@@ -781,23 +1011,16 @@ export class WorkflowHistoryService {
                 }
             }
         } catch (error) {
-            // Log error nhưng không throw để API vẫn chạy được
             console.error('Error loading WorkflowState:', error);
         }
 
-        // ✅ LOAD CREATOR INFO TỪ BẢNG USER (BML_USERS) - BATCH LOADING
-        const creatorMap = new Map<string, { id: string; userName: string; fullName: string }>();
         try {
             if (items.length > 0) {
-                const creatorIds = items
-                    .map(item => item.createdBy)
-                    .filter((id): id is string => !!id);
-                
+                const creatorIds = items.map((item) => item.createdBy).filter((id): id is string => !!id);
                 if (creatorIds.length > 0) {
                     const uniqueCreatorIds = [...new Set(creatorIds)];
                     const users = await this.userRepo.findByIds(uniqueCreatorIds);
-                    
-                    users.forEach(user => {
+                    users.forEach((user) => {
                         creatorMap.set(user.id, {
                             id: user.id,
                             userName: user.username,
@@ -807,51 +1030,38 @@ export class WorkflowHistoryService {
                 }
             }
         } catch (error) {
-            // Log error nhưng không throw để API vẫn chạy được
             console.error('Error loading creator users from BML_USERS table:', error);
         }
 
-        // Load Room batch để lấy roomName theo currentRoomId (BML_ROOMS)
-        const roomMap = new Map<string, string>();
         try {
             if (items.length > 0) {
-                const roomIds = items
-                    .map(item => item.currentRoomId)
+                const currentRoomIds = items
+                    .map((item) => item.currentRoomId)
                     .filter((id): id is string => !!id);
-                const uniqueRoomIds = [...new Set(roomIds)];
+                const uniqueRoomIds = [...new Set(currentRoomIds)];
                 if (uniqueRoomIds.length > 0) {
                     const roomRepo = this.dataSource.getRepository(Room);
                     const rooms = await roomRepo.find({
                         where: { id: In(uniqueRoomIds), deletedAt: IsNull() },
                     });
-                    rooms.forEach(room => roomMap.set(room.id, room.roomName));
+                    rooms.forEach((room) => roomMap.set(room.id, room.roomName));
                 }
             }
         } catch (error) {
             console.error('Error loading Room for roomName (currentRoomId):', error);
         }
 
-        // Map to DTOs với creator info, receptionCode và roomName
-        const mappedItems = items.map(item => {
-            const dto = this.mapToResponseDto(item);
-            dto.creator = item.createdBy ? creatorMap.get(item.createdBy) || null : null;
-            dto.roomName = item.currentRoomId ? (roomMap.get(item.currentRoomId) ?? null) : null;
-            if (dto.serviceRequest) {
-                const receptionCode = itemReceptionCodeMap.get(item.id);
-                dto.serviceRequest.receptionCode = receptionCode !== undefined ? receptionCode : null;
-            }
-            return dto;
-        });
-
         return {
-            items: mappedItems,
+            items,
             total: finalTotal,
-            limit,
-            offset,
+            limit: p.limit,
+            offset: p.offset,
+            itemReceptionCodeMap,
+            itemSampleTypeMap,
+            creatorMap,
+            roomMap,
         };
     }
-
-    // ========== PRIVATE METHODS ==========
 
     private async getCompletedStateId(): Promise<string | null> {
         const completedState = await this.workflowStateRepo.findByCode('COMPLETED');

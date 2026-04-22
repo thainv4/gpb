@@ -547,6 +547,198 @@ OFFSET :p_offset ROWS FETCH NEXT :p_limit ROWS ONLY`;
         }
     }
 
+    /**
+     * Lấy danh sách WH_ID phẳng cho báo cáo xuất Excel.
+     * Dùng cùng CTE/window với `findByRoomAndStateWithMaxToStateOrderPaginated` nhưng:
+     *  - Không có COUNT (không cần total nhờ size của mảng trả về)
+     *  - Không có offset; chỉ có maxRows làm trần an toàn
+     */
+    async findIdsForReportExport(
+        roomId: string | undefined,
+        roomIds: string[] | undefined,
+        filterStateId: string | undefined,
+        roomType: 'actionRoomId' | 'currentRoomId' | 'transitionedByRoomId',
+        stateType: 'toStateId' | 'fromStateId',
+        timeType: 'actionTimestamp' | 'startedAt' | 'completedAt' | 'currentStateStartedAt' = 'actionTimestamp',
+        fromDate?: Date,
+        toDate?: Date,
+        isCurrent?: number,
+        code?: string,
+        flag?: string | null,
+        patientName?: string,
+        maxRows: number = 200000,
+        order: 'ASC' | 'DESC' = 'DESC',
+        orderBy: 'actionTimestamp' | 'createdAt' | 'startedAt' = 'actionTimestamp',
+    ): Promise<string[]> {
+        const roomCol = this.mapRoomTypeToOracleColumn(roomType);
+        const timeCol = this.getTimeColumnName(timeType);
+        const orderCol = this.getOrderColumnNameForFilteredAlias(orderBy);
+
+        const binds: Record<string, Date | string | number> = {};
+
+        let roomCondition = '';
+        if (roomId && roomId.trim() !== '') {
+            roomCondition = `AND wh.${roomCol} = :p_room_id`;
+            binds.p_room_id = roomId.trim();
+        } else if (roomIds !== undefined) {
+            if (roomIds.length === 0) {
+                roomCondition = 'AND 1 = 0';
+            } else {
+                const placeholders = roomIds.map((_, i) => {
+                    const key = `p_rid_${i}`;
+                    binds[key] = roomIds[i];
+                    return `:${key}`;
+                });
+                roomCondition = `AND wh.${roomCol} IN (${placeholders.join(', ')})`;
+            }
+        }
+
+        let codeCondition = '';
+        if (code && code.trim() !== '') {
+            codeCondition = `AND (
+                EXISTS (
+                    SELECT 1 FROM BML_STORED_SERVICE_REQUESTS ssr
+                    WHERE ssr.ID = wh.STORED_SERVICE_REQ_ID
+                    AND ssr.HIS_SERVICE_REQ_CODE = :p_code
+                    AND ssr.DELETED_AT IS NULL
+                )
+                OR EXISTS (
+                    SELECT 1 FROM BML_STORED_SERVICE_REQUESTS ssr_pc
+                    WHERE ssr_pc.ID = wh.STORED_SERVICE_REQ_ID
+                    AND ssr_pc.PATIENT_CODE = :p_code
+                    AND ssr_pc.DELETED_AT IS NULL
+                )
+                OR EXISTS (
+                    SELECT 1 FROM BML_STORED_SR_SERVICES sss
+                    WHERE sss.STORED_SERVICE_REQ_ID = wh.STORED_SERVICE_REQ_ID
+                    AND sss.RECEPTION_CODE = :p_code
+                    AND sss.DELETED_AT IS NULL
+                )
+            )`;
+            binds.p_code = code.trim();
+        }
+
+        let flagCondition = '';
+        if (flag !== undefined) {
+            if (flag === null) {
+                flagCondition = `AND EXISTS (
+                    SELECT 1 FROM BML_STORED_SERVICE_REQUESTS ssr
+                    WHERE ssr.ID = wh.STORED_SERVICE_REQ_ID
+                    AND ssr.FLAG IS NULL
+                    AND ssr.DELETED_AT IS NULL
+                )`;
+            } else {
+                flagCondition = `AND EXISTS (
+                    SELECT 1 FROM BML_STORED_SERVICE_REQUESTS ssr
+                    WHERE ssr.ID = wh.STORED_SERVICE_REQ_ID
+                    AND ssr.FLAG = :p_flag
+                    AND ssr.DELETED_AT IS NULL
+                )`;
+                binds.p_flag = flag;
+            }
+        }
+
+        let patientCondition = '';
+        if (patientName && patientName.trim() !== '') {
+            patientCondition = `AND EXISTS (
+                SELECT 1 FROM BML_STORED_SERVICE_REQUESTS ssr
+                WHERE ssr.ID = wh.STORED_SERVICE_REQ_ID
+                AND UPPER(ssr.PATIENT_NAME) LIKE UPPER(:p_patient_pattern)
+                AND ssr.DELETED_AT IS NULL
+            )`;
+            binds.p_patient_pattern = `%${patientName.trim()}%`;
+        }
+
+        let timeFromCondition = '';
+        if (fromDate) {
+            timeFromCondition = `AND wh.${timeCol} >= :p_from_date`;
+            binds.p_from_date = fromDate;
+        }
+
+        let timeToCondition = '';
+        if (toDate) {
+            timeToCondition = `AND wh.${timeCol} <= :p_to_date`;
+            binds.p_to_date = toDate;
+        }
+
+        let isCurrentCondition = '';
+        if (isCurrent !== undefined) {
+            isCurrentCondition = 'AND wh.IS_CURRENT = :p_is_current';
+            binds.p_is_current = isCurrent;
+        }
+
+        let statePickCondition = '';
+        if (filterStateId) {
+            if (stateType === 'fromStateId') {
+                statePickCondition = 'AND f.FROM_STATE_ID = :p_filter_state_id';
+            } else {
+                statePickCondition = 'AND f.TO_STATE_ID = :p_filter_state_id';
+            }
+            binds.p_filter_state_id = filterStateId;
+        }
+
+        const cteBody = `
+WITH base AS (
+    SELECT
+        wh.ID AS WH_ID,
+        wh.STORED_SERVICE_REQ_ID,
+        st.STATE_ORDER AS TO_STATE_ORD,
+        wh.ACTION_TIMESTAMP AS ACTION_TS,
+        wh.CREATED_AT AS CRT_AT,
+        wh.STARTED_AT AS ST_AT,
+        wh.TO_STATE_ID,
+        wh.FROM_STATE_ID
+    FROM BML_WORKFLOW_HISTORY wh
+    LEFT JOIN BML_WORKFLOW_STATES st ON st.ID = wh.TO_STATE_ID AND st.DELETED_AT IS NULL
+    WHERE wh.DELETED_AT IS NULL
+    ${roomCondition}
+    ${codeCondition}
+    ${flagCondition}
+    ${patientCondition}
+    ${timeFromCondition}
+    ${timeToCondition}
+    ${isCurrentCondition}
+),
+ranked AS (
+    SELECT
+        b.*,
+        MAX(b.TO_STATE_ORD) OVER (PARTITION BY b.STORED_SERVICE_REQ_ID) AS MAX_TO_ORD
+    FROM base b
+),
+filtered AS (
+    SELECT
+        r.WH_ID,
+        r.ACTION_TS,
+        r.CRT_AT,
+        r.ST_AT,
+        r.TO_STATE_ID,
+        r.FROM_STATE_ID
+    FROM ranked r
+    WHERE r.MAX_TO_ORD IS NULL
+        OR (r.TO_STATE_ORD IS NOT NULL AND r.TO_STATE_ORD = r.MAX_TO_ORD)
+)`;
+
+        const safeOrder = order === 'ASC' ? 'ASC' : 'DESC';
+
+        const sql = `${cteBody}
+SELECT f.WH_ID FROM filtered f
+WHERE 1 = 1
+${statePickCondition}
+ORDER BY f.${orderCol} ${safeOrder} NULLS LAST
+FETCH NEXT :p_max_rows ROWS ONLY`;
+
+        try {
+            const rows = (await this.repo.manager.query(sql, {
+                ...binds,
+                p_max_rows: maxRows,
+            } as any)) as Array<{ WH_ID: string }>;
+            return rows.map((r) => String(r.WH_ID)).filter(Boolean);
+        } catch (error) {
+            console.error('Error in findIdsForReportExport:', error);
+            throw error;
+        }
+    }
+
     private mapRoomTypeToOracleColumn(
         roomType: 'actionRoomId' | 'currentRoomId' | 'transitionedByRoomId',
     ): string {
