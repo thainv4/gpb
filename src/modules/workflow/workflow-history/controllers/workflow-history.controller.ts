@@ -292,12 +292,16 @@ export class WorkflowHistoryController {
         });
         ws.columns = [
             { header: 'STT', key: 'stt', width: 6 },
-            { header: 'Barcode (mã bệnh phẩm)', key: 'receptionCode', width: 18 },
+            { header: 'Barcode', key: 'receptionCode', width: 18 },
             { header: 'Mã y lệnh / Service req', key: 'serviceReqDisplay', width: 22 },
             { header: 'Mã bệnh nhân', key: 'patientCode', width: 14 },
             { header: 'Họ và tên', key: 'patientName', width: 28 },
             { header: 'Chẩn đoán (ICD)', key: 'icdName', width: 36 },
-            { header: 'Bác sĩ chỉ định', key: 'requestUsername', width: 22 },
+            {
+                header: 'Bác sĩ chỉ định',
+                key: 'requestDoctor',
+                width: 36,
+            },
             { header: 'Vị trí bệnh phẩm', key: 'sampleTypeName', width: 22 },
             { header: 'Trạng thái', key: 'stateName', width: 22 },
             { header: 'Thời gian trạng thái', key: 'stateActionAt', width: 22 },
@@ -330,7 +334,10 @@ export class WorkflowHistoryController {
                         patientCode: row.patientCode ?? '',
                         patientName: row.patientName ?? '',
                         icdName: row.icdName ?? '',
-                        requestUsername: row.requestUsername ?? '',
+                        requestDoctor: this.formatRequestDoctorDisplay(
+                            row.requestUsername,
+                            row.requestLoginname,
+                        ),
                         sampleTypeName: row.sampleTypeName ?? '',
                         stateName: row.stateName ?? '',
                         stateActionAt: this.formatDateTimeVi(row.stateActionAt),
@@ -360,6 +367,19 @@ export class WorkflowHistoryController {
         if (Number.isNaN(d.getTime())) return '';
         const pad = (n: number) => String(n).padStart(2, '0');
         return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+
+    /** Tên hiển thị + login trong ngoặc khi có cả hai. */
+    private formatRequestDoctorDisplay(
+        requestUsername: string | null | undefined,
+        requestLoginname: string | null | undefined,
+    ): string {
+        const name = (requestUsername ?? '').trim();
+        const login = (requestLoginname ?? '').trim();
+        if (name && login) return `${name} (${login})`;
+        if (name) return name;
+        if (login) return `(${login})`;
+        return '';
     }
 
     @Get('by-state-and-service-req/:stateId/:storedServiceReqId')

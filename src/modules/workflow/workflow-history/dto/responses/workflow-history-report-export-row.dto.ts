@@ -23,8 +23,11 @@ export class WorkflowHistoryReportExportRowDto {
     @ApiPropertyOptional({ description: 'Chẩn đoán (ICD name)' })
     icdName?: string | null;
 
-    @ApiPropertyOptional({ description: 'Bác sĩ chỉ định (REQUEST_USERNAME)' })
+    @ApiPropertyOptional({ description: 'Bác sĩ chỉ định — họ tên (REQUEST_USERNAME)' })
     requestUsername?: string | null;
+
+    @ApiPropertyOptional({ description: 'Bác sĩ chỉ định — login (REQUEST_LOGINNAME)' })
+    requestLoginname?: string | null;
 
     @ApiPropertyOptional({ description: 'Vị trí bệnh phẩm / loại mẫu' })
     sampleTypeName?: string | null;

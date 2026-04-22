@@ -864,6 +864,7 @@ export class WorkflowHistoryService {
                     patientName: sr?.patientName ?? null,
                     icdName: sr?.icdName ?? null,
                     requestUsername: sr?.requestUsername ?? null,
+                    requestLoginname: sr?.requestLoginname ?? null,
                     sampleTypeName,
                     stateName: toState?.stateName ?? null,
                     stateActionAt: ts ? new Date(ts).toISOString() : null,
