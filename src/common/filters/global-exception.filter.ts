@@ -42,6 +42,16 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         // Log the error
         this.logError(exception, request, errorResponse);
 
+        // Nếu response đã gửi header/body rồi (ví dụ endpoint stream file qua @Res() và lỗi xảy ra giữa chừng),
+        // gọi response.json(...) sẽ ném ERR_HTTP_HEADERS_SENT và crash cả tiến trình. Trong trường hợp đó, huỷ
+        // kết nối là cách an toàn nhất để trình duyệt biết file bị lỗi.
+        if (response.headersSent) {
+            if (!response.writableEnded) {
+                response.destroy(exception instanceof Error ? exception : new Error('Response stream aborted'));
+            }
+            return;
+        }
+
         response.status(errorResponse.status_code).json(errorResponse);
     }
 

@@ -14,7 +14,12 @@ import { Room } from '../../room/entities/room.entity';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([WorkflowHistory, StoredServiceRequest, StoredServiceRequestService, Room]),
+        TypeOrmModule.forFeature([
+            WorkflowHistory,
+            StoredServiceRequest,
+            StoredServiceRequestService,
+            Room,
+        ]),
         WorkflowModule, // Để access IWorkflowStateRepository
         UserModule, // Để access IUserRepository
         UserRoomModule, // Để access IUserRoomRepository (filter theo phòng của user khi roomId rỗng)
