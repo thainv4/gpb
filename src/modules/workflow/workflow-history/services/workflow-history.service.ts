@@ -732,14 +732,6 @@ export class WorkflowHistoryService {
             throw new BadRequestException('From date không được lớn hơn To date');
         }
         const normalizedStateId = dto.stateId && dto.stateId.trim() !== '' ? dto.stateId : undefined;
-        let normalizedFlag: string | undefined | null = undefined;
-        if (dto.flag !== undefined) {
-            if (dto.flag === '' || dto.flag.toLowerCase() === 'null') {
-                normalizedFlag = null;
-            } else {
-                normalizedFlag = dto.flag;
-            }
-        }
         const normalizedCode = dto.code && dto.code.trim() !== '' ? dto.code.trim() : undefined;
         const normalizedPatientName =
             dto.patientName && dto.patientName.trim() !== '' ? dto.patientName.trim() : undefined;
@@ -768,7 +760,6 @@ export class WorkflowHistoryService {
             toDate,
             dto.isCurrent,
             normalizedCode,
-            normalizedFlag,
             normalizedPatientName,
             maxRows,
             order,

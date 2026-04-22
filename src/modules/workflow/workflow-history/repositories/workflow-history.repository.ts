@@ -564,7 +564,6 @@ OFFSET :p_offset ROWS FETCH NEXT :p_limit ROWS ONLY`;
         toDate?: Date,
         isCurrent?: number,
         code?: string,
-        flag?: string | null,
         patientName?: string,
         maxRows: number = 200000,
         order: 'ASC' | 'DESC' = 'DESC',
@@ -616,26 +615,6 @@ OFFSET :p_offset ROWS FETCH NEXT :p_limit ROWS ONLY`;
                 )
             )`;
             binds.p_code = code.trim();
-        }
-
-        let flagCondition = '';
-        if (flag !== undefined) {
-            if (flag === null) {
-                flagCondition = `AND EXISTS (
-                    SELECT 1 FROM BML_STORED_SERVICE_REQUESTS ssr
-                    WHERE ssr.ID = wh.STORED_SERVICE_REQ_ID
-                    AND ssr.FLAG IS NULL
-                    AND ssr.DELETED_AT IS NULL
-                )`;
-            } else {
-                flagCondition = `AND EXISTS (
-                    SELECT 1 FROM BML_STORED_SERVICE_REQUESTS ssr
-                    WHERE ssr.ID = wh.STORED_SERVICE_REQ_ID
-                    AND ssr.FLAG = :p_flag
-                    AND ssr.DELETED_AT IS NULL
-                )`;
-                binds.p_flag = flag;
-            }
         }
 
         let patientCondition = '';
@@ -693,7 +672,6 @@ WITH base AS (
     WHERE wh.DELETED_AT IS NULL
     ${roomCondition}
     ${codeCondition}
-    ${flagCondition}
     ${patientCondition}
     ${timeFromCondition}
     ${timeToCondition}

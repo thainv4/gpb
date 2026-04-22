@@ -33,11 +33,6 @@ export class GetWorkflowHistoryReportExportDto {
     @IsString()
     code?: string;
 
-    @ApiPropertyOptional({ description: 'Flag của stored service request' })
-    @IsOptional()
-    @IsString()
-    flag?: string;
-
     @ApiPropertyOptional({ description: 'Tên bệnh nhân (partial match)' })
     @IsOptional()
     @IsString()

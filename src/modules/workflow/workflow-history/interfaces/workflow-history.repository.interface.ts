@@ -66,7 +66,6 @@ export interface IWorkflowHistoryRepository {
         toDate: Date | undefined,
         isCurrent: number | undefined,
         code: string | undefined,
-        flag: string | null | undefined,
         patientName: string | undefined,
         maxRows: number,
         order: 'ASC' | 'DESC',
