@@ -241,6 +241,7 @@ export class StoredServiceRequestService {
                 // Sample Collection Info (NEW)
                 storedService.receptionCode = dto.receptionCode;
                 storedService.sampleTypeName = sampleTypeName;
+                storedService.sampleTypeId = dto.sampleTypeId;
                 storedService.sampleCollectionTime = new Date(dto.sampleCollectionTime);
                 storedService.collectedByUserId = dto.collectedByUserId ?? null;
                 storedService.testIndexCode = service.testIndexCodes ?? null;
@@ -283,6 +284,7 @@ export class StoredServiceRequestService {
                         // Sample Collection Info (NEW) - same as parent
                         storedTest.receptionCode = dto.receptionCode;
                         storedTest.sampleTypeName = sampleTypeName;
+                        storedTest.sampleTypeId = dto.sampleTypeId;
                         storedTest.sampleCollectionTime = new Date(dto.sampleCollectionTime);
                         storedTest.collectedByUserId = dto.collectedByUserId ?? null;
                         storedTest.testIndexCode = null;
@@ -650,9 +652,9 @@ export class StoredServiceRequestService {
                       sampleTypeNameGenGpb: null,
                   });
 
-        // Lấy sampleTypeId từ SampleReception nếu có receptionCode (dùng cache để tránh query trùng)
-        let sampleTypeId: string | null = null;
-        if (service.receptionCode) {
+        // Ưu tiên SAMPLE_TYPE_ID lưu trên dòng; nếu trống thì suy từ SampleReception theo receptionCode
+        let sampleTypeId: string | null = service.sampleTypeId ?? null;
+        if (!sampleTypeId && service.receptionCode) {
             if (sampleTypeCache.has(service.receptionCode)) {
                 sampleTypeId = sampleTypeCache.get(service.receptionCode) ?? null;
             } else {
@@ -1122,6 +1124,9 @@ export class StoredServiceRequestService {
             }
             if (dto.sampleTypeName !== undefined) {
                 storedService.sampleTypeName = dto.sampleTypeName;
+            }
+            if (dto.sampleTypeId !== undefined) {
+                storedService.sampleTypeId = dto.sampleTypeId;
             }
             storedService.updatedBy = currentUser.id;
 

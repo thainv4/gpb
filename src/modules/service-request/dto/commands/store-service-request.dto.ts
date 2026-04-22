@@ -45,6 +45,17 @@ export class StoreServiceRequestDto {
     sampleTypeName: string;
 
     @ApiProperty({
+        description: 'ID loại bệnh phẩm (BML_SAMPLE_TYPES.ID)',
+        example: 'f32c11f9-cab8-4f72-9776-5b41a1bc89e8'
+    })
+    @IsNotEmpty({ message: 'ID loại bệnh phẩm là bắt buộc' })
+    @IsString()
+    @Matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, {
+        message: 'ID loại bệnh phẩm phải là UUID hợp lệ',
+    })
+    sampleTypeId: string;
+
+    @ApiProperty({
         description: 'Thời gian lấy mẫu (ISO string)',
         example: '2025-11-01T10:30:00Z'
     })
