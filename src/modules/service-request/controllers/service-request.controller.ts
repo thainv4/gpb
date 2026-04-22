@@ -321,7 +321,8 @@ export class ServiceRequestController {
             message: 'Reception code đã được cập nhật thành công',
             serviceId: serviceId,
             receptionCode: dto.receptionCode,
-            sampleTypeName: dto.sampleTypeName
+            sampleTypeName: dto.sampleTypeName,
+            sampleTypeId: dto.sampleTypeId,
         });
     }
 
