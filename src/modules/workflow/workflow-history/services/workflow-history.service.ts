@@ -827,6 +827,25 @@ export class WorkflowHistoryService {
             });
             const stateMap = new Map(states.map((st) => [st.id, st]));
 
+            const creatorMap = new Map<string, { userName: string; fullName: string }>();
+            const creatorIds = orderedEntities
+                .map((e) => e.createdBy)
+                .filter((id): id is string => !!id);
+            if (creatorIds.length > 0) {
+                const uniqueCreatorIds = [...new Set(creatorIds)];
+                try {
+                    const users = await this.userRepo.findByIds(uniqueCreatorIds);
+                    users.forEach((user) => {
+                        creatorMap.set(user.id, {
+                            userName: user.username,
+                            fullName: user.fullName,
+                        });
+                    });
+                } catch (error) {
+                    console.error('Error loading creator users for report export:', error);
+                }
+            }
+
             for (const item of orderedEntities) {
                 const sr = storedReqMap.get(item.storedServiceReqId);
                 const servicesForReq = servicesMap.get(item.storedServiceReqId) || [];
@@ -854,6 +873,7 @@ export class WorkflowHistoryService {
 
                 const toState = item.toStateId ? stateMap.get(item.toStateId) : undefined;
                 const ts = item.actionTimestamp;
+                const perf = item.createdBy ? creatorMap.get(item.createdBy) : undefined;
 
                 await onRow({
                     workflowHistoryId: item.id,
@@ -867,6 +887,8 @@ export class WorkflowHistoryService {
                     requestLoginname: sr?.requestLoginname ?? null,
                     sampleTypeName,
                     stateName: toState?.stateName ?? null,
+                    performerFullName: perf?.fullName ?? null,
+                    performerUserName: perf?.userName ?? null,
                     stateActionAt: ts ? new Date(ts).toISOString() : null,
                 });
             }

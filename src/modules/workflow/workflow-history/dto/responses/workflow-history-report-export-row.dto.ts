@@ -35,6 +35,12 @@ export class WorkflowHistoryReportExportRowDto {
     @ApiPropertyOptional({ description: 'Tên trạng thái đích (toState)' })
     stateName?: string | null;
 
+    @ApiPropertyOptional({ description: 'Người thực hiện — họ tên (từ CREATED_BY → User), đồng bộ cột trên màn hình xem trước' })
+    performerFullName?: string | null;
+
+    @ApiPropertyOptional({ description: 'Người thực hiện — tên đăng nhập' })
+    performerUserName?: string | null;
+
     @ApiPropertyOptional({ description: 'Thời điểm ghi nhận trạng thái (actionTimestamp), ISO 8601' })
     stateActionAt?: string | null;
 }
