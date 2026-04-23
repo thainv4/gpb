@@ -304,6 +304,11 @@ export class WorkflowHistoryController {
             },
             { header: 'Vị trí bệnh phẩm', key: 'sampleTypeName', width: 22 },
             { header: 'Trạng thái', key: 'stateName', width: 22 },
+            {
+                header: 'Người thực hiện',
+                key: 'performer',
+                width: 36,
+            },
             { header: 'Thời gian trạng thái', key: 'stateActionAt', width: 22 },
         ];
 
@@ -340,6 +345,10 @@ export class WorkflowHistoryController {
                         ),
                         sampleTypeName: row.sampleTypeName ?? '',
                         stateName: row.stateName ?? '',
+                        performer: this.formatRequestDoctorDisplay(
+                            row.performerFullName,
+                            row.performerUserName,
+                        ),
                         stateActionAt: this.formatDateTimeVi(row.stateActionAt),
                     }).commit();
                 },
