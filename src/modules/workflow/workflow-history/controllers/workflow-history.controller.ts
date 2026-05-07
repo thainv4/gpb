@@ -293,16 +293,17 @@ export class WorkflowHistoryController {
         ws.columns = [
             { header: 'STT', key: 'stt', width: 6 },
             { header: 'Barcode', key: 'receptionCode', width: 18 },
-            { header: 'Mã y lệnh / Service req', key: 'serviceReqDisplay', width: 22 },
+            { header: 'Mã y lệnh', key: 'serviceReqDisplay', width: 22 },
             { header: 'Mã bệnh nhân', key: 'patientCode', width: 14 },
             { header: 'Họ và tên', key: 'patientName', width: 28 },
-            { header: 'Chẩn đoán (ICD)', key: 'icdName', width: 36 },
+            { header: 'Chẩn đoán lâm sàng', key: 'icdName', width: 36 },
             {
                 header: 'Bác sĩ chỉ định',
                 key: 'requestDoctor',
                 width: 36,
             },
             { header: 'Vị trí bệnh phẩm', key: 'sampleTypeName', width: 22 },
+            { header: 'Phân loại bệnh phẩm', key: 'flag', width: 20 },
             { header: 'Trạng thái', key: 'stateName', width: 22 },
             {
                 header: 'Người thực hiện',
@@ -344,6 +345,7 @@ export class WorkflowHistoryController {
                             row.requestLoginname,
                         ),
                         sampleTypeName: row.sampleTypeName ?? '',
+                        flag: row.flag ?? '',
                         stateName: row.stateName ?? '',
                         performer: this.formatRequestDoctorDisplay(
                             row.performerFullName,

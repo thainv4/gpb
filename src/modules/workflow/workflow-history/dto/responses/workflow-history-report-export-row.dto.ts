@@ -32,6 +32,9 @@ export class WorkflowHistoryReportExportRowDto {
     @ApiPropertyOptional({ description: 'Vị trí bệnh phẩm / loại mẫu' })
     sampleTypeName?: string | null;
 
+    @ApiPropertyOptional({ description: 'Phân loại bệnh phẩm (FLAG từ BML_STORED_SERVICE_REQUESTS)' })
+    flag?: string | null;
+
     @ApiPropertyOptional({ description: 'Tên trạng thái đích (toState)' })
     stateName?: string | null;
 
