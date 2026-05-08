@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Tạo retention policy trên Seq: xóa toàn bộ events sau 7 ngày (idempotent).
 
