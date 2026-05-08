@@ -736,6 +736,14 @@ export class WorkflowHistoryService {
         const normalizedPatientName =
             dto.patientName && dto.patientName.trim() !== '' ? dto.patientName.trim() : undefined;
         const normalizedRoomId = dto.roomId && dto.roomId.trim() !== '' ? dto.roomId.trim() : undefined;
+        let normalizedFlag: string | undefined | null = undefined;
+        if (dto.flag !== undefined) {
+            if (dto.flag === '' || dto.flag.toLowerCase() === 'null') {
+                normalizedFlag = null;
+            } else {
+                normalizedFlag = dto.flag;
+            }
+        }
         let roomIds: string[] | undefined = undefined;
         if (!normalizedRoomId && currentUser) {
             const userRooms = await this.userRoomRepo.findActiveByUserId(currentUser.id);
@@ -760,6 +768,7 @@ export class WorkflowHistoryService {
             toDate,
             dto.isCurrent,
             normalizedCode,
+            normalizedFlag,
             normalizedPatientName,
             maxRows,
             order,
@@ -886,6 +895,7 @@ export class WorkflowHistoryService {
                     requestUsername: sr?.requestUsername ?? null,
                     requestLoginname: sr?.requestLoginname ?? null,
                     sampleTypeName,
+                    flag: sr?.flag ?? null,
                     stateName: toState?.stateName ?? null,
                     performerFullName: perf?.fullName ?? null,
                     performerUserName: perf?.userName ?? null,
@@ -1149,6 +1159,7 @@ export class WorkflowHistoryService {
                 icdName: sr.icdName || undefined,
                 treatmentCode: sr.treatmentCode || undefined,
                 numOfBlock: sr.numOfBlock || undefined,
+                flag: sr.flag ?? null,
             };
         }
 

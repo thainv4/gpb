@@ -79,5 +79,8 @@ export class ServiceRequestSummaryDto {
 
     @ApiPropertyOptional({ description: 'Số lượng block' })
     numOfBlock?: string | null;
+
+    @ApiPropertyOptional({ description: 'Phân loại bệnh phẩm (FLAG)' })
+    flag?: string | null;
 }
 

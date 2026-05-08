@@ -39,6 +39,14 @@ export class GetWorkflowHistoryReportExportDto {
     patientName?: string;
 
     @ApiPropertyOptional({
+        description: 'Flag / Phân loại bệnh phẩm (để trống để lấy tất cả)',
+        example: 'URGENT',
+    })
+    @IsOptional()
+    @IsString()
+    flag?: string;
+
+    @ApiPropertyOptional({
         description: 'Loại room field để filter',
         enum: ['actionRoomId', 'currentRoomId', 'transitionedByRoomId'],
         default: 'currentRoomId',
