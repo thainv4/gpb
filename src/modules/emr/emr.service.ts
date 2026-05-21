@@ -11,6 +11,12 @@ import { ProfileService } from '../profile/profile.service';
 import { IStoredServiceRequestServiceRepository } from '../service-request/interfaces/stored-service-request-service.repository.interface';
 import { IStoredServiceRequestRepository } from '../service-request/interfaces/stored-service-request.repository.interface';
 import { IStoredSignedDocumentRepository } from '../store-signed-document/interfaces/stored-signed-document.repository.interface';
+import {
+    GEN_DIGITAL_SIGN_FORBIDDEN_MESSAGE,
+    getGenDigitalSignAllowedUsernames,
+    isUsernameAllowedForGenDigitalSign,
+    RESULT_FORM_TYPE_GEN,
+} from './gen-digital-sign.policy';
 
 @Injectable()
 export class EmrService {
@@ -34,6 +40,8 @@ export class EmrService {
         applicationCode: string,
         currentUser?: { id: string; username: string; email: string } | null,
     ): Promise<EmrApiResponseDto> {
+        await this.assertGenDigitalSignAllowed(currentUser);
+
         // Validate documentId: Check all services of the stored request
         if (createAndSignHsmDto.HisCode) {
             /**
@@ -371,7 +379,10 @@ export class EmrService {
         documentId: number,
         tokenCode: string,
         applicationCode: string,
+        currentUser?: { id: string; username: string; email: string } | null,
     ): Promise<DeleteEmrDocumentResponseDto> {
+        await this.assertGenDigitalSignAllowed(currentUser);
+
         try {
             this.logger.log(`Calling EMR Delete API for DocumentId: ${documentId}`);
 
@@ -458,6 +469,27 @@ export class EmrService {
                 },
                 HttpStatus.INTERNAL_SERVER_ERROR
             );
+        }
+    }
+
+    private async assertGenDigitalSignAllowed(
+        currentUser?: { id: string; username: string; email: string } | null,
+    ): Promise<void> {
+        if (!currentUser?.id || !currentUser.username) {
+            return;
+        }
+
+        const resultFormType = await this.profileService.getResultFormTypeByUserId(currentUser.id);
+        if (resultFormType !== RESULT_FORM_TYPE_GEN) {
+            return;
+        }
+
+        const allowed = getGenDigitalSignAllowedUsernames(this.configService);
+        if (!isUsernameAllowedForGenDigitalSign(currentUser.username, allowed)) {
+            this.logger.warn(
+                `Gen digital sign denied for user=${currentUser.username} (allowed: ${[...allowed].join(', ')})`,
+            );
+            throw new ForbiddenException(GEN_DIGITAL_SIGN_FORBIDDEN_MESSAGE);
         }
     }
 }
