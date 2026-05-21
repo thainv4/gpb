@@ -19,6 +19,8 @@ import { StoredServiceRequest } from '../../../service-request/entities/stored-s
 import { StoredServiceRequestService } from '../../../service-request/entities/stored-service-request-service.entity';
 import { WorkflowState } from '../../entities/workflow-state.entity';
 import { Room } from '../../../room/entities/room.entity';
+import { SampleType } from '../../../sample-type/entities/sample-type.entity';
+import { htmlToPlainText } from '../../../../common/helpers/html.helper';
 
 type RoomStateTimeColumn =
     | 'actionTimestamp'
@@ -868,6 +870,20 @@ export class WorkflowHistoryService {
             });
             const stateMap = new Map(states.map((st) => [st.id, st]));
 
+            const sampleTypeIds = [
+                ...new Set(
+                    services.map((s) => s.sampleTypeId).filter((id): id is string => !!id),
+                ),
+            ];
+            const sampleTypeRepo = this.dataSource.getRepository(SampleType);
+            const sampleTypes =
+                sampleTypeIds.length > 0
+                    ? await sampleTypeRepo.find({
+                          where: { id: In(sampleTypeIds), deletedAt: IsNull() },
+                      })
+                    : [];
+            const sampleTypeMap = new Map(sampleTypes.map((st) => [st.id, st]));
+
             const creatorMap = new Map<string, { userName: string; fullName: string }>();
             const creatorIds = orderedEntities
                 .map((e) => e.createdBy)
@@ -892,25 +908,46 @@ export class WorkflowHistoryService {
                 const servicesForReq = servicesMap.get(item.storedServiceReqId) || [];
 
                 let receptionCode: string | null = null;
-                let sampleFromService: string | null = null;
+                let matchingService: StoredServiceRequestService | undefined;
                 if (item.storedServiceId) {
-                    const matching = servicesForReq.find((s) => s.id === item.storedServiceId);
-                    if (matching) {
-                        receptionCode = matching.receptionCode || null;
-                        sampleFromService =
-                            matching.sampleTypeName || matching.sampleTypeNameMapGenGpb || null;
+                    matchingService = servicesForReq.find((s) => s.id === item.storedServiceId);
+                    if (matchingService) {
+                        receptionCode = matchingService.receptionCode || null;
                     }
                 } else if (servicesForReq.length > 0) {
-                    const s0 = servicesForReq[0];
-                    receptionCode = s0.receptionCode || null;
-                    sampleFromService = s0.sampleTypeName || s0.sampleTypeNameMapGenGpb || null;
+                    matchingService = servicesForReq[0];
+                    receptionCode = matchingService.receptionCode || null;
                 }
-                const sampleTypeName =
-                    (sampleFromService && String(sampleFromService).trim() !== ''
-                        ? sampleFromService
-                        : null) ||
-                    sr?.sampleTypeNameGenGpb ||
-                    null;
+
+                let sampleTypeName: string | null = null;
+                if (matchingService?.sampleTypeId) {
+                    const st = sampleTypeMap.get(matchingService.sampleTypeId);
+                    if (st) {
+                        sampleTypeName = st.typeCode
+                            ? `${st.typeName} (${st.typeCode})`
+                            : st.typeName;
+                    }
+                }
+                if (!sampleTypeName && matchingService) {
+                    const fallback =
+                        matchingService.sampleTypeName ||
+                        matchingService.sampleTypeNameMapGenGpb ||
+                        null;
+                    sampleTypeName =
+                        fallback && String(fallback).trim() !== '' ? fallback : null;
+                }
+                if (!sampleTypeName) {
+                    const genGpb = sr?.sampleTypeNameGenGpb;
+                    sampleTypeName =
+                        genGpb && String(genGpb).trim() !== '' ? genGpb : null;
+                }
+
+                const resultConcludeRaw = matchingService?.conclude;
+                const resultConcludePlain = resultConcludeRaw
+                    ? htmlToPlainText(resultConcludeRaw)
+                    : '';
+                const resultConclude =
+                    resultConcludePlain !== '' ? resultConcludePlain : null;
 
                 const toState = item.toStateId ? stateMap.get(item.toStateId) : undefined;
                 const ts = item.actionTimestamp;
@@ -927,6 +964,7 @@ export class WorkflowHistoryService {
                     requestUsername: sr?.requestUsername ?? null,
                     requestLoginname: sr?.requestLoginname ?? null,
                     sampleTypeName,
+                    resultConclude,
                     flag: sr?.flag ?? null,
                     stateName: toState?.stateName ?? null,
                     performerFullName: perf?.fullName ?? null,

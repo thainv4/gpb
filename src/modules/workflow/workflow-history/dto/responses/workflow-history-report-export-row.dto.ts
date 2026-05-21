@@ -29,8 +29,13 @@ export class WorkflowHistoryReportExportRowDto {
     @ApiPropertyOptional({ description: 'Bác sĩ chỉ định — login (REQUEST_LOGINNAME)' })
     requestLoginname?: string | null;
 
-    @ApiPropertyOptional({ description: 'Vị trí bệnh phẩm / loại mẫu' })
+    @ApiPropertyOptional({ description: 'Vị trí bệnh phẩm (BML_SAMPLE_TYPES.TYPE_NAME qua SAMPLE_TYPE_ID)' })
     sampleTypeName?: string | null;
+
+    @ApiPropertyOptional({
+        description: 'Kết luận plain text (từ BML_STORED_SR_SERVICES.RESULT_CONCLUDE, đã bỏ HTML)',
+    })
+    resultConclude?: string | null;
 
     @ApiPropertyOptional({ description: 'Phân loại bệnh phẩm (FLAG từ BML_STORED_SERVICE_REQUESTS)' })
     flag?: string | null;
