@@ -711,6 +711,17 @@ export class WorkflowHistoryService {
             const res = this.mapToResponseDto(item);
             res.creator = item.createdBy ? ctx.creatorMap.get(item.createdBy) || null : null;
             res.roomName = item.currentRoomId ? ctx.roomMap.get(item.currentRoomId) ?? null : null;
+            const sampleFromService = ctx.itemSampleTypeMap.get(item.id);
+            const srEntity =
+                item.storedServiceRequest && typeof item.storedServiceRequest === 'object'
+                    ? item.storedServiceRequest
+                    : undefined;
+            res.sampleTypeName =
+                (sampleFromService && String(sampleFromService).trim() !== ''
+                    ? sampleFromService
+                    : null) ||
+                srEntity?.sampleTypeNameGenGpb ||
+                null;
             if (res.serviceRequest) {
                 const receptionCode = ctx.itemReceptionCodeMap.get(item.id);
                 res.serviceRequest.receptionCode = receptionCode !== undefined ? receptionCode : null;
