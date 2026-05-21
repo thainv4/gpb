@@ -204,6 +204,9 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
         code?: string,
         flag?: string,
         patientName?: string,
+        sampleTypeId?: string,
+        resultConclude?: string,
+        icdName?: string,
         limit: number = 10,
         offset: number = 0,
         order: 'ASC' | 'DESC' = 'DESC',
@@ -297,6 +300,44 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
                 );
             }
 
+            if (sampleTypeId && sampleTypeId.trim() !== '') {
+                queryBuilder.andWhere(
+                    `EXISTS (
+                        SELECT 1 FROM BML_STORED_SR_SERVICES sss_st
+                        WHERE sss_st.STORED_SERVICE_REQ_ID = wh.STORED_SERVICE_REQ_ID
+                        AND sss_st.SAMPLE_TYPE_ID = :sampleTypeId
+                        AND sss_st.DELETED_AT IS NULL
+                    )`,
+                    { sampleTypeId: sampleTypeId.trim() },
+                );
+            }
+
+            if (icdName && icdName.trim() !== '') {
+                const icdNamePattern = `%${icdName.trim()}%`;
+                queryBuilder.andWhere(
+                    `EXISTS (
+                        SELECT 1 FROM BML_STORED_SERVICE_REQUESTS ssr_icd
+                        WHERE ssr_icd.ID = wh.STORED_SERVICE_REQ_ID
+                        AND UPPER(ssr_icd.ICD_NAME) LIKE UPPER(:icdNamePattern)
+                        AND ssr_icd.DELETED_AT IS NULL
+                    )`,
+                    { icdNamePattern },
+                );
+            }
+
+            if (resultConclude && resultConclude.trim() !== '') {
+                const resultConcludePattern = `%${resultConclude.trim()}%`;
+                queryBuilder.andWhere(
+                    `EXISTS (
+                        SELECT 1 FROM BML_STORED_SR_SERVICES sss_rc
+                        WHERE sss_rc.STORED_SERVICE_REQ_ID = wh.STORED_SERVICE_REQ_ID
+                        AND UPPER(sss_rc.RESULT_CONCLUDE) LIKE UPPER(:resultConcludePattern)
+                        AND sss_rc.DELETED_AT IS NULL
+                    )`,
+                    { resultConcludePattern },
+                );
+            }
+
             // Chỉ filter theo state nếu stateId được cung cấp
             if (stateId) {
                 queryBuilder.andWhere(`wh.${stateType} = :stateId`, { stateId });
@@ -345,6 +386,9 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
         code?: string,
         flag?: string | null,
         patientName?: string,
+        sampleTypeId?: string,
+        resultConclude?: string,
+        icdName?: string,
         limit: number = 10,
         offset: number = 0,
         order: 'ASC' | 'DESC' = 'DESC',
@@ -429,6 +473,12 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
             binds.p_patient_pattern = `%${patientName.trim()}%`;
         }
 
+        const storedReportFilterCondition = this.buildStoredReportFilterSql(binds, {
+            sampleTypeId,
+            resultConclude,
+            icdName,
+        });
+
         let timeFromCondition = '';
         if (fromDate) {
             timeFromCondition = `AND wh.${timeCol} >= :p_from_date`;
@@ -475,6 +525,7 @@ WITH base AS (
     ${codeCondition}
     ${flagCondition}
     ${patientCondition}
+    ${storedReportFilterCondition}
     ${timeFromCondition}
     ${timeToCondition}
     ${isCurrentCondition}
@@ -566,6 +617,9 @@ OFFSET :p_offset ROWS FETCH NEXT :p_limit ROWS ONLY`;
         code?: string,
         flag?: string | null,
         patientName?: string,
+        sampleTypeId?: string,
+        resultConclude?: string,
+        icdName?: string,
         maxRows: number = 200000,
         order: 'ASC' | 'DESC' = 'DESC',
         orderBy: 'actionTimestamp' | 'createdAt' | 'startedAt' = 'actionTimestamp',
@@ -649,6 +703,12 @@ OFFSET :p_offset ROWS FETCH NEXT :p_limit ROWS ONLY`;
             binds.p_patient_pattern = `%${patientName.trim()}%`;
         }
 
+        const storedReportFilterCondition = this.buildStoredReportFilterSql(binds, {
+            sampleTypeId,
+            resultConclude,
+            icdName,
+        });
+
         let timeFromCondition = '';
         if (fromDate) {
             timeFromCondition = `AND wh.${timeCol} >= :p_from_date`;
@@ -695,6 +755,7 @@ WITH base AS (
     ${codeCondition}
     ${flagCondition}
     ${patientCondition}
+    ${storedReportFilterCondition}
     ${timeFromCondition}
     ${timeToCondition}
     ${isCurrentCondition}
@@ -832,6 +893,48 @@ FETCH NEXT :p_max_rows ROWS ONLY`;
             stateOrder: Number(row.STATE_ORDER),
             count: Number(row.CNT),
         }));
+    }
+
+    private buildStoredReportFilterSql(
+        binds: Record<string, Date | string | number>,
+        filters: {
+            sampleTypeId?: string;
+            resultConclude?: string;
+            icdName?: string;
+        },
+    ): string {
+        let sql = '';
+        const sampleTypeId = filters.sampleTypeId?.trim();
+        if (sampleTypeId) {
+            sql += `AND EXISTS (
+                SELECT 1 FROM BML_STORED_SR_SERVICES sss_st
+                WHERE sss_st.STORED_SERVICE_REQ_ID = wh.STORED_SERVICE_REQ_ID
+                AND sss_st.SAMPLE_TYPE_ID = :p_sample_type_id
+                AND sss_st.DELETED_AT IS NULL
+            )`;
+            binds.p_sample_type_id = sampleTypeId;
+        }
+        const icdName = filters.icdName?.trim();
+        if (icdName) {
+            sql += `AND EXISTS (
+                SELECT 1 FROM BML_STORED_SERVICE_REQUESTS ssr_icd
+                WHERE ssr_icd.ID = wh.STORED_SERVICE_REQ_ID
+                AND UPPER(ssr_icd.ICD_NAME) LIKE UPPER(:p_icd_pattern)
+                AND ssr_icd.DELETED_AT IS NULL
+            )`;
+            binds.p_icd_pattern = `%${icdName}%`;
+        }
+        const resultConclude = filters.resultConclude?.trim();
+        if (resultConclude) {
+            sql += `AND EXISTS (
+                SELECT 1 FROM BML_STORED_SR_SERVICES sss_rc
+                WHERE sss_rc.STORED_SERVICE_REQ_ID = wh.STORED_SERVICE_REQ_ID
+                AND UPPER(sss_rc.RESULT_CONCLUDE) LIKE UPPER(:p_conclude_pattern)
+                AND sss_rc.DELETED_AT IS NULL
+            )`;
+            binds.p_conclude_pattern = `%${resultConclude}%`;
+        }
+        return sql;
     }
 
     private getTimeColumnName(timeType: string): string {

@@ -39,6 +39,9 @@ interface EnrichedRoomStateFetchParams {
     normalizedCode?: string;
     normalizedFlag: string | undefined | null;
     normalizedPatientName?: string;
+    normalizedSampleTypeId?: string;
+    normalizedResultConclude?: string;
+    normalizedIcdName?: string;
     limit: number;
     offset: number;
     order: 'ASC' | 'DESC';
@@ -664,6 +667,12 @@ export class WorkflowHistoryService {
         const normalizedCode = dto.code && dto.code.trim() !== '' ? dto.code.trim() : undefined;
         const normalizedPatientName =
             dto.patientName && dto.patientName.trim() !== '' ? dto.patientName.trim() : undefined;
+        const normalizedSampleTypeId =
+            dto.sampleTypeId && dto.sampleTypeId.trim() !== '' ? dto.sampleTypeId.trim() : undefined;
+        const normalizedResultConclude =
+            dto.resultConclude && dto.resultConclude.trim() !== '' ? dto.resultConclude.trim() : undefined;
+        const normalizedIcdName =
+            dto.icdName && dto.icdName.trim() !== '' ? dto.icdName.trim() : undefined;
         const normalizedRoomId = dto.roomId && dto.roomId.trim() !== '' ? dto.roomId.trim() : undefined;
         let roomIds: string[] | undefined = undefined;
         if (!normalizedRoomId && currentUser) {
@@ -689,6 +698,9 @@ export class WorkflowHistoryService {
             normalizedCode,
             normalizedFlag,
             normalizedPatientName,
+            normalizedSampleTypeId,
+            normalizedResultConclude,
+            normalizedIcdName,
             limit,
             offset,
             order: dto.order || 'DESC',
@@ -735,6 +747,12 @@ export class WorkflowHistoryService {
         const normalizedCode = dto.code && dto.code.trim() !== '' ? dto.code.trim() : undefined;
         const normalizedPatientName =
             dto.patientName && dto.patientName.trim() !== '' ? dto.patientName.trim() : undefined;
+        const normalizedSampleTypeId =
+            dto.sampleTypeId && dto.sampleTypeId.trim() !== '' ? dto.sampleTypeId.trim() : undefined;
+        const normalizedResultConclude =
+            dto.resultConclude && dto.resultConclude.trim() !== '' ? dto.resultConclude.trim() : undefined;
+        const normalizedIcdName =
+            dto.icdName && dto.icdName.trim() !== '' ? dto.icdName.trim() : undefined;
         const normalizedRoomId = dto.roomId && dto.roomId.trim() !== '' ? dto.roomId.trim() : undefined;
         let normalizedFlag: string | undefined | null = undefined;
         if (dto.flag !== undefined) {
@@ -770,6 +788,9 @@ export class WorkflowHistoryService {
             normalizedCode,
             normalizedFlag,
             normalizedPatientName,
+            normalizedSampleTypeId,
+            normalizedResultConclude,
+            normalizedIcdName,
             maxRows,
             order,
             orderBy,
@@ -942,6 +963,9 @@ export class WorkflowHistoryService {
                 p.normalizedCode,
                 p.normalizedFlag,
                 p.normalizedPatientName,
+                p.normalizedSampleTypeId,
+                p.normalizedResultConclude,
+                p.normalizedIcdName,
                 p.limit,
                 p.offset,
                 p.order,

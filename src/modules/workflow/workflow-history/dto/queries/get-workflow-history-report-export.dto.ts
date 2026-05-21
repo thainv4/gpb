@@ -39,6 +39,26 @@ export class GetWorkflowHistoryReportExportDto {
     patientName?: string;
 
     @ApiPropertyOptional({
+        description: 'ID loại bệnh phẩm (BML_SAMPLE_TYPES.ID)',
+        example: 'b7ad73ac-2f7a-42c0-bd15-be55887aea49',
+    })
+    @IsOptional()
+    @Matches(/^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/i, {
+        message: 'Sample type ID phải là UUID hợp lệ hoặc để trống',
+    })
+    sampleTypeId?: string;
+
+    @ApiPropertyOptional({ description: 'Kết luận — partial match trên RESULT_CONCLUDE' })
+    @IsOptional()
+    @IsString()
+    resultConclude?: string;
+
+    @ApiPropertyOptional({ description: 'Chẩn đoán lâm sàng — partial match trên ICD_NAME' })
+    @IsOptional()
+    @IsString()
+    icdName?: string;
+
+    @ApiPropertyOptional({
         description: 'Flag / Phân loại bệnh phẩm (để trống để lấy tất cả)',
         example: 'URGENT',
     })

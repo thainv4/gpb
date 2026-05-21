@@ -47,6 +47,32 @@ export class GetWorkflowHistoryByRoomStateDto {
     @IsString()
     patientName?: string;
 
+    @ApiPropertyOptional({
+        description: 'ID loại bệnh phẩm (BML_SAMPLE_TYPES.ID, lọc trên BML_STORED_SR_SERVICES.SAMPLE_TYPE_ID)',
+        example: 'b7ad73ac-2f7a-42c0-bd15-be55887aea49',
+    })
+    @IsOptional()
+    @Matches(/^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/i, {
+        message: 'Sample type ID phải là UUID hợp lệ hoặc để trống',
+    })
+    sampleTypeId?: string;
+
+    @ApiPropertyOptional({
+        description: 'Kết luận — partial match trên BML_STORED_SR_SERVICES.RESULT_CONCLUDE',
+        example: 'ung thư',
+    })
+    @IsOptional()
+    @IsString()
+    resultConclude?: string;
+
+    @ApiPropertyOptional({
+        description: 'Chẩn đoán lâm sàng — partial match trên BML_STORED_SERVICE_REQUESTS.ICD_NAME',
+        example: 'Carcinoma',
+    })
+    @IsOptional()
+    @IsString()
+    icdName?: string;
+
     @ApiPropertyOptional({ 
         description: 'Loại room field để filter (actionRoomId, currentRoomId, transitionedByRoomId)', 
         enum: ['actionRoomId', 'currentRoomId', 'transitionedByRoomId'],
