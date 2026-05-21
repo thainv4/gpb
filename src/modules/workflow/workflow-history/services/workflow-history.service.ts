@@ -19,6 +19,8 @@ import { StoredServiceRequest } from '../../../service-request/entities/stored-s
 import { StoredServiceRequestService } from '../../../service-request/entities/stored-service-request-service.entity';
 import { WorkflowState } from '../../entities/workflow-state.entity';
 import { Room } from '../../../room/entities/room.entity';
+import { SampleType } from '../../../sample-type/entities/sample-type.entity';
+import { htmlToPlainText } from '../../../../common/helpers/html.helper';
 
 type RoomStateTimeColumn =
     | 'actionTimestamp'
@@ -39,6 +41,9 @@ interface EnrichedRoomStateFetchParams {
     normalizedCode?: string;
     normalizedFlag: string | undefined | null;
     normalizedPatientName?: string;
+    normalizedSampleTypeId?: string;
+    normalizedResultConclude?: string;
+    normalizedIcdName?: string;
     limit: number;
     offset: number;
     order: 'ASC' | 'DESC';
@@ -664,6 +669,12 @@ export class WorkflowHistoryService {
         const normalizedCode = dto.code && dto.code.trim() !== '' ? dto.code.trim() : undefined;
         const normalizedPatientName =
             dto.patientName && dto.patientName.trim() !== '' ? dto.patientName.trim() : undefined;
+        const normalizedSampleTypeId =
+            dto.sampleTypeId && dto.sampleTypeId.trim() !== '' ? dto.sampleTypeId.trim() : undefined;
+        const normalizedResultConclude =
+            dto.resultConclude && dto.resultConclude.trim() !== '' ? dto.resultConclude.trim() : undefined;
+        const normalizedIcdName =
+            dto.icdName && dto.icdName.trim() !== '' ? dto.icdName.trim() : undefined;
         const normalizedRoomId = dto.roomId && dto.roomId.trim() !== '' ? dto.roomId.trim() : undefined;
         let roomIds: string[] | undefined = undefined;
         if (!normalizedRoomId && currentUser) {
@@ -689,6 +700,9 @@ export class WorkflowHistoryService {
             normalizedCode,
             normalizedFlag,
             normalizedPatientName,
+            normalizedSampleTypeId,
+            normalizedResultConclude,
+            normalizedIcdName,
             limit,
             offset,
             order: dto.order || 'DESC',
@@ -699,6 +713,17 @@ export class WorkflowHistoryService {
             const res = this.mapToResponseDto(item);
             res.creator = item.createdBy ? ctx.creatorMap.get(item.createdBy) || null : null;
             res.roomName = item.currentRoomId ? ctx.roomMap.get(item.currentRoomId) ?? null : null;
+            const sampleFromService = ctx.itemSampleTypeMap.get(item.id);
+            const srEntity =
+                item.storedServiceRequest && typeof item.storedServiceRequest === 'object'
+                    ? item.storedServiceRequest
+                    : undefined;
+            res.sampleTypeName =
+                (sampleFromService && String(sampleFromService).trim() !== ''
+                    ? sampleFromService
+                    : null) ||
+                srEntity?.sampleTypeNameGenGpb ||
+                null;
             if (res.serviceRequest) {
                 const receptionCode = ctx.itemReceptionCodeMap.get(item.id);
                 res.serviceRequest.receptionCode = receptionCode !== undefined ? receptionCode : null;
@@ -735,6 +760,12 @@ export class WorkflowHistoryService {
         const normalizedCode = dto.code && dto.code.trim() !== '' ? dto.code.trim() : undefined;
         const normalizedPatientName =
             dto.patientName && dto.patientName.trim() !== '' ? dto.patientName.trim() : undefined;
+        const normalizedSampleTypeId =
+            dto.sampleTypeId && dto.sampleTypeId.trim() !== '' ? dto.sampleTypeId.trim() : undefined;
+        const normalizedResultConclude =
+            dto.resultConclude && dto.resultConclude.trim() !== '' ? dto.resultConclude.trim() : undefined;
+        const normalizedIcdName =
+            dto.icdName && dto.icdName.trim() !== '' ? dto.icdName.trim() : undefined;
         const normalizedRoomId = dto.roomId && dto.roomId.trim() !== '' ? dto.roomId.trim() : undefined;
         let normalizedFlag: string | undefined | null = undefined;
         if (dto.flag !== undefined) {
@@ -770,6 +801,9 @@ export class WorkflowHistoryService {
             normalizedCode,
             normalizedFlag,
             normalizedPatientName,
+            normalizedSampleTypeId,
+            normalizedResultConclude,
+            normalizedIcdName,
             maxRows,
             order,
             orderBy,
@@ -836,6 +870,20 @@ export class WorkflowHistoryService {
             });
             const stateMap = new Map(states.map((st) => [st.id, st]));
 
+            const sampleTypeIds = [
+                ...new Set(
+                    services.map((s) => s.sampleTypeId).filter((id): id is string => !!id),
+                ),
+            ];
+            const sampleTypeRepo = this.dataSource.getRepository(SampleType);
+            const sampleTypes =
+                sampleTypeIds.length > 0
+                    ? await sampleTypeRepo.find({
+                          where: { id: In(sampleTypeIds), deletedAt: IsNull() },
+                      })
+                    : [];
+            const sampleTypeMap = new Map(sampleTypes.map((st) => [st.id, st]));
+
             const creatorMap = new Map<string, { userName: string; fullName: string }>();
             const creatorIds = orderedEntities
                 .map((e) => e.createdBy)
@@ -860,25 +908,46 @@ export class WorkflowHistoryService {
                 const servicesForReq = servicesMap.get(item.storedServiceReqId) || [];
 
                 let receptionCode: string | null = null;
-                let sampleFromService: string | null = null;
+                let matchingService: StoredServiceRequestService | undefined;
                 if (item.storedServiceId) {
-                    const matching = servicesForReq.find((s) => s.id === item.storedServiceId);
-                    if (matching) {
-                        receptionCode = matching.receptionCode || null;
-                        sampleFromService =
-                            matching.sampleTypeName || matching.sampleTypeNameMapGenGpb || null;
+                    matchingService = servicesForReq.find((s) => s.id === item.storedServiceId);
+                    if (matchingService) {
+                        receptionCode = matchingService.receptionCode || null;
                     }
                 } else if (servicesForReq.length > 0) {
-                    const s0 = servicesForReq[0];
-                    receptionCode = s0.receptionCode || null;
-                    sampleFromService = s0.sampleTypeName || s0.sampleTypeNameMapGenGpb || null;
+                    matchingService = servicesForReq[0];
+                    receptionCode = matchingService.receptionCode || null;
                 }
-                const sampleTypeName =
-                    (sampleFromService && String(sampleFromService).trim() !== ''
-                        ? sampleFromService
-                        : null) ||
-                    sr?.sampleTypeNameGenGpb ||
-                    null;
+
+                let sampleTypeName: string | null = null;
+                if (matchingService?.sampleTypeId) {
+                    const st = sampleTypeMap.get(matchingService.sampleTypeId);
+                    if (st) {
+                        sampleTypeName = st.typeCode
+                            ? `${st.typeName} (${st.typeCode})`
+                            : st.typeName;
+                    }
+                }
+                if (!sampleTypeName && matchingService) {
+                    const fallback =
+                        matchingService.sampleTypeName ||
+                        matchingService.sampleTypeNameMapGenGpb ||
+                        null;
+                    sampleTypeName =
+                        fallback && String(fallback).trim() !== '' ? fallback : null;
+                }
+                if (!sampleTypeName) {
+                    const genGpb = sr?.sampleTypeNameGenGpb;
+                    sampleTypeName =
+                        genGpb && String(genGpb).trim() !== '' ? genGpb : null;
+                }
+
+                const resultConcludeRaw = matchingService?.conclude;
+                const resultConcludePlain = resultConcludeRaw
+                    ? htmlToPlainText(resultConcludeRaw)
+                    : '';
+                const resultConclude =
+                    resultConcludePlain !== '' ? resultConcludePlain : null;
 
                 const toState = item.toStateId ? stateMap.get(item.toStateId) : undefined;
                 const ts = item.actionTimestamp;
@@ -895,6 +964,7 @@ export class WorkflowHistoryService {
                     requestUsername: sr?.requestUsername ?? null,
                     requestLoginname: sr?.requestLoginname ?? null,
                     sampleTypeName,
+                    resultConclude,
                     flag: sr?.flag ?? null,
                     stateName: toState?.stateName ?? null,
                     performerFullName: perf?.fullName ?? null,
@@ -942,6 +1012,9 @@ export class WorkflowHistoryService {
                 p.normalizedCode,
                 p.normalizedFlag,
                 p.normalizedPatientName,
+                p.normalizedSampleTypeId,
+                p.normalizedResultConclude,
+                p.normalizedIcdName,
                 p.limit,
                 p.offset,
                 p.order,

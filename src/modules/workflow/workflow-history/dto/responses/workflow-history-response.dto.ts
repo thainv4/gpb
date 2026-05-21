@@ -90,6 +90,9 @@ export class WorkflowHistoryResponseDto extends BaseResponseDto {
     @ApiPropertyOptional({ description: 'Tên phòng tương ứng currentRoomId (từ BML_ROOMS)' })
     roomName?: string | null;
 
+    @ApiPropertyOptional({ description: 'Vị trí bệnh phẩm / loại mẫu' })
+    sampleTypeName?: string | null;
+
     // ========== NESTED INFO ==========
 
     @ApiPropertyOptional({ description: 'Thông tin Service Request', type: ServiceRequestSummaryDto })

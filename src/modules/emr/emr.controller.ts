@@ -227,6 +227,7 @@ export class EmrController {
             deleteEmrDocumentDto.documentId,
             tokenCode,
             applicationCode,
+            currentUser,
         );
     }
 }

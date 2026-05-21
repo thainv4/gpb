@@ -136,6 +136,12 @@ export class ProfileService extends BaseService {
         return this.mapProfileToResponseDto(profile);
     }
 
+    /** resultFormType từ Profile → Department (1 = GPB, 2 = Gen). */
+    async getResultFormTypeByUserId(userId: string): Promise<number | null | undefined> {
+        const profile = await this.profileRepository.findWithRelations(userId);
+        return profile?.department?.resultFormType ?? null;
+    }
+
     async getProfileById(id: string): Promise<ProfileResponseDto> {
         const profile = await this.profileRepository.findById(id);
         if (!profile) {

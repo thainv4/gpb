@@ -303,6 +303,7 @@ export class WorkflowHistoryController {
                 width: 36,
             },
             { header: 'Vị trí bệnh phẩm', key: 'sampleTypeName', width: 22 },
+            { header: 'Kết luận', key: 'resultConclude', width: 40 },
             { header: 'Phân loại bệnh phẩm', key: 'flag', width: 20 },
             { header: 'Trạng thái', key: 'stateName', width: 22 },
             {
@@ -345,6 +346,7 @@ export class WorkflowHistoryController {
                             row.requestLoginname,
                         ),
                         sampleTypeName: row.sampleTypeName ?? '',
+                        resultConclude: row.resultConclude ?? '',
                         flag: row.flag ?? '',
                         stateName: row.stateName ?? '',
                         performer: this.formatRequestDoctorDisplay(
