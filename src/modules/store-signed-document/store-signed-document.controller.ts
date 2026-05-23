@@ -42,10 +42,13 @@ export class StoredSignedDocumentController {
     ) {}
 
     @Post()
-    @ApiOperation({ summary: 'Tạo stored signed document' })
+    @ApiOperation({
+        summary: 'Tạo stored signed document',
+        description:
+            'Cho phép nhiều bản ghi cùng storedServiceReqId (mỗi lần ký / mỗi documentId).',
+    })
     @ApiBody({ type: CreateStoredSignedDocumentDto })
     @ApiResponse({ status: 201, description: 'Tạo thành công' })
-    @ApiResponse({ status: 409, description: 'Đã tồn tại cho stored service request' })
     async create(
         @Body() createDto: CreateStoredSignedDocumentDto,
         @CurrentUser() currentUser: ICurrentUser,
@@ -102,7 +105,10 @@ export class StoredSignedDocumentController {
 
     @Get('by-stored-service-req/:storedServiceReqId/document')
     @Header('Content-Disposition', 'inline; filename="signed-document.pdf"')
-    @ApiOperation({ summary: 'Stream PDF văn bản đã ký theo storedServiceReqId' })
+    @ApiOperation({
+        summary: 'Stream PDF văn bản đã ký theo storedServiceReqId',
+        description: 'Trả bản mới nhất (CREATED_AT DESC) khi có nhiều bản ghi cùng phiếu.',
+    })
     @ApiParam({ name: 'storedServiceReqId', description: 'ID StoredServiceRequest' })
     @ApiResponse({ status: 200, description: 'File PDF', content: { 'application/pdf': {} } })
     @ApiResponse({ status: 404, description: 'Không tìm thấy hoặc không có nội dung' })
@@ -113,7 +119,10 @@ export class StoredSignedDocumentController {
     }
 
     @Get('by-stored-service-req/:storedServiceReqId')
-    @ApiOperation({ summary: 'Lấy theo storedServiceReqId' })
+    @ApiOperation({
+        summary: 'Lấy theo storedServiceReqId',
+        description: 'Trả bản mới nhất (CREATED_AT DESC) khi có nhiều bản ghi cùng phiếu.',
+    })
     @ApiParam({ name: 'storedServiceReqId', description: 'ID StoredServiceRequest' })
     @ApiResponse({ status: 200, type: StoredSignedDocumentResponseDto })
     @ApiResponse({ status: 404, description: 'Không tìm thấy' })
@@ -127,7 +136,10 @@ export class StoredSignedDocumentController {
 
     @Get('by-his-code/:hisServiceReqCode/document')
     @Header('Content-Disposition', 'inline; filename="signed-document.pdf"')
-    @ApiOperation({ summary: 'Stream PDF văn bản đã ký theo hisServiceReqCode' })
+    @ApiOperation({
+        summary: 'Stream PDF văn bản đã ký theo hisServiceReqCode',
+        description: 'Trả bản mới nhất (CREATED_AT DESC) khi có nhiều bản ghi.',
+    })
     @ApiParam({ name: 'hisServiceReqCode', description: 'Mã yêu cầu dịch vụ HIS' })
     @ApiResponse({ status: 200, description: 'File PDF', content: { 'application/pdf': {} } })
     @ApiResponse({ status: 404, description: 'Không tìm thấy hoặc không có nội dung' })
@@ -138,7 +150,10 @@ export class StoredSignedDocumentController {
     }
 
     @Get('by-his-code/:hisServiceReqCode')
-    @ApiOperation({ summary: 'Lấy theo hisServiceReqCode' })
+    @ApiOperation({
+        summary: 'Lấy theo hisServiceReqCode',
+        description: 'Trả bản mới nhất (CREATED_AT DESC) khi có nhiều bản ghi.',
+    })
     @ApiParam({ name: 'hisServiceReqCode', description: 'Mã yêu cầu dịch vụ HIS' })
     @ApiResponse({ status: 200, type: StoredSignedDocumentResponseDto })
     async getByHisServiceReqCode(@Param('hisServiceReqCode') hisServiceReqCode: string) {
