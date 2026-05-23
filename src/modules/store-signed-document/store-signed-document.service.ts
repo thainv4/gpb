@@ -34,11 +34,6 @@ export class StoredSignedDocumentService extends BaseService {
     async create(createDto: CreateStoredSignedDocumentDto, currentUser: CurrentUser): Promise<string> {
         this.currentUserContext.setCurrentUser(currentUser);
 
-        const existing = await this.storedSignedDocumentRepo.findByStoredServiceReqId(createDto.storedServiceReqId);
-        if (existing) {
-            throw AppError.conflict('Stored signed document already exists for this stored service request');
-        }
-
         return this.transactionWithAudit(async (manager) => {
             const entity = new StoredSignedDocument();
             entity.storedServiceReqId = createDto.storedServiceReqId;
@@ -113,7 +108,8 @@ export class StoredSignedDocumentService extends BaseService {
     }
 
     async getByStoredServiceReqId(storedServiceReqId: string): Promise<StoredSignedDocumentResponseDto | null> {
-        const entity = await this.storedSignedDocumentRepo.findByStoredServiceReqId(storedServiceReqId);
+        const entity =
+            await this.storedSignedDocumentRepo.findLatestByStoredServiceReqId(storedServiceReqId);
         if (!entity) {
             return null;
         }
@@ -124,7 +120,8 @@ export class StoredSignedDocumentService extends BaseService {
     async getDocumentBufferByStoredServiceReqId(
         storedServiceReqId: string
     ): Promise<{ buffer: Buffer; contentType: string }> {
-        const entity = await this.storedSignedDocumentRepo.findByStoredServiceReqId(storedServiceReqId);
+        const entity =
+            await this.storedSignedDocumentRepo.findLatestByStoredServiceReqId(storedServiceReqId);
         if (!entity) {
             throw AppError.notFound('Stored signed document not found');
         }
@@ -137,7 +134,8 @@ export class StoredSignedDocumentService extends BaseService {
     }
 
     async getByHisServiceReqCode(hisServiceReqCode: string): Promise<StoredSignedDocumentResponseDto | null> {
-        const entity = await this.storedSignedDocumentRepo.findByHisServiceReqCode(hisServiceReqCode);
+        const entity =
+            await this.storedSignedDocumentRepo.findLatestByHisServiceReqCode(hisServiceReqCode);
         if (!entity) {
             return null;
         }
@@ -148,7 +146,8 @@ export class StoredSignedDocumentService extends BaseService {
     async getDocumentBufferByHisServiceReqCode(
         hisServiceReqCode: string
     ): Promise<{ buffer: Buffer; contentType: string }> {
-        const entity = await this.storedSignedDocumentRepo.findByHisServiceReqCode(hisServiceReqCode);
+        const entity =
+            await this.storedSignedDocumentRepo.findLatestByHisServiceReqCode(hisServiceReqCode);
         if (!entity) {
             throw AppError.notFound('Stored signed document not found');
         }

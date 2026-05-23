@@ -16,7 +16,10 @@
         "test:cov": "jest --coverage",
         "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
         "test:e2e": "jest --config ./test/jest-e2e.json",
-        "type-check": "tsc --noEmit"
+        "type-check": "tsc --noEmit",
+        "gen2:phase0": "node scripts/run-gen2-phase0.mjs",
+        "gen2:phase0:dry-run": "node scripts/run-gen2-phase0.mjs --dry-run",
+        "gen2:phase0:inventory": "node scripts/run-gen2-phase0.mjs --inventory"
     },
     "dependencies": {
         "@nestjs/axios": "^4.0.1",

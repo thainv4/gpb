@@ -117,5 +117,16 @@ export class EnterResultDto {
     @IsString()
     @MaxLength(2000, { message: 'resultRecomment không được quá 2000 ký tự' })
     resultRecomment?: string | null;
+
+    @ApiPropertyOptional({
+        description: 'ID phương pháp xét nghiệm gen (BML_TESTING_METHOD_GEN.ID) trên dòng dịch vụ. Gửi null để xóa.',
+        nullable: true,
+        maxLength: 36,
+    })
+    @IsOptional()
+    @ValidateIf((o, v) => v !== null)
+    @IsString()
+    @MaxLength(36, { message: 'testingMethodGenId không được dài quá 36 ký tự' })
+    testingMethodGenId?: string | null;
 }
 

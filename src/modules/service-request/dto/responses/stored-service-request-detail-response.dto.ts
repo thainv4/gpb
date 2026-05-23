@@ -177,9 +177,9 @@ export class StoredServiceResponseDto {
     @ApiPropertyOptional({ description: 'Tên phương pháp nhuộm' })
     stainingMethodName?: string | null;
 
-    // Testing Method Gen (từ stored request)
+    // Testing Method Gen (ưu tiên cột dòng BML_STORED_SR_SERVICES; fallback header phiếu khi dòng null)
     @ApiPropertyOptional({
-        description: 'Phương pháp xét nghiệm gen (từ stored request)',
+        description: 'Phương pháp xét nghiệm gen theo dòng dịch vụ',
         nullable: true,
         example: { id: 'uuid', methodName: 'Tên phương pháp' },
     })

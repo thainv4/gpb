@@ -195,7 +195,10 @@ export class StoredServiceRequestService extends BaseEntity {
 
     @Column({ name: 'SAMPLE_TYPE_NAME_MAP_GEN_GPB', type: 'varchar2', length: 200, nullable: true })
     sampleTypeNameMapGenGpb?: string | null;
-    
+
+    @Column({ name: 'TESTING_METHOD_GEN_ID', type: 'varchar2', length: 36, nullable: true })
+    testingMethodGenId?: string | null;
+
     // Relationships
     @ManyToOne(() => StoredServiceRequest, sr => sr.services)
     @JoinColumn({ name: 'STORED_SERVICE_REQ_ID' })

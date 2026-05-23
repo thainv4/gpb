@@ -394,7 +394,6 @@ export class StoredServiceRequestService {
 
         // Load staining method name & testing method gen once per stored request
         let stainingMethodName: string | null = null;
-        let testingMethodGen: { id: string; methodName: string } | null = null;
         if (storedRequest.stainingMethodId) {
             try {
                 const stainingMethod = await this.stainingMethodRepository.findById(
@@ -408,21 +407,9 @@ export class StoredServiceRequestService {
                 console.warn('Failed to load staining method:', error);
             }
         }
-        if (storedRequest.testingMethodGenId) {
-            try {
-                const gen = await this.testingMethodGenRepository.findById(
-                    storedRequest.testingMethodGenId,
-                );
-                if (gen) {
-                    testingMethodGen = { id: gen.id, methodName: gen.methodName };
-                }
-            } catch (error) {
-                console.warn('Failed to load testing method gen:', error);
-            }
-        }
-
         // Cache SampleReception lookups by receptionCode to avoid duplicate queries
         const sampleTypeCache = new Map<string, string | null>();
+        const testingMethodGenCache = new Map<string, { id: string; methodName: string } | null>();
 
         const gpbHeader = {
             barcodeGenGpb: storedRequest.barcodeGenGpb ?? null,
@@ -441,8 +428,9 @@ export class StoredServiceRequestService {
                     service.id,
                     await this.mapServiceToDto(service, {
                         stainingMethodName,
-                        testingMethodGen,
                         sampleTypeCache,
+                        testingMethodGenCache,
+                        headerTestingMethodGenId: storedRequest.testingMethodGenId ?? null,
                         gpbHeader,
                     }),
                 );
@@ -460,8 +448,9 @@ export class StoredServiceRequestService {
                     parent.serviceTests.push(
                         await this.mapServiceToDto(service, {
                             stainingMethodName,
-                            testingMethodGen,
                             sampleTypeCache,
+                            testingMethodGenCache,
+                            headerTestingMethodGenId: storedRequest.testingMethodGenId ?? null,
                             gpbHeader,
                         }),
                     );
@@ -564,9 +553,7 @@ export class StoredServiceRequestService {
             throw new NotFoundException(`Stored Service với ID ${serviceId} không tìm thấy`);
         }
 
-        // Preload staining method & testing method gen once per stored request (if available)
         let stainingMethodName: string | null = null;
-        let testingMethodGen: { id: string; methodName: string } | null = null;
         if (service.storedServiceRequest?.stainingMethodId) {
             try {
                 const method = await this.stainingMethodRepository.findById(
@@ -579,19 +566,8 @@ export class StoredServiceRequestService {
                 console.warn('Failed to load staining method for service:', error);
             }
         }
-        if (service.storedServiceRequest?.testingMethodGenId) {
-            try {
-                const gen = await this.testingMethodGenRepository.findById(
-                    service.storedServiceRequest.testingMethodGenId,
-                );
-                if (gen) {
-                    testingMethodGen = { id: gen.id, methodName: gen.methodName };
-                }
-            } catch (error) {
-                console.warn('Failed to load testing method gen for service:', error);
-            }
-        }
         const sampleTypeCache = new Map<string, string | null>();
+        const testingMethodGenCache = new Map<string, { id: string; methodName: string } | null>();
 
         // Load children nếu là parent service
         if (service.isChildService === 0) {
@@ -614,10 +590,45 @@ export class StoredServiceRequestService {
 
         return await this.mapServiceToDto(service, {
             stainingMethodName,
-            testingMethodGen,
             sampleTypeCache,
+            testingMethodGenCache,
+            headerTestingMethodGenId: req?.testingMethodGenId ?? null,
             gpbHeader,
         });
+    }
+
+    /**
+     * Ưu tiên TESTING_METHOD_GEN_ID trên dòng; fallback header phiếu (pha chuyển Gen2).
+     */
+    private async resolveTestingMethodGen(
+        service: StoredServiceRequestServiceEntity,
+        headerTestingMethodGenId: string | null | undefined,
+        cache: Map<string, { id: string; methodName: string } | null>,
+    ): Promise<{ id: string; methodName: string } | null> {
+        const effectiveId =
+            service.testingMethodGenId ??
+            headerTestingMethodGenId ??
+            service.storedServiceRequest?.testingMethodGenId ??
+            null;
+
+        if (!effectiveId) {
+            return null;
+        }
+
+        if (cache.has(effectiveId)) {
+            return cache.get(effectiveId) ?? null;
+        }
+
+        try {
+            const gen = await this.testingMethodGenRepository.findById(effectiveId);
+            const value = gen ? { id: gen.id, methodName: gen.methodName } : null;
+            cache.set(effectiveId, value);
+            return value;
+        } catch (error) {
+            console.warn('Failed to load testing method gen:', error);
+            cache.set(effectiveId, null);
+            return null;
+        }
     }
 
     /**
@@ -627,8 +638,9 @@ export class StoredServiceRequestService {
         service: StoredServiceRequestServiceEntity,
         context: {
             stainingMethodName: string | null;
-            testingMethodGen: { id: string; methodName: string } | null;
             sampleTypeCache: Map<string, string | null>;
+            testingMethodGenCache: Map<string, { id: string; methodName: string } | null>;
+            headerTestingMethodGenId?: string | null;
             gpbHeader?: {
                 barcodeGenGpb: string | null;
                 resultConcludeGenGpb: string | null;
@@ -636,7 +648,12 @@ export class StoredServiceRequestService {
             };
         },
     ): Promise<StoredServiceResponseDto> {
-        const { stainingMethodName, testingMethodGen, sampleTypeCache, gpbHeader } = context;
+        const { stainingMethodName, sampleTypeCache, testingMethodGenCache, gpbHeader } = context;
+        const testingMethodGen = await this.resolveTestingMethodGen(
+            service,
+            context.headerTestingMethodGenId,
+            testingMethodGenCache,
+        );
 
         const gpb =
             gpbHeader ??
@@ -679,8 +696,9 @@ export class StoredServiceRequestService {
                 service.children.map(child =>
                     this.mapServiceToDto(child, {
                         stainingMethodName,
-                        testingMethodGen,
                         sampleTypeCache,
+                        testingMethodGenCache,
+                        headerTestingMethodGenId: context.headerTestingMethodGenId,
                         gpbHeader: context.gpbHeader,
                     }),
                 ),
@@ -828,6 +846,9 @@ export class StoredServiceRequestService {
             if (dto.resultRecomment !== undefined) {
                 service.resultRecomment = dto.resultRecomment;
             }
+            if (dto.testingMethodGenId !== undefined) {
+                service.testingMethodGenId = dto.testingMethodGenId;
+            }
 
             // Set audit fields
             service.resultEnteredAt = new Date();
@@ -903,17 +924,12 @@ export class StoredServiceRequestService {
             note: storedRequest.note ?? undefined,
         };
 
-        let testingMethodGen: { id: string; methodName: string } | null = null;
-        if (storedRequest.testingMethodGenId) {
-            try {
-                const gen = await this.testingMethodGenRepository.findById(storedRequest.testingMethodGenId);
-                if (gen) {
-                    testingMethodGen = { id: gen.id, methodName: gen.methodName };
-                }
-            } catch (error) {
-                // Ignore, testingMethodGen stays null
-            }
-        }
+        const testingMethodGenCache = new Map<string, { id: string; methodName: string } | null>();
+        const testingMethodGen = await this.resolveTestingMethodGen(
+            service,
+            storedRequest.testingMethodGenId,
+            testingMethodGenCache,
+        );
 
         return {
             ...result,

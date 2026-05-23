@@ -18,14 +18,24 @@ export class StoredSignedDocumentRepository implements IStoredSignedDocumentRepo
     }
 
     async findByStoredServiceReqId(storedServiceReqId: string): Promise<StoredSignedDocument | null> {
+        return this.findLatestByStoredServiceReqId(storedServiceReqId);
+    }
+
+    async findLatestByStoredServiceReqId(storedServiceReqId: string): Promise<StoredSignedDocument | null> {
         return this.repo.findOne({
             where: { storedServiceReqId, deletedAt: IsNull() },
+            order: { createdAt: 'DESC' },
         });
     }
 
     async findByHisServiceReqCode(hisServiceReqCode: string): Promise<StoredSignedDocument | null> {
+        return this.findLatestByHisServiceReqCode(hisServiceReqCode);
+    }
+
+    async findLatestByHisServiceReqCode(hisServiceReqCode: string): Promise<StoredSignedDocument | null> {
         return this.repo.findOne({
             where: { hisServiceReqCode, deletedAt: IsNull() },
+            order: { createdAt: 'DESC' },
         });
     }
 
