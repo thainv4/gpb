@@ -265,6 +265,10 @@ export class ServiceRequestController {
     @ApiParam({ name: 'serviceId', description: 'ID của Stored Service Request Service' })
     @ApiResponse({ status: 200, description: 'Cập nhật Document ID thành công' })
     @ApiResponse({ status: 404, description: 'Service không tìm thấy' })
+    @ApiResponse({
+        status: 409,
+        description: 'Dịch vụ đã được ký số — không ghi đè documentId mới khi chưa hủy ký',
+    })
     async updateDocumentId(
         @Param('serviceId') serviceId: string,
         @Body() dto: UpdateDocumentIdDto,
