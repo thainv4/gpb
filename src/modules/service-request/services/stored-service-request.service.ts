@@ -1104,6 +1104,23 @@ export class StoredServiceRequestService {
                 throw new NotFoundException(`Service với ID ${serviceId} không tồn tại`);
             }
 
+            if (documentId !== null && documentId !== undefined) {
+                const existing = service.documentId;
+                if (existing !== null && existing !== undefined && String(existing).trim() !== '') {
+                    const existingNum = Number(existing);
+                    const newNum = Number(documentId);
+                    const isSameDocument =
+                        !Number.isNaN(existingNum) &&
+                        !Number.isNaN(newNum) &&
+                        existingNum === newNum;
+                    if (!isSameDocument) {
+                        throw new ConflictException(
+                            'Dịch vụ đã được ký số. Hủy chữ ký trước khi gán document mới.',
+                        );
+                    }
+                }
+            }
+
             // Cập nhật documentId
             await this.serviceRepo.updateDocumentId(serviceId, documentId);
 
