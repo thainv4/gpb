@@ -1,13 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-/**
- * Response cho màn Kết nối máy — dữ liệu từ BML_HL7_OUT_QUEUE.
- */
-export class DeviceOutboundResponseDto {
+export class Hl7OutQueueListItemDto {
     @ApiProperty({ description: 'ID bản ghi queue (hex 32 ký tự)' })
     id: string;
 
-    @ApiProperty({ description: 'Mã tiếp nhận / LIS case' })
+    @ApiProperty({ description: 'Mã tiếp nhận / LIS case', example: 'S2601.0312' })
     lisCaseId: string;
 
     @ApiPropertyOptional()
@@ -16,10 +13,10 @@ export class DeviceOutboundResponseDto {
     @ApiPropertyOptional()
     blockId?: string | null;
 
-    @ApiPropertyOptional({ description: 'Phương pháp thiết bị (TEST_VANTAGE_CODE)' })
+    @ApiPropertyOptional()
     testVantageCode?: string | null;
 
-    @ApiPropertyOptional({ description: 'Mã protocol (TEST_CODE)' })
+    @ApiPropertyOptional()
     testCode?: string | null;
 
     @ApiProperty({ description: 'Trạng thái queue (0 = chờ gửi)' })

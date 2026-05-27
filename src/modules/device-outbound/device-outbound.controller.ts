@@ -2,19 +2,15 @@ import {
     Controller,
     Post,
     Get,
-    Put,
-    Delete,
     Body,
     Query,
-    Param,
     UseGuards,
     BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { DeviceOutboundService } from './device-outbound.service';
 import { CreateDeviceOutboundDto } from './dto/commands/create-device-outbound.dto';
 import { BatchCreateDeviceOutboundDto } from './dto/commands/batch-create-device-outbound.dto';
-import { UpdateDeviceOutboundDto } from './dto/commands/update-device-outbound.dto';
 import { GetDeviceOutboundListDto } from './dto/queries/get-device-outbound-list.dto';
 import { DeviceOutboundResponseDto } from './dto/responses/device-outbound-response.dto';
 import { DeviceOutboundServiceItemDto } from './dto/responses/device-outbound-service-item.dto';
@@ -34,9 +30,9 @@ export class DeviceOutboundController {
 
     @Post()
     @ApiOperation({
-        summary: 'Tạo bản ghi xuất thiết bị',
+        summary: 'Gửi order (HL7 out queue)',
         description:
-            'Lưu bản ghi Device Outbound. Block_ID = receptionCode + "A." + blockNumber, Slide_id = receptionCode + "A." + blockNumber + "." + slideNumber.',
+            'Insert một dòng vào BML_HL7_OUT_QUEUE. Block/Slide ID được tính từ receptionCode và số block/slide.',
     })
     @ApiResponse({ status: 201, description: 'Tạo thành công', type: DeviceOutboundResponseDto })
     @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
@@ -55,9 +51,9 @@ export class DeviceOutboundController {
 
     @Post('batch')
     @ApiOperation({
-        summary: 'Tạo nhiều bản ghi xuất thiết bị (batch)',
+        summary: 'Gửi nhiều order (batch HL7 out queue)',
         description:
-            'Tạo nhiều bản ghi Device Outbound trong một lần gọi. Block_ID và Slide_id được tính tự động từ receptionCode, blockNumber, slideNumber. Thực hiện trong transaction, nếu một dòng lỗi thì rollback toàn bộ.',
+            'Insert nhiều dòng BML_HL7_OUT_QUEUE trong một transaction. Rollback toàn bộ nếu một dòng lỗi.',
     })
     @ApiResponse({ status: 201, description: 'Tạo thành công', type: [DeviceOutboundResponseDto] })
     @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
@@ -75,7 +71,10 @@ export class DeviceOutboundController {
     }
 
     @Get()
-    @ApiOperation({ summary: 'Danh sách bản ghi xuất thiết bị', description: 'Phân trang, lọc theo receptionCode, serviceCode' })
+    @ApiOperation({
+        summary: 'Danh sách hàng đợi HL7',
+        description: 'Phân trang, lọc theo receptionCode (LIS_CASE_ID)',
+    })
     @ApiResponse({ status: 200, description: 'Danh sách kèm phân trang', type: DeviceOutboundListResponseDto })
     async getList(@Query() query: GetDeviceOutboundListDto) {
         const result = await this.deviceOutboundService.getList(query);
@@ -105,45 +104,5 @@ export class DeviceOutboundController {
         }
         const items = await this.deviceOutboundService.getServicesByReceptionCode(receptionCode.trim());
         return ResponseBuilder.success(items);
-    }
-
-    @Get(':id')
-    @ApiOperation({ summary: 'Chi tiết một bản ghi theo ID' })
-    @ApiParam({ name: 'id', description: 'ID bản ghi' })
-    @ApiResponse({ status: 200, description: 'Chi tiết bản ghi', type: DeviceOutboundResponseDto })
-    @ApiResponse({ status: 404, description: 'Không tìm thấy' })
-    async getById(@Param('id') id: string) {
-        const result = await this.deviceOutboundService.getById(id);
-        return ResponseBuilder.success(result);
-    }
-
-    @Put(':id')
-    @ApiOperation({ summary: 'Cập nhật bản ghi xuất thiết bị', description: 'Nếu đổi receptionCode/blockNumber/slideNumber thì Block_ID và Slide_id được tính lại' })
-    @ApiParam({ name: 'id', description: 'ID bản ghi' })
-    @ApiResponse({ status: 200, description: 'Cập nhật thành công', type: DeviceOutboundResponseDto })
-    @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
-    @ApiResponse({ status: 404, description: 'Không tìm thấy' })
-    async update(
-        @Param('id') id: string,
-        @Body() dto: UpdateDeviceOutboundDto,
-        @CurrentUser() currentUser: ICurrentUser | null,
-    ) {
-        if (!currentUser) {
-            throw new BadRequestException(
-                'JWT authentication required for device outbound. HIS token is not supported for write operations.',
-            );
-        }
-        const result = await this.deviceOutboundService.update(id, dto, currentUser);
-        return ResponseBuilder.success(result);
-    }
-
-    @Delete(':id')
-    @ApiOperation({ summary: 'Xóa mềm bản ghi xuất thiết bị' })
-    @ApiParam({ name: 'id', description: 'ID bản ghi' })
-    @ApiResponse({ status: 200, description: 'Xóa thành công' })
-    @ApiResponse({ status: 404, description: 'Không tìm thấy' })
-    async delete(@Param('id') id: string) {
-        await this.deviceOutboundService.delete(id);
-        return ResponseBuilder.success({ message: 'Device outbound deleted successfully' });
     }
 }

@@ -39,10 +39,10 @@ import { StainingMethodModule } from './modules/staining-method/staining-method.
 import { DeviceStainingMethodModule } from './modules/device-staining-method/device-staining-method.module';
 import { TestingMethodGenModule } from './modules/testing-method-gen/testing-method-gen.module';
 import { StoreSignedDocumentModule } from './modules/store-signed-document/store-signed-document.module';
-import { DeviceOutboundModule } from './modules/device-outbound/device-outbound.module';
 import { PivkaResultModule } from './modules/pivka-result/pivka-result.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ServerTimeModule } from './modules/server-time/server-time.module';
+import { Hl7OutQueueModule } from './modules/hl7-out-queue/hl7-out-queue.module';
 import { HealthController } from './health.controller';
 
 // Shared
@@ -106,10 +106,10 @@ import { ServicesModule } from './shared/services/services.module';
         DeviceStainingMethodModule,
         TestingMethodGenModule,
         StoreSignedDocumentModule,
-        DeviceOutboundModule,
         PivkaResultModule,
         DashboardModule,
         ServerTimeModule,
+        Hl7OutQueueModule,
     ],
     controllers: [HealthController],
     providers: [],
