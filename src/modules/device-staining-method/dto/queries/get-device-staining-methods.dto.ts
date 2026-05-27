@@ -1,14 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class GetDeviceStainingMethodsDto {
-    @ApiPropertyOptional({ description: 'Số lượng bản ghi trên trang', example: 10, minimum: 1, maximum: 100 })
+    @ApiPropertyOptional({ description: 'Số lượng bản ghi trên trang', example: 10, minimum: 1 })
     @IsOptional()
     @Type(() => Number)
     @IsNumber()
     @Min(1)
-    @Max(100)
     limit?: number = 10;
 
     @ApiPropertyOptional({ description: 'Vị trí bắt đầu', example: 0, minimum: 0 })

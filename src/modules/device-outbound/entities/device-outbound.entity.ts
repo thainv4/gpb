@@ -2,6 +2,7 @@ import { Entity, Column, Index } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 
 /**
+ * @deprecated Không còn dùng — màn Kết nối máy ghi BML_HL7_OUT_QUEUE. Entity giữ để tham chiếu schema cũ.
  * Bảng lưu dữ liệu xuất ra thiết bị (máy nhuộm, máy quét...).
  * Block_ID = RECEPTION_CODE + 'A' + blockNumber (vd: S2601.0312A.2)
  * SLIDE_ID = RECEPTION_CODE + 'A' + blockNumber + '.' + slideNumber (vd: S2601.0312A.2.3)

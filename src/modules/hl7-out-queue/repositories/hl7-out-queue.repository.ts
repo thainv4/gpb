@@ -25,4 +25,19 @@ export class Hl7OutQueueRepository implements IHl7OutQueueRepository {
             order: { createdTime: 'DESC' },
         });
     }
+
+    async findWithPagination(
+        limit: number,
+        offset: number,
+        filters?: { lisCaseId?: string },
+    ): Promise<[Hl7OutQueue[], number]> {
+        const qb = this.repo.createQueryBuilder('q').orderBy('q.createdTime', 'DESC');
+
+        if (filters?.lisCaseId?.trim()) {
+            qb.andWhere('q.lisCaseId = :lisCaseId', { lisCaseId: filters.lisCaseId.trim() });
+        }
+
+        qb.take(limit).skip(offset);
+        return qb.getManyAndCount();
+    }
 }
