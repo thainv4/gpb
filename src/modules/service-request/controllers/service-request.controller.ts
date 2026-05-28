@@ -15,6 +15,7 @@ import { UpdateStainingMethodDto } from '../dto/commands/update-staining-method.
 import { UpdateNumOfBlockDto } from '../dto/commands/update-num-of-block.dto';
 import { UpdateStoredServiceRequestDto } from '../dto/commands/update-stored-service-request.dto';
 import { UpdateGpbFieldsDto } from '../dto/commands/update-gpb-fields.dto';
+import { ConfirmSampleHandoverDto } from '../dto/commands/confirm-sample-handover.dto';
 import { GetServiceRequestsDto } from '../dto/queries/get-service-requests.dto';
 import { GetStoredServiceRequestTrendDto } from '../dto/queries/get-stored-service-request-trend.dto';
 import { GetResultConcludeByReceptionCodeDto } from '../dto/queries/get-result-conclude-by-reception-code.dto';
@@ -423,6 +424,36 @@ export class ServiceRequestController {
             ...(dto.stainingMethodId !== undefined && { stainingMethodId: dto.stainingMethodId }),
             ...(dto.testingMethodGenId !== undefined && { testingMethodGenId: dto.testingMethodGenId }),
             ...(dto.numOfBlock !== undefined && { numOfBlock: dto.numOfBlock }),
+        });
+    }
+
+    @Post('stored/:id/confirm-handover')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({
+        summary: 'Xác nhận bàn giao mẫu (gộp)',
+        description: 'Thực hiện bàn giao mẫu theo một API tổng hợp và ghi một dòng audit SAMPLE_HANDOVER.'
+    })
+    async confirmSampleHandover(
+        @Param('id') id: string,
+        @Body() dto: ConfirmSampleHandoverDto,
+        @CurrentUser() currentUser: ICurrentUser | null
+    ) {
+        if (!currentUser) {
+            throw new BadRequestException(
+                'JWT authentication required. HIS token is not supported for write operations.'
+            );
+        }
+
+        const result = await this.storedServiceRequestService.confirmSampleHandover(
+            id,
+            dto,
+            currentUser,
+        );
+
+        return ResponseBuilder.success({
+            message: 'Đã xác nhận bàn giao mẫu',
+            storedServiceReqId: id,
+            workflowHistoryId: result.workflowHistoryId,
         });
     }
 

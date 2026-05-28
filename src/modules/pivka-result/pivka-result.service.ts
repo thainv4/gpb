@@ -13,6 +13,8 @@ import { PivkaIiResultResponseDto } from './dto/responses/pivka-ii-result-respon
 import { PivkaIiResultsListResponseDto } from './dto/responses/pivka-ii-results-list-response.dto';
 import { AppError } from '../../common/errors/app.error';
 import { isUniqueConstraintError } from '../../common/helpers/db.helper';
+import { ServiceRequestAuditLogService } from '../service-request-audit-log/services/service-request-audit-log.service';
+import { AuditEventCode, AuditScope } from '../service-request-audit-log/constants/audit-log.constants';
 
 export interface CurrentUser {
     id: string;
@@ -31,6 +33,7 @@ export class PivkaResultService extends BaseService {
         protected readonly dataSource: DataSource,
         @Inject(CurrentUserContextService)
         protected readonly currentUserContext: CurrentUserContextService,
+        private readonly auditLogService: ServiceRequestAuditLogService,
     ) {
         super(dataSource, currentUserContext);
     }
@@ -73,6 +76,16 @@ export class PivkaResultService extends BaseService {
             }
             throw err;
         }
+        await this.auditLogService.safeAppend(
+            {
+                eventCode: AuditEventCode.PIVKA_SAVE,
+                storedServiceReqId: srService.storedServiceRequestId,
+                scope: AuditScope.SERVICE,
+                storedServiceId: dto.storedSrServicesId,
+                payload: { storedServiceId: dto.storedSrServicesId },
+            },
+            currentUser,
+        );
         return saved.id;
     }
 
@@ -109,6 +122,22 @@ export class PivkaResultService extends BaseService {
 
         this.setAuditFields(entity, true);
         await this.repo.save(entity);
+
+        const srService = await this.storedSrServiceRepo.findOne({
+            where: { id: entity.storedSrServicesId, deletedAt: IsNull() },
+        });
+        if (srService) {
+            await this.auditLogService.safeAppend(
+                {
+                    eventCode: AuditEventCode.PIVKA_SAVE,
+                    storedServiceReqId: srService.storedServiceRequestId,
+                    scope: AuditScope.SERVICE,
+                    storedServiceId: entity.storedSrServicesId,
+                    payload: { storedServiceId: entity.storedSrServicesId, pivkaResultId: id },
+                },
+                currentUser,
+            );
+        }
     }
 
     async delete(id: string, hardDelete: boolean = false, currentUser: CurrentUser): Promise<void> {

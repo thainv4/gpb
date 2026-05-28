@@ -7,11 +7,13 @@ import { PivkaResultController } from './pivka-result.controller';
 import { CurrentUserContextService } from '../../common/services/current-user-context.service';
 import { AuthModule } from '../auth/auth.module';
 import { StoredServiceRequestService } from '../service-request/entities/stored-service-request-service.entity';
+import { ServiceRequestAuditLogModule } from '../service-request-audit-log/service-request-audit-log.module';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([PivkaResult, StoredServiceRequestService]),
         AuthModule,
+        ServiceRequestAuditLogModule,
     ],
     controllers: [PivkaResultController],
     providers: [

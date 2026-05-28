@@ -43,6 +43,7 @@ import { PivkaResultModule } from './modules/pivka-result/pivka-result.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ServerTimeModule } from './modules/server-time/server-time.module';
 import { Hl7OutQueueModule } from './modules/hl7-out-queue/hl7-out-queue.module';
+import { ServiceRequestAuditLogModule } from './modules/service-request-audit-log/service-request-audit-log.module';
 import { HealthController } from './health.controller';
 
 // Shared
@@ -110,6 +111,7 @@ import { ServicesModule } from './shared/services/services.module';
         DashboardModule,
         ServerTimeModule,
         Hl7OutQueueModule,
+        ServiceRequestAuditLogModule,
     ],
     controllers: [HealthController],
     providers: [],

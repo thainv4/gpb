@@ -21,6 +21,17 @@ import { WorkflowState } from '../../entities/workflow-state.entity';
 import { Room } from '../../../room/entities/room.entity';
 import { SampleType } from '../../../sample-type/entities/sample-type.entity';
 import { htmlToPlainText } from '../../../../common/helpers/html.helper';
+import { ServiceRequestAuditLogService } from '../../../service-request-audit-log/services/service-request-audit-log.service';
+import { AuditEventCode, AuditScope } from '../../../service-request-audit-log/constants/audit-log.constants';
+import {
+    buildWorkflowDeleteSnapshot,
+    buildWorkflowTransitionSnapshot,
+} from '../../../service-request-audit-log/helpers/audit-log-payload.builder';
+
+export interface WorkflowDeleteAuditContext {
+    trigger?: string;
+    relatedDocumentId?: number | string | null;
+}
 
 type RoomStateTimeColumn =
     | 'actionTimestamp'
@@ -72,6 +83,7 @@ export class WorkflowHistoryService {
         private readonly userRepo: IUserRepository,
         @Inject('IUserRoomRepository')
         private readonly userRoomRepo: IUserRoomRepository,
+        private readonly auditLogService: ServiceRequestAuditLogService,
         private readonly dataSource: DataSource,
     ) { }
 
@@ -133,6 +145,27 @@ export class WorkflowHistoryService {
 
             const saved = await manager.save(WorkflowHistory, workflowHistory);
             return saved.id;
+        }).then(async (workflowHistoryId) => {
+            await this.auditLogService.safeAppend(
+                {
+                    eventCode: AuditEventCode.WORKFLOW_START,
+                    storedServiceReqId: dto.storedServiceReqId,
+                    scope: AuditScope.TICKET,
+                    storedServiceId: dto.storedServiceId ?? null,
+                    actionRoomId: dto.currentRoomId ?? null,
+                    payload: buildWorkflowTransitionSnapshot({
+                        fromStateName: null,
+                        toStateName:
+                            (await this.workflowStateRepo.findById(dto.toStateId))?.stateName ?? '',
+                        toStateOrder: (await this.workflowStateRepo.findById(dto.toStateId))?.stateOrder,
+                        actionType: 'START',
+                        workflowHistoryId,
+                        notes: dto.notes ?? null,
+                    }),
+                },
+                currentUser,
+            );
+            return workflowHistoryId;
         });
     }
 
@@ -141,7 +174,7 @@ export class WorkflowHistoryService {
      * Nếu không có currentState, sẽ tạo workflow mới (như START workflow)
      */
     async transitionState(dto: TransitionStateDto, currentUser: CurrentUser): Promise<string> {
-        return this.dataSource.transaction(async (manager) => {
+        const transitionAudit = await this.dataSource.transaction(async (manager) => {
             // Tìm current state
             const currentState = await this.workflowHistoryRepo.findCurrentState(
                 dto.storedServiceReqId,
@@ -207,7 +240,18 @@ export class WorkflowHistoryService {
                 }
 
                 const saved = await manager.save(WorkflowHistory, newState);
-                return saved.id;
+                return {
+                    workflowHistoryId: saved.id,
+                    fromStateName: null as string | null,
+                    toStateName: toState.stateName,
+                    fromStateOrder: null as number | null,
+                    toStateOrder: toState.stateOrder,
+                    actionType: dto.actionType,
+                    durationMinutes: null as number | null,
+                    storedServiceReqId: dto.storedServiceReqId,
+                    storedServiceId: dto.storedServiceId ?? null,
+                    actionRoomId: dto.currentRoomId ?? null,
+                };
             }
 
             // Validate new state (logic cũ khi có currentState)
@@ -289,8 +333,41 @@ export class WorkflowHistoryService {
             }
 
             const saved = await manager.save(WorkflowHistory, newState);
-            return saved.id;
+            return {
+                workflowHistoryId: saved.id,
+                fromStateName: fromState.stateName,
+                toStateName: toState.stateName,
+                fromStateOrder: fromState.stateOrder,
+                toStateOrder: toState.stateOrder,
+                actionType: dto.actionType,
+                durationMinutes,
+                storedServiceReqId: dto.storedServiceReqId,
+                storedServiceId: dto.storedServiceId ?? null,
+                actionRoomId: dto.currentRoomId ?? null,
+            };
         });
+
+        await this.auditLogService.safeAppend(
+            {
+                eventCode: AuditEventCode.WORKFLOW_TRANSITION,
+                storedServiceReqId: transitionAudit.storedServiceReqId,
+                scope: AuditScope.TICKET,
+                storedServiceId: transitionAudit.storedServiceId,
+                actionRoomId: transitionAudit.actionRoomId,
+                payload: buildWorkflowTransitionSnapshot({
+                    fromStateName: transitionAudit.fromStateName,
+                    toStateName: transitionAudit.toStateName,
+                    fromStateOrder: transitionAudit.fromStateOrder,
+                    toStateOrder: transitionAudit.toStateOrder,
+                    actionType: transitionAudit.actionType,
+                    durationMinutes: transitionAudit.durationMinutes,
+                    workflowHistoryId: transitionAudit.workflowHistoryId,
+                }),
+            },
+            currentUser,
+        );
+
+        return transitionAudit.workflowHistoryId;
     }
 
     /**
@@ -332,6 +409,26 @@ export class WorkflowHistoryService {
 
             currentState.updatedBy = currentUser.id;
             await manager.save(WorkflowHistory, currentState);
+        }).then(async () => {
+            const fields: string[] = [];
+            if (dto.currentUserId !== undefined) fields.push('currentUserId');
+            if (dto.currentDepartmentId !== undefined) fields.push('currentDepartmentId');
+            if (dto.currentRoomId !== undefined) fields.push('currentRoomId');
+            if (dto.estimatedCompletionTime !== undefined) fields.push('estimatedCompletionTime');
+            if (dto.notes !== undefined) fields.push('notes');
+            if (fields.length > 0) {
+                await this.auditLogService.safeAppend(
+                    {
+                        eventCode: AuditEventCode.WORKFLOW_UPDATE,
+                        storedServiceReqId,
+                        scope: AuditScope.TICKET,
+                        storedServiceId: storedServiceId ?? null,
+                        actionRoomId: dto.currentRoomId ?? null,
+                        payload: { fields },
+                    },
+                    currentUser,
+                );
+            }
         });
     }
 
@@ -341,7 +438,11 @@ export class WorkflowHistoryService {
      * 1. Tất cả documentId của StoredServiceRequestService (theo storedServiceReqId) là null
      * 2. Không có WorkflowHistory khác có cùng storedServiceReqId với stateOrder lớn hơn
      */
-    async deleteWorkflowHistory(id: string, currentUser: CurrentUser): Promise<void> {
+    async deleteWorkflowHistory(
+        id: string,
+        currentUser: CurrentUser,
+        auditContext?: WorkflowDeleteAuditContext,
+    ): Promise<void> {
         return this.dataSource.transaction(async (manager) => {
             // Tìm workflow history
             const workflowHistory = await this.workflowHistoryRepo.findById(id);
@@ -455,6 +556,33 @@ export class WorkflowHistoryService {
                 }
             }
 
+            let fromStateName: string | null = null;
+            if (workflowHistory.fromStateId) {
+                const fromState = await this.workflowStateRepo.findById(workflowHistory.fromStateId);
+                fromStateName = fromState?.stateName ?? null;
+            }
+
+            await this.auditLogService.safeAppend(
+                {
+                    eventCode: AuditEventCode.WORKFLOW_DELETE,
+                    storedServiceReqId: workflowHistory.storedServiceReqId,
+                    scope: workflowHistory.storedServiceId ? AuditScope.SERVICE : AuditScope.TICKET,
+                    storedServiceId: workflowHistory.storedServiceId ?? null,
+                    actionRoomId: workflowHistory.actionRoomId ?? null,
+                    payload: buildWorkflowDeleteSnapshot({
+                        workflowHistoryId: id,
+                        toStateName: toState.stateName,
+                        toStateCode: toState.stateCode ?? null,
+                        stateOrder: toState.stateOrder,
+                        fromStateName,
+                        actionType: workflowHistory.actionType ?? null,
+                        trigger: auditContext?.trigger ?? null,
+                        relatedDocumentId: auditContext?.relatedDocumentId ?? null,
+                    }),
+                },
+                currentUser,
+            );
+
             // Xóa hoàn toàn (hard delete)
             await this.workflowHistoryRepo.hardDelete(id);
         });
@@ -466,7 +594,8 @@ export class WorkflowHistoryService {
     async deleteByStateAndRequest(
         toStateId: string,
         storedServiceReqId: string,
-        currentUser: CurrentUser
+        currentUser: CurrentUser,
+        auditContext?: WorkflowDeleteAuditContext,
     ): Promise<void> {
         // Tìm workflow history theo toStateId và storedServiceReqId
         const workflowHistory = await this.workflowHistoryRepo.findByStateIdAndStoredServiceReqId(
@@ -482,7 +611,7 @@ export class WorkflowHistoryService {
         }
 
         // Gọi deleteWorkflowHistory với id tìm được
-        await this.deleteWorkflowHistory(workflowHistory.id, currentUser);
+        await this.deleteWorkflowHistory(workflowHistory.id, currentUser, auditContext);
     }
 
     // ========== QUERIES (Read Operations) ==========

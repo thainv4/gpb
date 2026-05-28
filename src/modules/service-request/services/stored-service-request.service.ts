@@ -29,6 +29,19 @@ import { StoredServiceRequestService as StoredServiceRequestServiceEntity } from
 import { WorkflowHistoryService } from '../../workflow/workflow-history/services/workflow-history.service';
 import { IWorkflowStateRepository } from '../../workflow/interfaces/workflow-state.repository.interface';
 import { StartWorkflowDto } from '../../workflow/workflow-history/dto/commands/start-workflow.dto';
+import { ServiceRequestAuditLogService } from '../../service-request-audit-log/services/service-request-audit-log.service';
+import { AuditEventCode, AuditScope } from '../../service-request-audit-log/constants/audit-log.constants';
+import { AuditSuppressContext } from '../../service-request-audit-log/helpers/audit-suppress.context';
+import {
+    buildGpbFieldsSnapshot,
+    buildResultSaveSnapshot,
+    buildSampleHandoverSnapshot,
+    buildSignSnapshot,
+    buildTicketStoredSnapshot,
+    buildTicketUpdateSnapshot,
+} from '../../service-request-audit-log/helpers/audit-log-payload.builder';
+import { ConfirmSampleHandoverDto } from '../dto/commands/confirm-sample-handover.dto';
+import { TransitionStateDto } from '../../workflow/workflow-history/dto/commands/transition-state.dto';
 
 @Injectable()
 export class StoredServiceRequestService {
@@ -48,6 +61,8 @@ export class StoredServiceRequestService {
         @Inject('IWorkflowStateRepository')
         private readonly workflowStateRepo: IWorkflowStateRepository,
         private readonly dataSource: DataSource,
+        private readonly auditLogService: ServiceRequestAuditLogService,
+        private readonly auditSuppress: AuditSuppressContext,
     ) { }
 
     /**
@@ -352,6 +367,18 @@ export class StoredServiceRequestService {
                 storedAt: savedRequest.storedAt,
                 workflowStarted,
             };
+        }).then(async (result) => {
+            await this.auditLogService.safeAppend(
+                {
+                    eventCode: AuditEventCode.TICKET_STORED,
+                    storedServiceReqId: result.id,
+                    scope: AuditScope.TICKET,
+                    actionRoomId: dto.currentRoomId ?? null,
+                    payload: buildTicketStoredSnapshot(result.servicesCount, dto.serviceReqCode),
+                },
+                currentUser,
+            );
+            return result;
         });
     }
 
@@ -774,7 +801,8 @@ export class StoredServiceRequestService {
         dto: EnterResultDto,
         currentUser: CurrentUser
     ): Promise<{ id: string; resultEnteredAt: Date; resultEnteredByUserId: string }> {
-        return this.dataSource.transaction(async (manager) => {
+        const serviceBefore = await this.serviceRepo.findById(serviceId);
+        const result = await this.dataSource.transaction(async (manager) => {
             // Find service
             const service = await this.serviceRepo.findById(serviceId);
             if (!service) {
@@ -863,6 +891,29 @@ export class StoredServiceRequestService {
                 resultEnteredByUserId: savedService.resultEnteredByUserId!,
             };
         });
+
+        if (serviceBefore) {
+            const savedService = await this.serviceRepo.findById(serviceId);
+            const storedRequest = savedService
+                ? await this.storedRepo.findById(savedService.storedServiceRequestId)
+                : null;
+            if (savedService && storedRequest) {
+                await this.auditLogService.safeAppend(
+                    {
+                        eventCode: AuditEventCode.RESULT_SAVE,
+                        storedServiceReqId: savedService.storedServiceRequestId,
+                        scope: AuditScope.SERVICE,
+                        storedServiceId: serviceId,
+                        serviceName: savedService.serviceName ?? null,
+                        receptionCode: savedService.receptionCode ?? null,
+                        payload: buildResultSaveSnapshot(savedService, storedRequest),
+                    },
+                    currentUser,
+                );
+            }
+        }
+
+        return result;
     }
 
     /**
@@ -1097,12 +1148,14 @@ export class StoredServiceRequestService {
     }
 
     async updateDocumentId(serviceId: string, documentId: number | null, currentUser: CurrentUser): Promise<void> {
-        return this.dataSource.transaction(async (manager) => {
-            // Kiểm tra service có tồn tại không
-            const service = await this.serviceRepo.findById(serviceId);
-            if (!service) {
-                throw new NotFoundException(`Service với ID ${serviceId} không tồn tại`);
-            }
+        const serviceBefore = await this.serviceRepo.findById(serviceId);
+        if (!serviceBefore) {
+            throw new NotFoundException(`Service với ID ${serviceId} không tồn tại`);
+        }
+        const previousDocumentId = serviceBefore.documentId ?? null;
+
+        await this.dataSource.transaction(async (manager) => {
+            const service = serviceBefore;
 
             if (documentId !== null && documentId !== undefined) {
                 const existing = service.documentId;
@@ -1131,6 +1184,27 @@ export class StoredServiceRequestService {
                 await manager.save(StoredServiceRequestServiceEntity, updatedService);
             }
         });
+
+        const isClear = documentId === null || documentId === undefined;
+        await this.auditLogService.safeAppend(
+            {
+                eventCode: isClear ? AuditEventCode.SIGN_CLEAR : AuditEventCode.SIGN_SET,
+                storedServiceReqId: serviceBefore.storedServiceRequestId,
+                scope: AuditScope.SERVICE,
+                storedServiceId: serviceId,
+                serviceName: serviceBefore.serviceName ?? null,
+                payload: isClear
+                    ? buildSignSnapshot({
+                          previousDocumentId,
+                          serviceName: serviceBefore.serviceName ?? null,
+                      })
+                    : buildSignSnapshot({
+                          documentId,
+                          serviceName: serviceBefore.serviceName ?? null,
+                      }),
+            },
+            currentUser,
+        );
     }
 
     /**
@@ -1206,6 +1280,25 @@ export class StoredServiceRequestService {
             }
             storedRequest.updatedBy = currentUser.id;
             await manager.save(StoredServiceRequest, storedRequest);
+
+            const updatedFields: string[] = [];
+            if (dto.barcodeGenGpb !== undefined) updatedFields.push('barcodeGenGpb');
+            if (dto.resultConcludeGenGpb !== undefined) updatedFields.push('resultConcludeGenGpb');
+            if (dto.sampleTypeNameGenGpb !== undefined) updatedFields.push('sampleTypeNameGenGpb');
+            const refreshed = await manager.findOne(StoredServiceRequest, {
+                where: { id: storedServiceReqId, deletedAt: IsNull() },
+            });
+            if (refreshed) {
+                await this.auditLogService.safeAppend(
+                    {
+                        eventCode: AuditEventCode.TICKET_GPB_UPDATE,
+                        storedServiceReqId,
+                        scope: AuditScope.TICKET,
+                        payload: buildGpbFieldsSnapshot(refreshed),
+                    },
+                    currentUser,
+                );
+            }
         });
     }
 
@@ -1254,8 +1347,176 @@ export class StoredServiceRequestService {
             if (hasChanges) {
                 storedRequest.updatedBy = currentUser.id;
                 await manager.save(StoredServiceRequest, storedRequest);
+
+                const updatedFields: string[] = [];
+                if (dto.flag !== undefined) updatedFields.push('flag');
+                if (dto.stainingMethodId !== undefined) updatedFields.push('stainingMethodId');
+                if (dto.testingMethodGenId !== undefined) updatedFields.push('testingMethodGenId');
+                if (dto.numOfBlock !== undefined) updatedFields.push('numOfBlock');
+                const refreshed = await manager.findOne(StoredServiceRequest, {
+                    where: { id, deletedAt: IsNull() },
+                });
+                if (refreshed) {
+                    await this.auditLogService.safeAppend(
+                        {
+                            eventCode: AuditEventCode.TICKET_UPDATE,
+                            storedServiceReqId: id,
+                            scope: AuditScope.TICKET,
+                            payload: buildTicketUpdateSnapshot(refreshed, updatedFields),
+                        },
+                        currentUser,
+                    );
+                }
             }
         });
+    }
+
+    /**
+     * Ghi chú bàn giao trên tất cả dịch vụ — không đụng resultEnteredByUserId, không audit.
+     */
+    async applyHandoverNotes(
+        storedServiceReqId: string,
+        handoverNote: string,
+        currentUser: CurrentUser,
+    ): Promise<void> {
+        return this.dataSource.transaction(async (manager) => {
+            const services = await manager.find(StoredServiceRequestServiceEntity, {
+                where: { storedServiceRequestId: storedServiceReqId, deletedAt: IsNull() },
+            });
+            for (const service of services) {
+                service.notes = handoverNote;
+                service.updatedBy = currentUser.id;
+            }
+            if (services.length > 0) {
+                await manager.save(StoredServiceRequestServiceEntity, services);
+            }
+        });
+    }
+
+    /**
+     * Xác nhận bàn giao mẫu — một lần gọi, một dòng audit SAMPLE_HANDOVER.
+     */
+    async confirmSampleHandover(
+        storedServiceReqId: string,
+        dto: ConfirmSampleHandoverDto,
+        currentUser: CurrentUser,
+    ): Promise<{ workflowHistoryId: string }> {
+        let fromStateName: string | null = null;
+        let toStateName = '';
+        let durationMinutes: number | null = null;
+
+        const handoverResult = await this.auditSuppress.runSuppressed(async () => {
+            try {
+                const current = await this.workflowHistoryService.getCurrentState(
+                    storedServiceReqId,
+                    null,
+                );
+                fromStateName = current.toState?.stateName ?? null;
+            } catch {
+                fromStateName = null;
+            }
+
+            if (dto.flag !== undefined || dto.stainingMethodId !== undefined) {
+                const patch: UpdateStoredServiceRequestDto = {};
+                if (dto.flag !== undefined) patch.flag = dto.flag;
+                if (dto.stainingMethodId !== undefined) patch.stainingMethodId = dto.stainingMethodId;
+                await this.updateStoredServiceRequest(storedServiceReqId, patch, currentUser);
+            }
+
+            if (dto.handoverNote?.trim()) {
+                await this.applyHandoverNotes(
+                    storedServiceReqId,
+                    dto.handoverNote.trim(),
+                    currentUser,
+                );
+            }
+
+            const transitionDto: TransitionStateDto = {
+                storedServiceReqId,
+                toStateId: dto.toStateId,
+                actionType: dto.actionType,
+                currentUserId: dto.currentUserId,
+                currentDepartmentId: dto.currentDepartmentId,
+                currentRoomId: dto.currentRoomId,
+                notes: dto.handoverNote ?? undefined,
+            };
+            const workflowHistoryId = await this.workflowHistoryService.transitionState(
+                transitionDto,
+                currentUser,
+            );
+
+            const gpbPatch: UpdateGpbFieldsDto = {};
+            if (dto.barcodeGenGpb !== undefined) gpbPatch.barcodeGenGpb = dto.barcodeGenGpb;
+            if (dto.resultConcludeGenGpb !== undefined) {
+                gpbPatch.resultConcludeGenGpb = dto.resultConcludeGenGpb;
+            }
+            if (dto.sampleTypeNameGenGpb !== undefined) {
+                gpbPatch.sampleTypeNameGenGpb = dto.sampleTypeNameGenGpb;
+            }
+            if (
+                gpbPatch.barcodeGenGpb !== undefined ||
+                gpbPatch.resultConcludeGenGpb !== undefined ||
+                gpbPatch.sampleTypeNameGenGpb !== undefined
+            ) {
+                await this.updateGpbFields(storedServiceReqId, gpbPatch, currentUser);
+            }
+
+            const toState = await this.workflowStateRepo.findById(dto.toStateId);
+            toStateName = toState?.stateName ?? '';
+
+            return { workflowHistoryId };
+        });
+
+        const storedRequest = await this.storedRepo.findById(storedServiceReqId);
+        if (!storedRequest) {
+            throw new NotFoundException(
+                `Không tìm thấy stored service request với ID: ${storedServiceReqId}`,
+            );
+        }
+
+        let stainingMethodName: string | null = null;
+        if (storedRequest.stainingMethodId) {
+            const method = await this.stainingMethodRepository.findById(
+                storedRequest.stainingMethodId,
+            );
+            stainingMethodName = method?.methodName ?? null;
+        }
+
+        const services = await this.serviceRepo.findByStoredServiceRequestId(storedServiceReqId);
+        const payload = buildSampleHandoverSnapshot({
+            storedRequest,
+            handoverNote: dto.handoverNote ?? null,
+            receiverRoomId: dto.currentRoomId ?? null,
+            receiverRoomName: dto.receiverRoomName ?? null,
+            receiverDepartmentId: dto.currentDepartmentId ?? null,
+            stainingMethodId: storedRequest.stainingMethodId ?? null,
+            stainingMethodName,
+            workflow: {
+                fromStateName,
+                toStateName,
+                actionType: dto.actionType,
+                durationMinutes,
+                notes: dto.handoverNote ?? null,
+            },
+            services: services.map((s) => ({
+                id: s.id,
+                serviceName: s.serviceName,
+                serviceCode: s.serviceCode,
+            })),
+        });
+
+        await this.auditLogService.safeAppend(
+            {
+                eventCode: AuditEventCode.SAMPLE_HANDOVER,
+                storedServiceReqId,
+                scope: AuditScope.TICKET,
+                actionRoomId: dto.currentRoomId ?? null,
+                payload,
+            },
+            currentUser,
+        );
+
+        return handoverResult;
     }
 
     /**

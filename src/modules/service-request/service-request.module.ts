@@ -24,9 +24,11 @@ import { AuthModule } from '../auth/auth.module';
 import { SampleReceptionModule } from '../sample-reception/sample-reception.module';
 import { StainingMethodModule } from '../staining-method/staining-method.module';
 import { TestingMethodGenModule } from '../testing-method-gen/testing-method-gen.module';
+import { ServiceRequestAuditLogModule } from '../service-request-audit-log/service-request-audit-log.module';
 
 @Module({
     imports: [
+        ServiceRequestAuditLogModule,
         HisDatabaseModule,
         UnitOfMeasureModule,
         WorkflowHistoryModule, // Import để inject WorkflowHistoryService
