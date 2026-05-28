@@ -14,6 +14,7 @@ import { IStainingMethodRepository } from '../staining-method/interfaces/stainin
 import { ISampleTypeRepository } from '../sample-type/interfaces/sample-type.repository.interface';
 import { IUserRepository } from '../user/interfaces/user.repository.interface';
 import { CurrentUser } from '../../common/interfaces/current-user.interface';
+import { htmlToPlainText } from '../../common/helpers/html.helper';
 import { StoredServiceRequestService } from '../service-request/entities/stored-service-request-service.entity';
 
 export interface BuildHl7OutQueueInput {
@@ -70,7 +71,7 @@ export class Hl7OutQueueBuilderService {
         }
 
         const tissueName = await this.resolveTissueName(service);
-        const pathologist = await this.resolvePathologist(currentUser);
+        const approvePhysician = await this.resolveApprovePhysician(currentUser);
 
         const patientName = splitPersonName(storedRequest.patientName);
         const physicianName = splitPersonName(storedRequest.requestUsername);
@@ -88,9 +89,9 @@ export class Hl7OutQueueBuilderService {
             registrationDate: storedRequest.instructionTime ?? undefined,
             orderControl: 'NW',
             lisCaseId: receptionCode,
-            approvePhysicianId: undefined,
-            approvePhysicianFamily: undefined,
-            approvePhysicianGiven: undefined,
+            approvePhysicianId: approvePhysician.id,
+            approvePhysicianFamily: approvePhysician.family,
+            approvePhysicianGiven: approvePhysician.given,
             testCode: deviceStaining.protocolNo,
             testVantageCode: deviceStaining.methodName,
             testDescription: service.serviceName ?? undefined,
@@ -98,16 +99,18 @@ export class Hl7OutQueueBuilderService {
             tissueName,
             testFlagName: stainingMethodName,
             tissueSubName: stainingMethodName,
-            pathologistId: pathologist.id,
-            pathologistFamily: pathologist.family,
-            pathologistGiven: pathologist.given,
+            pathologistId: undefined,
+            pathologistFamily: undefined,
+            pathologistGiven: undefined,
             slideId: buildSlideId(receptionCode, input.blockNumber, input.slideNumber),
             slideNumber: input.slideNumber,
             blockId: buildBlockId(receptionCode, input.blockNumber),
             blockNumber: input.blockNumber,
             specimenId: buildSpecimenId(receptionCode),
-            specimenNumber: '1',
-            grossDescriptionText: service.resultComment ?? undefined,
+            specimenNumber: 'A',
+            grossDescriptionText: service.resultComment
+                ? htmlToPlainText(service.resultComment) || undefined
+                : undefined,
             messageType: undefined,
             status: 0,
             retryCount: 0,
@@ -153,7 +156,7 @@ export class Hl7OutQueueBuilderService {
         return sampleType?.typeName ?? undefined;
     }
 
-    private async resolvePathologist(
+    private async resolveApprovePhysician(
         currentUser: CurrentUser,
     ): Promise<{ id: string; family?: string; given?: string }> {
         const user = await this.userRepo.findById(currentUser.id);

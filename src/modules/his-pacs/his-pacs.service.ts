@@ -9,8 +9,10 @@ import { UpdateResultResponseDto } from './dto/update-result-response.dto';
 import { StartDto } from './dto/start.dto';
 import { StartResponseDto, StartResponseArrayDto } from './dto/start-response.dto';
 import { HisSereServ } from '../service-request/entities/his-sere-serv.entity';
+import { StoredServiceRequest } from '../service-request/entities/stored-service-request.entity';
 import { HisSereServService } from '../his-sere-serv/his-sere-serv.service';
 import { AppLoggerService } from '../../shared/services/logger.service';
+import { ServiceRequestAuditLogService } from '../service-request-audit-log/services/service-request-audit-log.service';
 
 @Injectable()
 export class HisPacsService {
@@ -21,13 +23,46 @@ export class HisPacsService {
         private readonly configService: ConfigService,
         @InjectRepository(HisSereServ, 'hisConnection')
         private readonly hisSereServRepo: Repository<HisSereServ>,
+        @InjectRepository(StoredServiceRequest)
+        private readonly storedServiceReqRepo: Repository<StoredServiceRequest>,
         private readonly hisSereServService: HisSereServService,
         private readonly appLogger: AppLoggerService,
+        private readonly auditLogService: ServiceRequestAuditLogService,
     ) { }
 
     private isStartItemSuccess(result: StartResponseDto): boolean {
         const hasException = (result as any)?.Param?.HasException === true;
         return result?.Success === true && (result as any)?.Data === true && !hasException;
+    }
+
+    private async mergeTicketStoredStartStatus(
+        tdlServiceReqCode: string,
+        input: {
+            status: 'SUCCESS' | 'FAILED' | 'PARTIAL';
+            successCount: number;
+            errorCount: number;
+            totalCount: number;
+            message: string;
+        },
+    ): Promise<void> {
+        const storedReq = await this.storedServiceReqRepo.findOne({
+            where: { hisServiceReqCode: tdlServiceReqCode },
+            order: { createdAt: 'DESC' },
+            select: ['id'],
+        });
+        if (!storedReq) {
+            return;
+        }
+
+        await this.auditLogService.mergeLatestTicketStoredSnapshot(storedReq.id, {
+            hisServiceReqCode: tdlServiceReqCode,
+            hisPacsStartStatus: input.status,
+            hisPacsStartSuccessCount: input.successCount,
+            hisPacsStartErrorCount: input.errorCount,
+            hisPacsStartTotalCount: input.totalCount,
+            hisPacsStartMessage: input.message,
+            hisPacsStartUpdatedAt: new Date().toISOString(),
+        });
     }
 
     async getHisSereServId(tdlServiceReqCode: string, tdlServiceCode: string): Promise<{ id: number; accessionNumber: string }> {
@@ -263,6 +298,16 @@ export class HisPacsService {
                     ? 'partial_fail'
                     : 'fail';
 
+            const startStatus: 'SUCCESS' | 'FAILED' | 'PARTIAL' =
+                computedErrorCount === 0 ? 'SUCCESS' : computedSuccessCount > 0 ? 'PARTIAL' : 'FAILED';
+            await this.mergeTicketStoredStartStatus(tdlServiceReqCode, {
+                status: startStatus,
+                successCount: computedSuccessCount,
+                errorCount: computedErrorCount,
+                totalCount,
+                message: `Start HIS-PACS ${startStatus}: ${computedSuccessCount}/${totalCount} thành công, ${computedErrorCount}/${totalCount} thất bại`,
+            });
+
             this.appLogger.logBusinessEvent('his_pacs_start_summary', {
                 tdlServiceReqCode,
                 successCount,
@@ -316,6 +361,14 @@ export class HisPacsService {
                 tdlServiceReqCode,
                 outcome: 'fail',
                 errorCode: 'HIS_PACS_START_API_ERROR',
+            });
+
+            await this.mergeTicketStoredStartStatus(tdlServiceReqCode, {
+                status: 'FAILED',
+                successCount: 0,
+                errorCount: 0,
+                totalCount: 0,
+                message: `Start HIS-PACS FAILED: ${errorMessage}`,
             });
 
             throw new HttpException(

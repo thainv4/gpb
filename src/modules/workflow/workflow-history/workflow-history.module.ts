@@ -11,9 +11,11 @@ import { AuthModule } from '../../auth/auth.module'; // Import để sử dụng
 import { StoredServiceRequest } from '../../service-request/entities/stored-service-request.entity'; // Import entity để join
 import { StoredServiceRequestService } from '../../service-request/entities/stored-service-request-service.entity'; // Import entity để check documentId
 import { Room } from '../../room/entities/room.entity';
+import { ServiceRequestAuditLogModule } from '../../service-request-audit-log/service-request-audit-log.module';
 
 @Module({
     imports: [
+        ServiceRequestAuditLogModule,
         TypeOrmModule.forFeature([
             WorkflowHistory,
             StoredServiceRequest,

@@ -6,11 +6,13 @@ import { StoredSignedDocumentService } from './store-signed-document.service';
 import { StoredSignedDocumentRepository } from './repositories/stored-signed-document.repository';
 import { CurrentUserContextService } from '../../common/services/current-user-context.service';
 import { AuthModule } from '../auth/auth.module';
+import { ServiceRequestAuditLogModule } from '../service-request-audit-log/service-request-audit-log.module';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([StoredSignedDocument]),
         AuthModule,
+        ServiceRequestAuditLogModule,
     ],
     controllers: [StoredSignedDocumentController],
     providers: [

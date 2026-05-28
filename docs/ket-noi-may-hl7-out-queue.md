@@ -127,7 +127,7 @@ flowchart LR
 | `SLIDE_ID` | `{receptionCode}A.{blockNumber}.{slideNumber}` | `S2601.0312A.2.3` |
 | `SPECIMEN_ID` | `{receptionCode}A` | `S2601.0312A` |
 | `LIS_CASE_ID` | `receptionCode` | |
-| `SPECIMEN_NUMBER` | `'1'` | |
+| `SPECIMEN_NUMBER` | `'A'` | |
 | `ORDER_CONTROL` | `'NW'` | |
 
 ### 3.3 Map field từ database
@@ -146,10 +146,10 @@ flowchart LR
 | `TEST_DESCRIPTION` | `BML_STORED_SR_SERVICES.SERVICE_NAME` |
 | `TISSUE_NAME` | `SAMPLE_TYPE_NAME` trên dòng DV, hoặc join `BML_SAMPLE_TYPES` |
 | `TEST_FLAG_NAME` / `TISSUE_SUB_NAME` | `BML_STAINING_METHOD.METHOD_NAME` (theo `stainingMethodId` phiếu) |
-| `GROSS_DESCRIPTION_TEXT` | `BML_STORED_SR_SERVICES.RESULT_COMMENT` |
-| `PATHOLOGIST_ID` | `username` user đang đăng nhập |
-| `PATHOLOGIST_FAMILY` / `PATHOLOGIST_GIVEN` | Tách `FULL_NAME` từ `BML_USERS` |
-| Approve physician | `null` |
+| `GROSS_DESCRIPTION_TEXT` | `htmlToPlainText(RESULT_COMMENT)` — bỏ thẻ HTML, plain text một dòng |
+| `APPROVE_PHYSICIAN_ID` | `username` user đang đăng nhập |
+| `APPROVE_PHYSICIAN_FAMILY` / `APPROVE_PHYSICIAN_GIVEN` | Tách `FULL_NAME` từ `BML_USERS` (user đăng nhập) |
+| `PATHOLOGIST_ID` / `PATHOLOGIST_FAMILY` / `PATHOLOGIST_GIVEN` | `null` (không gán) |
 | `RECEIVED_DATE` và các field còn lại (message, slides JSON, …) | `null` |
 | `STATUS` | `0` |
 | `RETRY_COUNT` | `0` |

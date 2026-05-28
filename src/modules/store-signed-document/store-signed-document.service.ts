@@ -10,6 +10,8 @@ import { CreateStoredSignedDocumentDto } from './dto/commands/create-stored-sign
 import { UpdateStoredSignedDocumentDto } from './dto/commands/update-stored-signed-document.dto';
 import { GetStoredSignedDocumentsDto } from './dto/queries/get-stored-signed-documents.dto';
 import { StoredSignedDocumentResponseDto } from './dto/responses/stored-signed-document-response.dto';
+import { ServiceRequestAuditLogService } from '../service-request-audit-log/services/service-request-audit-log.service';
+import { AuditEventCode, AuditScope } from '../service-request-audit-log/constants/audit-log.constants';
 
 export interface GetStoredSignedDocumentsResult {
     items: StoredSignedDocumentResponseDto[];
@@ -27,6 +29,7 @@ export class StoredSignedDocumentService extends BaseService {
         protected readonly dataSource: DataSource,
         @Inject(CurrentUserContextService)
         protected readonly currentUserContext: CurrentUserContextService,
+        private readonly auditLogService: ServiceRequestAuditLogService,
     ) {
         super(dataSource, currentUserContext);
     }
@@ -45,6 +48,17 @@ export class StoredSignedDocumentService extends BaseService {
 
             const saved = await manager.save(StoredSignedDocument, entity);
             return saved.id;
+        }).then(async (docId) => {
+            await this.auditLogService.safeAppend(
+                {
+                    eventCode: AuditEventCode.DOCUMENT_STORED,
+                    storedServiceReqId: createDto.storedServiceReqId,
+                    scope: AuditScope.TICKET,
+                    payload: { documentId: createDto.documentId ?? null, storedSignedDocumentId: docId },
+                },
+                currentUser,
+            );
+            return docId;
         });
     }
 
