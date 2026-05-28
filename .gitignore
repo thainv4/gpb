@@ -108,3 +108,7 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/*
+temp/*
+
+# TypeScript incremental build cache
+*.tsbuildinfo
