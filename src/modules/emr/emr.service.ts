@@ -42,107 +42,7 @@ export class EmrService {
     ): Promise<EmrApiResponseDto> {
         await this.assertGenDigitalSignAllowed(currentUser);
 
-        // Validate documentId: Check all services of the stored request
-        if (createAndSignHsmDto.HisCode) {
-            /**
-             * HisCode hiện tại có thể được gửi ở dạng:
-             * - "SERVICE_REQ_CODE:000063600566" (mã SERVICE_REQ_CODE của HIS)
-             * - Hoặc (legacy) chính là ID của BML_STORED_SR_SERVICES
-             *
-             * Ưu tiên parse theo SERVICE_REQ_CODE, fallback về cách cũ nếu không đúng format.
-             */
-            const hisCode = createAndSignHsmDto.HisCode;
-            this.logger.debug(`Checking HisCode: ${hisCode}`);
-
-            let storedServiceRequestIdToCheck: string | null = null;
-
-            const serviceReqCodePrefix = 'SERVICE_REQ_CODE:';
-            if (hisCode.startsWith(serviceReqCodePrefix)) {
-                // New format: SERVICE_REQ_CODE:<code> → map sang BML_STORED_SERVICE_REQUESTS.SERVICE_REQ_CODE
-                const serviceReqCode = hisCode.substring(serviceReqCodePrefix.length);
-                this.logger.debug(`Parsed SERVICE_REQ_CODE from HisCode: ${serviceReqCode}`);
-
-                const storedRequestByCode = await this.storedRequestRepo.findByServiceReqCode(serviceReqCode);
-                if (storedRequestByCode) {
-                    storedServiceRequestIdToCheck = storedRequestByCode.id;
-                    this.logger.debug(
-                        `Found stored request by SERVICE_REQ_CODE with ID: ${storedRequestByCode.id}`,
-                    );
-                } else {
-                    this.logger.debug(
-                        `No stored request found for SERVICE_REQ_CODE parsed from HisCode: ${serviceReqCode}`,
-                    );
-                }
-            } else {
-                // Legacy behavior: treat HisCode as ID of StoredServiceRequestService
-                const service = await this.serviceRepo.findById(hisCode);
-
-                if (service) {
-                    storedServiceRequestIdToCheck = service.storedServiceRequestId;
-                    this.logger.debug(
-                        `Found service by ID HisCode: ${service.id}, storedServiceRequestId: ${service.storedServiceRequestId}`,
-                    );
-                } else {
-                    this.logger.debug(`Service not found for HisCode (treated as service ID): ${hisCode}`);
-                }
-            }
-
-            if (storedServiceRequestIdToCheck) {
-                // Get all services of the stored request
-                const allServices = await this.serviceRepo.findByStoredServiceRequestId(
-                    storedServiceRequestIdToCheck,
-                );
-                this.logger.debug(
-                    `Found ${allServices.length} services for stored request ID: ${storedServiceRequestIdToCheck}`,
-                );
-
-                // Check documentId of all services in the stored request
-                for (const svc of allServices) {
-                    if (svc.documentId !== null && svc.documentId !== undefined) {
-                        this.logger.warn(
-                            `Service ${svc.id} already has documentId: ${svc.documentId}, blocking create-and-sign-hsm`,
-                        );
-                        throw new BadRequestException(
-                            'Không thể tạo và ký văn bản vì dịch vụ đã được ký số.',
-                        );
-                    }
-                }
-            }
-        } else {
-            // If no HisCode, find stored request by TreatmentCode and check all services
-            this.logger.debug(
-                `Validating documentId for TreatmentCode: ${createAndSignHsmDto.TreatmentCode}`,
-            );
-            const storedRequest = await this.storedRequestRepo.findByTreatmentCode(
-                createAndSignHsmDto.TreatmentCode,
-            );
-
-            if (storedRequest) {
-                this.logger.debug(
-                    `Found stored request with ID: ${storedRequest.id}, services count: ${
-                        storedRequest.services?.length || 0
-                    }`,
-                );
-
-                if (storedRequest.services && storedRequest.services.length > 0) {
-                    // Check all services in the stored request
-                    for (const service of storedRequest.services) {
-                        if (service.documentId !== null && service.documentId !== undefined) {
-                            this.logger.warn(
-                                `Service ${service.id} already has documentId: ${service.documentId}, blocking create-and-sign-hsm`,
-                            );
-                            throw new BadRequestException(
-                                'Không thể tạo và ký văn bản vì dịch vụ đã được ký số.',
-                            );
-                        }
-                    }
-                }
-            } else {
-                this.logger.debug(
-                    `No stored request found for TreatmentCode: ${createAndSignHsmDto.TreatmentCode}`,
-                );
-            }
-        }
+        await this.assertServiceNotSignedForCreateAndSign(createAndSignHsmDto);
 
         try {
             this.logger.log(`Calling EMR CreateAndSignHsm API for TreatmentCode: ${createAndSignHsmDto.TreatmentCode}`);
@@ -154,8 +54,9 @@ export class EmrService {
 
             const apiUrl = `${emrEndpoint}/api/EmrDocument/CreateAndSignHsm`;
 
+            const { StoredSrServiceId: _storedSrServiceId, ...emrApiData } = createAndSignHsmDto;
             const requestBody = {
-                ApiData: createAndSignHsmDto,
+                ApiData: emrApiData,
             };
 
             this.logger.debug(`EMR API URL: ${apiUrl}`);
@@ -469,6 +370,83 @@ export class EmrService {
                 },
                 HttpStatus.INTERNAL_SERVER_ERROR
             );
+        }
+    }
+
+    private static readonly DOCUMENT_ALREADY_SIGNED_MESSAGE =
+        'Không thể tạo và ký văn bản vì dịch vụ đã được ký số.';
+
+    private serviceHasDocumentId(documentId: unknown): boolean {
+        return documentId !== null && documentId !== undefined && String(documentId).trim() !== '';
+    }
+
+    private throwIfServiceAlreadySigned(serviceId: string, documentId: unknown): void {
+        if (!this.serviceHasDocumentId(documentId)) {
+            return;
+        }
+        this.logger.warn(
+            `Service ${serviceId} already has documentId: ${documentId}, blocking create-and-sign-hsm`,
+        );
+        throw new BadRequestException(EmrService.DOCUMENT_ALREADY_SIGNED_MESSAGE);
+    }
+
+    /**
+     * Gen/PIVKA: StoredSrServiceId hoặc HisCode = id dòng → chỉ kiểm tra dòng đó.
+     * GPB: HisCode SERVICE_REQ_CODE hoặc TreatmentCode → kiểm tra cả phiếu.
+     */
+    private async assertServiceNotSignedForCreateAndSign(dto: CreateAndSignHsmDto): Promise<void> {
+        const targetServiceId = dto.StoredSrServiceId?.trim();
+        if (targetServiceId) {
+            const service = await this.serviceRepo.findById(targetServiceId);
+            if (!service) {
+                this.logger.debug(`StoredSrServiceId not found: ${targetServiceId}`);
+                return;
+            }
+            this.throwIfServiceAlreadySigned(service.id, service.documentId);
+            return;
+        }
+
+        if (dto.HisCode) {
+            const hisCode = dto.HisCode;
+            this.logger.debug(`Checking HisCode: ${hisCode}`);
+
+            const serviceReqCodePrefix = 'SERVICE_REQ_CODE:';
+            if (hisCode.startsWith(serviceReqCodePrefix)) {
+                const serviceReqCode = hisCode.substring(serviceReqCodePrefix.length);
+                const storedRequestByCode = await this.storedRequestRepo.findByServiceReqCode(serviceReqCode);
+                if (!storedRequestByCode) {
+                    this.logger.debug(
+                        `No stored request found for SERVICE_REQ_CODE parsed from HisCode: ${serviceReqCode}`,
+                    );
+                    return;
+                }
+                const allServices = await this.serviceRepo.findByStoredServiceRequestId(storedRequestByCode.id);
+                this.logger.debug(
+                    `Validating documentId for ${allServices.length} services on stored request ${storedRequestByCode.id}`,
+                );
+                for (const svc of allServices) {
+                    this.throwIfServiceAlreadySigned(svc.id, svc.documentId);
+                }
+                return;
+            }
+
+            const service = await this.serviceRepo.findById(hisCode);
+            if (!service) {
+                this.logger.debug(`Service not found for HisCode (treated as service ID): ${hisCode}`);
+                return;
+            }
+            this.throwIfServiceAlreadySigned(service.id, service.documentId);
+            return;
+        }
+
+        this.logger.debug(`Validating documentId for TreatmentCode: ${dto.TreatmentCode}`);
+        const storedRequest = await this.storedRequestRepo.findByTreatmentCode(dto.TreatmentCode);
+        if (!storedRequest?.services?.length) {
+            this.logger.debug(`No stored request found for TreatmentCode: ${dto.TreatmentCode}`);
+            return;
+        }
+        for (const service of storedRequest.services) {
+            this.throwIfServiceAlreadySigned(service.id, service.documentId);
         }
     }
 

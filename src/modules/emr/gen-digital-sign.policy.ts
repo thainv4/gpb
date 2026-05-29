@@ -6,7 +6,7 @@ export const RESULT_FORM_TYPE_GEN = 2;
 export const GEN_DIGITAL_SIGN_FORBIDDEN_MESSAGE =
     'Chỉ tài khoản được phép mới ký số phiếu kết quả Gen. Vui lòng liên hệ quản trị.';
 
-const DEFAULT_ALLOWED_USERNAMES = ['ntl32', 'bbm'];
+const DEFAULT_ALLOWED_USERNAMES = ['ntl32', 'bbm' , 'admin'];
 
 export function parseGenDigitalSignAllowedUsernames(
     raw: string | undefined,

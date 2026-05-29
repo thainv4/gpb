@@ -187,5 +187,14 @@ export class CreateAndSignHsmDto {
     @IsOptional()
     @IsString()
     StoredServiceReqId?: string;
+
+    @ApiProperty({
+        description:
+            'ID dòng dịch vụ (BML_STORED_SR_SERVICES). Khi có: chỉ kiểm tra documentId dòng này (ký từng dịch vụ Gen/PIVKA). Không gửi sang EMR.',
+        required: false,
+    })
+    @IsOptional()
+    @IsString()
+    StoredSrServiceId?: string;
 }
 
