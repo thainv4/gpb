@@ -44,6 +44,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ServerTimeModule } from './modules/server-time/server-time.module';
 import { Hl7OutQueueModule } from './modules/hl7-out-queue/hl7-out-queue.module';
 import { ServiceRequestAuditLogModule } from './modules/service-request-audit-log/service-request-audit-log.module';
+import { SampleRejectionModule } from './modules/sample-rejection/sample-rejection.module';
 import { HealthController } from './health.controller';
 
 // Shared
@@ -112,6 +113,7 @@ import { ServicesModule } from './shared/services/services.module';
         ServerTimeModule,
         Hl7OutQueueModule,
         ServiceRequestAuditLogModule,
+        SampleRejectionModule,
     ],
     controllers: [HealthController],
     providers: [],
