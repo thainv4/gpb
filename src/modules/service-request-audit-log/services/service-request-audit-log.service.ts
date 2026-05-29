@@ -266,7 +266,7 @@ export class ServiceRequestAuditLogService {
             useStyles: true,
             useSharedStrings: false,
         });
-        const ws = workbook.addWorksheet('Nhật ký phiếu', {
+        const ws = workbook.addWorksheet('Lịch sử tác động', {
             views: [{ state: 'frozen', ySplit: 1 }],
         });
         ws.columns = [
