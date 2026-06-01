@@ -15,6 +15,7 @@ import { ISampleTypeRepository } from '../sample-type/interfaces/sample-type.rep
 import { IUserRepository } from '../user/interfaces/user.repository.interface';
 import { CurrentUser } from '../../common/interfaces/current-user.interface';
 import { htmlToPlainText } from '../../common/helpers/html.helper';
+import { mapPatientGenderToHl7 } from './utils/map-patient-gender-to-hl7';
 import { StoredServiceRequestService } from '../service-request/entities/stored-service-request-service.entity';
 
 export interface BuildHl7OutQueueInput {
@@ -82,7 +83,10 @@ export class Hl7OutQueueBuilderService {
             patientFamily: patientName.family || undefined,
             patientGiven: patientName.given || undefined,
             patientDob: parsePatientDobFromNumber(storedRequest.patientDob),
-            patientGender: storedRequest.patientGenderName ?? undefined,
+            patientGender: mapPatientGenderToHl7(
+                storedRequest.patientGenderId,
+                storedRequest.patientGenderName,
+            ),
             physicianId: storedRequest.requestLoginname ?? undefined,
             physicianFamily: physicianName.family || undefined,
             physicianGiven: physicianName.given || undefined,

@@ -67,7 +67,7 @@ flowchart LR
 | 1 | Entity map `BML_HL7_OUT_QUEUE` | `src/modules/hl7-out-queue/entities/hl7-out-queue.entity.ts` |
 | 2 | Repository: `save`, `findById`, `findByLisCaseId`, `findWithPagination` | `repositories/hl7-out-queue.repository.ts` |
 | 3 | Service: `enqueue`, `getList` | `hl7-out-queue.service.ts` |
-| 4 | Utils: tách họ/tên, parse DOB, hex ID RAW(16), công thức block/slide/specimen | `utils/*.ts` |
+| 4 | Utils: tách họ/tên, parse DOB, map giới tính M/F, hex ID RAW(16), công thức block/slide/specimen | `utils/*.ts` |
 | 5 | `Hl7OutQueueBuilderService` — map đủ field theo spec nghiệp vụ | `hl7-out-queue-builder.service.ts` |
 | 6 | DTO + mapper response list | `dto/responses/hl7-out-queue-list-item.dto.ts`, `hl7-out-queue.mapper.ts` |
 | 7 | `Hl7OutQueueModule` export service + đăng ký controller/service device-outbound | `hl7-out-queue.module.ts` |
@@ -137,7 +137,7 @@ flowchart LR
 | `PATIENT_ID` | `String(BML_STORED_SERVICE_REQUESTS.PATIENT_ID)` |
 | `PATIENT_FAMILY` / `PATIENT_GIVEN` | Tách `PATIENT_NAME` (token đầu = họ, còn lại = tên) |
 | `PATIENT_DOB` | `PATIENT_DOB` (number → Date, 8 chữ số YYYYMMDD) |
-| `PATIENT_GENDER` | `PATIENT_GENDER_NAME` |
+| `PATIENT_GENDER` | `M` / `F` — map từ `PATIENT_GENDER_ID` (1 → `F`, 2 → `M`); fallback `PATIENT_GENDER_NAME` (`Nam`/`Nữ`) qua `mapPatientGenderToHl7` |
 | `PHYSICIAN_ID` | `REQUEST_LOGINNAME` |
 | `PHYSICIAN_FAMILY` / `PHYSICIAN_GIVEN` | Tách `REQUEST_USERNAME` |
 | `REGISTRATION_DATE` | `INSTRUCTION_TIME` |
@@ -335,6 +335,7 @@ gpb/src/modules/hl7-out-queue/
 └── utils/
     ├── split-person-name.ts
     ├── parse-patient-dob.ts
+    ├── map-patient-gender-to-hl7.ts
     ├── hl7-queue-id.util.ts
     └── device-outbound-ids.util.ts
 
