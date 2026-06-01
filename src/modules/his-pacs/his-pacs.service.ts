@@ -11,8 +11,34 @@ import { StartResponseDto, StartResponseArrayDto } from './dto/start-response.dt
 import { HisSereServ } from '../service-request/entities/his-sere-serv.entity';
 import { StoredServiceRequest } from '../service-request/entities/stored-service-request.entity';
 import { HisSereServService } from '../his-sere-serv/his-sere-serv.service';
-import { AppLoggerService } from '../../shared/services/logger.service';
+import { AppLoggerService, LogContext } from '../../shared/services/logger.service';
 import { ServiceRequestAuditLogService } from '../service-request-audit-log/services/service-request-audit-log.service';
+
+interface TestIndicationSaveLogContext {
+    userId?: string;
+    traceId?: string;
+    requestId?: string;
+}
+
+interface TestIndicationStoreSnapshot {
+    found: boolean;
+    success: boolean;
+    storedId?: string;
+    serviceReqCode?: string;
+    storedAt?: string;
+}
+
+interface TestIndicationHisPacsStartSnapshot {
+    status: 'SUCCESS' | 'FAILED' | 'PARTIAL';
+    outcome: 'success' | 'partial_fail' | 'fail';
+    successCount: number;
+    errorCount: number;
+    totalCount: number;
+    durationMs: number;
+    results: StartResponseDto[];
+    errorCode?: string;
+    errorMessage?: string;
+}
 
 @Injectable()
 export class HisPacsService {
@@ -33,6 +59,52 @@ export class HisPacsService {
     private isStartItemSuccess(result: StartResponseDto): boolean {
         const hasException = (result as any)?.Param?.HasException === true;
         return result?.Success === true && (result as any)?.Data === true && !hasException;
+    }
+
+    private async buildStoreSnapshot(tdlServiceReqCode: string): Promise<TestIndicationStoreSnapshot> {
+        const storedReq = await this.storedServiceReqRepo.findOne({
+            where: { hisServiceReqCode: tdlServiceReqCode },
+            order: { createdAt: 'DESC' },
+            select: ['id', 'serviceReqCode', 'createdAt'],
+        });
+
+        if (!storedReq) {
+            return { found: false, success: false };
+        }
+
+        return {
+            found: true,
+            success: true,
+            storedId: storedReq.id,
+            serviceReqCode: storedReq.serviceReqCode,
+            storedAt: storedReq.createdAt?.toISOString(),
+        };
+    }
+
+    private logTestIndicationSave(
+        tdlServiceReqCode: string,
+        store: TestIndicationStoreSnapshot,
+        hisPacsStart: TestIndicationHisPacsStartSnapshot,
+        logContext?: TestIndicationSaveLogContext,
+    ): void {
+        const context: LogContext = {
+            type: 'business',
+            event: 'test_indication_save',
+            serviceReqCode: tdlServiceReqCode,
+            userId: logContext?.userId,
+            traceId: logContext?.traceId,
+            requestId: logContext?.requestId,
+        };
+
+        this.appLogger.logBusinessEvent(
+            'test_indication_save',
+            {
+                serviceReqCode: tdlServiceReqCode,
+                store,
+                hisPacsStart,
+            },
+            context,
+        );
     }
 
     private async mergeTicketStoredStartStatus(
@@ -160,6 +232,7 @@ export class HisPacsService {
     async start(
         tdlServiceReqCode: string,
         tokenCode: string,
+        logContext?: TestIndicationSaveLogContext,
     ): Promise<StartResponseArrayDto> {
         const startedAt = Date.now();
         try {
@@ -232,25 +305,6 @@ export class HisPacsService {
                         errorCount++;
                     }
 
-                    const param = (result as any)?.Param;
-                    this.appLogger.logBusinessEvent('his_pacs_start_item_result', {
-                        tdlServiceReqCode,
-                        accessionNumber,
-                        success: itemSuccess,
-                        rawSuccess: result?.Success,
-                        rawData: (result as any)?.Data,
-                        hasException: param?.HasException === true,
-                        messageCount: Array.isArray(param?.Messages) ? param.Messages.length : 0,
-                        bugCodeCount: Array.isArray(param?.BugCodes) ? param.BugCodes.length : 0,
-                        messageCodeCount: Array.isArray(param?.MessageCodes) ? param.MessageCodes.length : 0,
-                        hisNow: param?.Now,
-                    }, {
-                        type: 'business',
-                        event: 'his_pacs_start_item_result',
-                        tdlServiceReqCode,
-                        accessionNumber,
-                    });
-
                 } catch (error: any) {
                     errorCount++;
                     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -269,22 +323,6 @@ export class HisPacsService {
                     };
 
                     results.push(errorResponse);
-                    this.appLogger.logBusinessEvent('his_pacs_start_item_result', {
-                        tdlServiceReqCode,
-                        accessionNumber,
-                        success: false,
-                        rawSuccess: false,
-                        rawData: undefined,
-                        hasException: undefined,
-                        errorCode: errorResponse.ErrorCode,
-                        errorMessage: errorResponse.ErrorMessage,
-                    }, {
-                        type: 'business',
-                        event: 'his_pacs_start_item_result',
-                        tdlServiceReqCode,
-                        accessionNumber,
-                        errorCode: errorResponse.ErrorCode,
-                    });
                 }
             }
 
@@ -308,22 +346,21 @@ export class HisPacsService {
                 message: `Start HIS-PACS ${startStatus}: ${computedSuccessCount}/${totalCount} thành công, ${computedErrorCount}/${totalCount} thất bại`,
             });
 
-            this.appLogger.logBusinessEvent('his_pacs_start_summary', {
+            const storeSnapshot = await this.buildStoreSnapshot(tdlServiceReqCode);
+            this.logTestIndicationSave(
                 tdlServiceReqCode,
-                successCount,
-                errorCount,
-                totalCount,
-                computedSuccessCount,
-                computedErrorCount,
-                outcome,
-                durationMs,
-            }, {
-                type: 'business',
-                event: 'his_pacs_start_summary',
-                tdlServiceReqCode,
-                outcome,
-                durationMs,
-            });
+                storeSnapshot,
+                {
+                    status: startStatus,
+                    outcome,
+                    successCount: computedSuccessCount,
+                    errorCount: computedErrorCount,
+                    totalCount,
+                    durationMs,
+                    results,
+                },
+                logContext,
+            );
 
             return {
                 results,
@@ -333,35 +370,36 @@ export class HisPacsService {
             };
 
         } catch (error: any) {
-            // Re-throw NotFoundException
+            const durationMs = Date.now() - startedAt;
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            const storeSnapshot = await this.buildStoreSnapshot(tdlServiceReqCode);
+            const hisPacsStartSnapshot: TestIndicationHisPacsStartSnapshot = {
+                status: 'FAILED',
+                outcome: 'fail',
+                successCount: 0,
+                errorCount: 0,
+                totalCount: 0,
+                durationMs,
+                results: [],
+                errorCode: error instanceof NotFoundException ? 'HIS_SERE_SERV_NOT_FOUND' : 'HIS_PACS_START_API_ERROR',
+                errorMessage,
+            };
+
+            this.logTestIndicationSave(
+                tdlServiceReqCode,
+                storeSnapshot,
+                hisPacsStartSnapshot,
+                logContext,
+            );
+
             if (error instanceof NotFoundException) {
                 throw error;
             }
 
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            
             this.logger.error(
                 `Failed to process HIS PACS Start API`,
                 errorMessage
             );
-            this.appLogger.logBusinessEvent('his_pacs_start_summary', {
-                tdlServiceReqCode,
-                successCount: 0,
-                errorCount: 0,
-                totalCount: 0,
-                computedSuccessCount: 0,
-                computedErrorCount: 0,
-                outcome: 'fail',
-                durationMs: Date.now() - startedAt,
-                errorCode: 'HIS_PACS_START_API_ERROR',
-                errorMessage,
-            }, {
-                type: 'business',
-                event: 'his_pacs_start_summary',
-                tdlServiceReqCode,
-                outcome: 'fail',
-                errorCode: 'HIS_PACS_START_API_ERROR',
-            });
 
             await this.mergeTicketStoredStartStatus(tdlServiceReqCode, {
                 status: 'FAILED',

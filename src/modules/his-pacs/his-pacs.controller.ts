@@ -1,5 +1,6 @@
 import { Controller, Post, Body, Query, BadRequestException, Request, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiBody, ApiQuery } from '@nestjs/swagger';
+import { RequestWithContext } from '../../common/middleware/request-context.middleware';
 import { HisPacsService } from './his-pacs.service';
 import { UpdateResultDto } from './dto/update-result.dto';
 import { UpdateResultResponseDto } from './dto/update-result-response.dto';
@@ -106,10 +107,11 @@ export class HisPacsController {
     })
     async start(
         @Query('tdlServiceReqCode') tdlServiceReqCode: string,
-        @Request() req: any,
+        @Request() req: RequestWithContext,
     ): Promise<StartResponseArrayDto> {
         // Lấy TokenCode từ header (là hisTokenCode từ login response)
-        const tokenCode = req.headers['tokencode'] || req.headers['TokenCode'];
+        const rawTokenCode = req.headers['tokencode'] || req.headers['TokenCode'];
+        const tokenCode = Array.isArray(rawTokenCode) ? rawTokenCode[0] : rawTokenCode;
 
         if (!tokenCode) {
             throw new BadRequestException(
@@ -128,6 +130,11 @@ export class HisPacsController {
         const result = await this.hisPacsService.start(
             tdlServiceReqCode,
             tokenCode,
+            {
+                userId: req.user?.id,
+                traceId: req.traceContext?.traceId,
+                requestId: req.requestId,
+            },
         );
 
         return result;
