@@ -107,10 +107,10 @@ export class Hl7OutQueue {
     @Column({ name: 'STATUS', type: 'number', precision: 1, scale: 0, default: 0 })
     status: number;
 
-    @Column({ name: 'CREATED_TIME', type: 'date', default: () => 'SYSDATE' })
+    @Column({ name: 'CREATED_TIME', type: 'timestamp', default: () => 'SYSTIMESTAMP' })
     createdTime: Date;
 
-    @Column({ name: 'SENT_TIME', type: 'date', nullable: true })
+    @Column({ name: 'SENT_TIME', type: 'timestamp', nullable: true })
     sentTime?: Date;
 
     @Column({ name: 'ERROR_MESSAGE', type: 'clob', nullable: true })
