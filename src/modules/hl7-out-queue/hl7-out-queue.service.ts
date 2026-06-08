@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { Hl7OutQueue } from './entities/hl7-out-queue.entity';
 import { IHl7OutQueueRepository } from './interfaces/hl7-out-queue.repository.interface';
 import { Hl7OutQueueListItemDto } from './dto/responses/hl7-out-queue-list-item.dto';
@@ -53,5 +53,20 @@ export class Hl7OutQueueService {
 
     toListItemDto(entity: Hl7OutQueue): Hl7OutQueueListItemDto {
         return toHl7OutQueueListItemDto(entity);
+    }
+
+    async cancelBatch(ids: Buffer[]): Promise<Hl7OutQueue[]> {
+        const results: Hl7OutQueue[] = [];
+
+        for (const id of ids) {
+            const entity = await this.hl7OutQueueRepo.findById(id);
+            if (!entity) {
+                throw new NotFoundException(`HL7 queue record not found: ${id.toString('hex').toUpperCase()}`);
+            }
+            entity.status = 3;
+            results.push(await this.hl7OutQueueRepo.save(entity));
+        }
+
+        return results;
     }
 }

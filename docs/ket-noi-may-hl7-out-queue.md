@@ -1,6 +1,6 @@
 # Tài liệu: Màn Kết nối máy — HL7 Out Queue
 
-**Phiên bản:** 2026-05  
+**Phiên bản:** 2026-06  
 **Màn hình FE:** `/device-outbound` (Kết nối máy)  
 **Base API:** `/api/v1/device-outbound` (giữ URL cũ, persistence mới)  
 **Bảng dữ liệu:** `BML_HL7_OUT_QUEUE` (thay thế `BML_DEVICE_OUTBOUND`)
@@ -11,16 +11,18 @@
 
 ### 1.1 Mục tiêu
 
-Khi người dùng bấm **Gửi** trên dialog **Tạo order**, hệ thống GPB **chỉ ghi một dòng vào hàng đợi HL7** (`BML_HL7_OUT_QUEUE`, `STATUS = 0`). Job/service bên ngoài đọc queue, build/gửi HL7 ra thiết bị, rồi cập nhật `STATUS`, `SENT_TIME`, `ERROR_MESSAGE`, `RETRY_COUNT`.
+Khi người dùng bấm **Gửi** trên dialog **Tạo order**, hệ thống GPB **ghi một dòng vào hàng đợi HL7** (`BML_HL7_OUT_QUEUE`, `STATUS = 0`). Job/service bên ngoài đọc queue, build/gửi HL7 ra thiết bị, rồi cập nhật `STATUS`, `SENT_TIME`, `ERROR_MESSAGE`, `RETRY_COUNT`.
 
-GPB **không** gửi HL7 trực tiếp và **không** sửa/xóa bản ghi queue sau khi tạo.
+Người dùng có thể **hủy** một hoặc nhiều order trên màn list: GPB cập nhật `STATUS = 3` (không xóa dòng, không sửa các field khác).
+
+GPB **không** gửi HL7 trực tiếp. Ngoài **tạo** và **hủy (status = 3)**, GPB **không** sửa/xóa bản ghi queue.
 
 ### 1.2 Thay đổi so với phiên bản cũ
 
 | Trước | Sau |
 |--------|-----|
 | Lưu `BML_DEVICE_OUTBOUND` | Chỉ `INSERT` `BML_HL7_OUT_QUEUE` |
-| CRUD đầy đủ (sửa/xóa) | **Không** sửa/xóa queue |
+| CRUD đầy đủ (sửa/xóa) | Chỉ **hủy** (`STATUS = 3`); không sửa field khác, không xóa |
 | Payload response: `receptionCode`, `serviceCode`, `method` | Response từ queue: `lisCaseId`, `slideId`, `status`, `testVantageCode`, … |
 | `method` nhập text tự do | `method` = `METHOD_NAME` từ `BML_DEVICE_STAINING_METHOD` (dropdown) |
 
@@ -29,7 +31,7 @@ GPB **không** gửi HL7 trực tiếp và **không** sửa/xóa bản ghi queue
 ```
 AppModule
   └── Hl7OutQueueModule
-        ├── Hl7OutQueueService          (enqueue, getList)
+        ├── Hl7OutQueueService          (enqueue, getList, cancelBatch)
         ├── Hl7OutQueueBuilderService    (map field từ stored request + staining + user)
         ├── Hl7OutQueueRepository
         ├── DeviceOutboundController     (route /device-outbound)
@@ -42,7 +44,7 @@ AppModule
 ```mermaid
 flowchart LR
   FE[FE device-outbound-table]
-  API[POST/GET /device-outbound]
+  API["POST/GET/PATCH /device-outbound"]
   DOS[DeviceOutboundService]
   Builder[Hl7OutQueueBuilderService]
   Hl7Svc[Hl7OutQueueService]
@@ -66,7 +68,7 @@ flowchart LR
 |---|------|----------------|
 | 1 | Entity map `BML_HL7_OUT_QUEUE` | `src/modules/hl7-out-queue/entities/hl7-out-queue.entity.ts` |
 | 2 | Repository: `save`, `findById`, `findByLisCaseId`, `findWithPagination` | `repositories/hl7-out-queue.repository.ts` |
-| 3 | Service: `enqueue`, `getList` | `hl7-out-queue.service.ts` |
+| 3 | Service: `enqueue`, `getList`, `cancelBatch` | `hl7-out-queue.service.ts` |
 | 4 | Utils: tách họ/tên, parse DOB, map giới tính M/F, hex ID RAW(16), công thức block/slide/specimen | `utils/*.ts` |
 | 5 | `Hl7OutQueueBuilderService` — map đủ field theo spec nghiệp vụ | `hl7-out-queue-builder.service.ts` |
 | 6 | DTO + mapper response list | `dto/responses/hl7-out-queue-list-item.dto.ts`, `hl7-out-queue.mapper.ts` |
@@ -80,6 +82,7 @@ flowchart LR
 | 9 | `GET` list từ `BML_HL7_OUT_QUEUE`, lọc `receptionCode` → `LIS_CASE_ID` | |
 | 10 | `GET /services` — giữ nguyên (dropdown dịch vụ) | |
 | 11 | **Gỡ** `PUT`, `DELETE`, `GET :id` | `device-outbound.controller.ts` |
+| 11b | **`PATCH /cancel-batch`** — cập nhật `STATUS = 3` cho nhiều bản ghi (transaction) | `cancel-device-outbound-batch.dto.ts`, `device-outbound.service.ts` |
 | 12 | Bỏ `DeviceOutboundModule` khỏi `app.module.ts` | Chỉ còn `Hl7OutQueueModule` |
 | 13 | Fix DI: `@Inject(Hl7OutQueueService)`, `@Inject(Hl7OutQueueBuilderService)`, `@Inject(DataSource)` | Tránh lỗi `getList`/`enqueue is not a function` |
 | 14 | Bỏ `@Max(100)` trên `limit` API device-staining-methods | Dropdown phương pháp load đủ bản ghi |
@@ -95,6 +98,9 @@ flowchart LR
 | 19 | Bảng list: Barcode, Slide, Block, PP, Trạng thái, Ngày tạo, Đã gửi, Lỗi | `device-outbound-table.tsx` |
 | 20 | Dialog chỉ **Tạo order** + Gửi / batch; bỏ sửa/xóa | |
 | 21 | Lọc list chỉ theo Barcode (bỏ lọc mã dịch vụ) | |
+| 22 | Checkbox chọn nhiều bản ghi trên list + button **Hủy** cạnh **Tạo order** | `device-outbound-table.tsx` |
+| 23 | `cancelDeviceOutboundBatch` — `PATCH /cancel-batch` | `client.ts` |
+| 24 | Badge màu cột trạng thái: xanh **Đã gửi**, đỏ **Đã hủy** | `device-outbound-table.tsx` |
 
 ### 2.4 Lỗi đã xử lý trong quá trình triển khai
 
@@ -161,18 +167,29 @@ flowchart LR
 
 ### 3.5 Trạng thái queue (tham chiếu cho UI / worker)
 
-| `STATUS` | Ý nghĩa gợi ý trên UI |
-|----------|------------------------|
-| `0` | Chờ gửi |
-| `1` | Đã gửi (khi worker cập nhật) |
-| Khác | Hiển thị giá trị số |
+| `STATUS` | Ý nghĩa trên UI | Ghi chú |
+|----------|------------------|---------|
+| `0` | Chờ gửi | Worker poll và xử lý |
+| `1` | Đã gửi | Worker cập nhật sau khi gửi HL7 thành công; badge **xanh** trên FE |
+| `3` | Đã hủy | GPB cập nhật khi user bấm **Hủy**; badge **đỏ** trên FE |
+| Khác | Hiển thị giá trị số | — |
+
+### 3.6 Hủy order (batch)
+
+- User chọn một hoặc nhiều dòng trên bảng list bằng **checkbox** (có checkbox "chọn tất cả" trên trang hiện tại).
+- Bấm **Hủy** → `PATCH /device-outbound/cancel-batch` với `{ ids: string[] }`.
+- Mỗi `id` là **hex 32 ký tự** (PK `RAW(16)`).
+- Hủy được **mọi trạng thái hiện tại** (`0`, `1`, …) — luôn set `STATUS = 3`.
+- Thực hiện trong **một transaction**: một id không tồn tại → rollback toàn bộ, trả 404.
+- Sau thành công: refresh list, xóa selection, toast số lượng đã hủy.
+- Đổi trang hoặc lọc Barcode → xóa selection.
 
 ---
 
 ## 4. API Backend
 
 **Auth:** `Authorization: Bearer <JWT>`  
-**Ghi (POST):** bắt buộc JWT (HIS token không được phép).  
+**Ghi (POST, PATCH cancel-batch):** bắt buộc JWT (HIS token không được phép).  
 **Đọc (GET list/services):** `DualAuthGuard` (JWT hoặc HIS tùy cấu hình guard).
 
 ### 4.1 POST — Gửi một order
@@ -277,15 +294,46 @@ GET /api/v1/device-outbound/services?receptionCode=S2601.0312
 
 **Response 200:** mảng `{ id, serviceCode, serviceName, isChildService, parentServiceId }`.
 
-### 4.5 API đã gỡ
+### 4.5 PATCH — Hủy nhiều order (batch)
+
+```
+PATCH /api/v1/device-outbound/cancel-batch
+```
+
+**Body:**
+
+```json
+{
+  "ids": [
+    "A1B2C3D4E5F6789012345678ABCDEF01",
+    "B2C3D4E5F6789012345678ABCDEF0123"
+  ]
+}
+```
+
+| Field | Mô tả |
+|-------|--------|
+| `ids` | Mảng không rỗng; mỗi phần tử là hex 32 ký tự (`0-9`, `a-f`, `A-F`) |
+
+**Response 200 — `data`:** mảng `DeviceOutboundResponseDto[]` (các bản ghi sau khi hủy, `status: 3`).
+
+**Lỗi thường gặp:**
+
+| HTTP | Message |
+|------|---------|
+| 400 | `ids` rỗng hoặc id không đúng định dạng hex 32 ký tự |
+| 404 | Một hoặc nhiều id không tồn tại trong `BML_HL7_OUT_QUEUE` |
+| 400 | Thiếu JWT (HIS token không được phép) |
+
+### 4.6 API đã gỡ
 
 | Method | URL | Lý do |
 |--------|-----|--------|
-| `PUT` | `/device-outbound/:id` | Không sửa queue |
+| `PUT` | `/device-outbound/:id` | Không sửa field queue (dùng `PATCH cancel-batch` để hủy) |
 | `DELETE` | `/device-outbound/:id` | Không xóa queue |
 | `GET` | `/device-outbound/:id` | Không cần chi tiết riêng |
 
-### 4.6 API phụ trợ — Danh sách phương pháp thiết bị
+### 4.7 API phụ trợ — Danh sách phương pháp thiết bị
 
 ```
 GET /api/v1/device-staining-methods?limit=1000&offset=0
@@ -305,8 +353,10 @@ Dùng cho dropdown **Phương pháp** trên FE (không còn giới hạn `limit 
 1. Mở màn **Kết nối máy** → xem danh sách queue (phân trang, lọc Barcode).
 2. **Tạo order** → nhập Barcode → chọn dịch vụ → block/slide → chọn phương pháp (dropdown).
 3. (Tuỳ chọn) **Thêm slide** vào danh sách trong dialog.
-4. **Gửi** — single hoặc batch (theo checkbox chọn slide).
+4. **Gửi** — single hoặc batch (theo checkbox chọn slide trong dialog).
 5. Thành công → đóng dialog, refresh list. Lỗi → toast đỏ với message từ API.
+6. Trên bảng list: chọn một hoặc nhiều dòng bằng **checkbox** → bấm **Hủy** (cạnh **Tạo order**) → `status` thành `3`, list refresh.
+7. Cột **Trạng thái**: **Đã gửi** (badge xanh), **Đã hủy** (badge đỏ); **Chờ gửi** hiển thị text thường.
 
 ### 5.2 Client API (`apiClient`)
 
@@ -315,6 +365,7 @@ Dùng cho dropdown **Phương pháp** trên FE (không còn giới hạn `limit 
 | `getDeviceOutboundList` | GET list |
 | `createDeviceOutbound` | POST single (throw nếu lỗi) |
 | `createDeviceOutboundBatch` | POST batch (throw nếu lỗi) |
+| `cancelDeviceOutboundBatch` | PATCH cancel-batch (throw nếu lỗi) |
 | `getDeviceOutboundServices` | GET services |
 | `getDeviceStainingMethods` | GET phương pháp cho dropdown |
 
@@ -342,6 +393,7 @@ gpb/src/modules/hl7-out-queue/
 gpb/src/modules/device-outbound/          # Controller + Service + DTO (giữ path API)
 ├── device-outbound.controller.ts
 ├── device-outbound.service.ts
+├── dto/commands/cancel-device-outbound-batch.dto.ts
 ├── device-outbound.module.ts             # Không import AppModule
 └── entities/device-outbound.entity.ts    # @deprecated
 
@@ -353,11 +405,12 @@ fe-gpb/src/components/device-outbound/
 
 ## 7. Phạm vi ngoài GPB (worker HL7)
 
-GPB chỉ **INSERT** queue. Worker/service ngoài cần:
+GPB **INSERT** queue (`STATUS = 0`) và có thể **hủy** (`STATUS = 3`). Worker/service ngoài cần:
 
 1. Poll `BML_HL7_OUT_QUEUE` where `STATUS = 0` (có index `IDX_HL7_STATUS`).
-2. Build/gửi HL7 theo field đã lưu.
-3. Cập nhật `STATUS`, `SENT_TIME`, `ERROR_MESSAGE`, `RETRY_COUNT` (và `IDX_OUT_RETRY` nếu retry).
+2. **Bỏ qua** bản ghi `STATUS = 3` (đã hủy) và `STATUS = 1` (đã gửi).
+3. Build/gửi HL7 theo field đã lưu.
+4. Cập nhật `STATUS`, `SENT_TIME`, `ERROR_MESSAGE`, `RETRY_COUNT` (và `IDX_OUT_RETRY` nếu retry).
 
 ---
 
@@ -371,15 +424,20 @@ GPB chỉ **INSERT** queue. Worker/service ngoài cần:
 | 4 | Dropdown phương pháp | Load từ `device-staining-methods` |
 | 5 | API lỗi | FE toast lỗi, không toast thành công |
 | 6 | Không có PUT/DELETE | 404 hoặc route không tồn tại |
+| 7 | Hủy 1 bản ghi | `status=3`, badge đỏ **Đã hủy** |
+| 8 | Hủy nhiều bản ghi (status 0 và 1) | Tất cả `status=3` trong một request |
+| 9 | Checkbox chọn tất cả | Chỉ chọn bản ghi trang hiện tại |
+| 10 | Đổi trang / lọc | Selection bị xóa |
+| 11 | Hủy id không tồn tại | 404, không cập nhật bản ghi nào (rollback) |
 
 ---
 
 ## 9. Tài liệu liên quan (có thể lỗi thời)
 
-- [`device-outbound-api-for-frontend.md`](./device-outbound-api-for-frontend.md) — mô tả API **cũ** (BML_DEVICE_OUTBOUND, CRUD, field response cũ).
-- [`device-outbound-batch-api-for-frontend.md`](./device-outbound-batch-api-for-frontend.md) — batch cũ; payload request vẫn tương thích, **response đã đổi**.
+- [`device-outbound-api-for-frontend.md`](./device-outbound-api-for-frontend.md) — mô tả API **cũ** (BML_DEVICE_OUTBOUND, CRUD đầy đủ, field response cũ). **Không** có `PATCH cancel-batch`.
+- [`device-outbound-batch-api-for-frontend.md`](./device-outbound-batch-api-for-frontend.md) — batch tạo order cũ; payload request vẫn tương thích, **response đã đổi**.
 
-**Tài liệu chính thức cho luồng mới:** file này (`ket-noi-may-hl7-out-queue.md`).
+**Tài liệu chính thức cho luồng HL7 Out Queue:** file này (`ket-noi-may-hl7-out-queue.md`), bao gồm tạo order, hủy batch (`STATUS = 3`), và UI list.
 
 ---
 

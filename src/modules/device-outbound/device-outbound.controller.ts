@@ -2,6 +2,7 @@ import {
     Controller,
     Post,
     Get,
+    Patch,
     Body,
     Query,
     UseGuards,
@@ -11,6 +12,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@ne
 import { DeviceOutboundService } from './device-outbound.service';
 import { CreateDeviceOutboundDto } from './dto/commands/create-device-outbound.dto';
 import { BatchCreateDeviceOutboundDto } from './dto/commands/batch-create-device-outbound.dto';
+import { CancelDeviceOutboundBatchDto } from './dto/commands/cancel-device-outbound-batch.dto';
 import { GetDeviceOutboundListDto } from './dto/queries/get-device-outbound-list.dto';
 import { DeviceOutboundResponseDto } from './dto/responses/device-outbound-response.dto';
 import { DeviceOutboundServiceItemDto } from './dto/responses/device-outbound-service-item.dto';
@@ -68,6 +70,27 @@ export class DeviceOutboundController {
         }
         const result = await this.deviceOutboundService.createBatch(dto, currentUser);
         return ResponseBuilder.success(result, HttpStatus.CREATED);
+    }
+
+    @Patch('cancel-batch')
+    @ApiOperation({
+        summary: 'Hủy nhiều order (batch)',
+        description: 'Cập nhật STATUS = 3 cho các bản ghi đã chọn trong BML_HL7_OUT_QUEUE.',
+    })
+    @ApiResponse({ status: 200, description: 'Hủy thành công', type: [DeviceOutboundResponseDto] })
+    @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
+    @ApiResponse({ status: 404, description: 'Không tìm thấy bản ghi' })
+    async cancelBatch(
+        @Body() dto: CancelDeviceOutboundBatchDto,
+        @CurrentUser() currentUser: ICurrentUser | null,
+    ) {
+        if (!currentUser) {
+            throw new BadRequestException(
+                'JWT authentication required for device outbound. HIS token is not supported for write operations.',
+            );
+        }
+        const result = await this.deviceOutboundService.cancelBatch(dto, currentUser);
+        return ResponseBuilder.success(result);
     }
 
     @Get()

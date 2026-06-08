@@ -3,6 +3,7 @@ import { DataSource } from 'typeorm';
 import { IStoredServiceRequestServiceRepository } from '../service-request/interfaces/stored-service-request-service.repository.interface';
 import { CreateDeviceOutboundDto } from './dto/commands/create-device-outbound.dto';
 import { BatchCreateDeviceOutboundDto } from './dto/commands/batch-create-device-outbound.dto';
+import { CancelDeviceOutboundBatchDto } from './dto/commands/cancel-device-outbound-batch.dto';
 import { GetDeviceOutboundListDto } from './dto/queries/get-device-outbound-list.dto';
 import { DeviceOutboundResponseDto } from './dto/responses/device-outbound-response.dto';
 import { DeviceOutboundServiceItemDto } from './dto/responses/device-outbound-service-item.dto';
@@ -14,6 +15,7 @@ import { Hl7OutQueueService } from '../hl7-out-queue/hl7-out-queue.service';
 import { Hl7OutQueueBuilderService } from '../hl7-out-queue/hl7-out-queue-builder.service';
 import { Hl7OutQueue } from '../hl7-out-queue/entities/hl7-out-queue.entity';
 import { toHl7OutQueueListItemDto } from '../hl7-out-queue/hl7-out-queue.mapper';
+import { hexToBuffer } from '../hl7-out-queue/utils/hl7-queue-id.util';
 
 @Injectable()
 export class DeviceOutboundService extends BaseService {
@@ -123,6 +125,23 @@ export class DeviceOutboundService extends BaseService {
             limit: result.limit,
             offset: result.offset,
         };
+    }
+
+    /**
+     * Hủy nhiều order — cập nhật STATUS = 3; rollback nếu một dòng lỗi.
+     */
+    async cancelBatch(
+        dto: CancelDeviceOutboundBatchDto,
+        currentUser: CurrentUser,
+    ): Promise<DeviceOutboundResponseDto[]> {
+        this.currentUserContext.setCurrentUser(currentUser);
+
+        const buffers = dto.ids.map((id) => hexToBuffer(id));
+
+        return this.dataSource.transaction(async () => {
+            const saved = await this.hl7OutQueueService.cancelBatch(buffers);
+            return saved.map((entity) => this.toResponseDto(entity));
+        });
     }
 
     async getServicesByReceptionCode(receptionCode: string): Promise<DeviceOutboundServiceItemDto[]> {
