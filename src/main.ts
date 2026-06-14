@@ -48,6 +48,7 @@ async function bootstrap() {
             'Accept',
             'Origin',
             'X-Requested-With',
+            'X-His-Branch-Id',       // Cơ sở đăng nhập (multi-branch)
             'TokenCode',             // EMR token code header
             'ApplicationCode',       // HIS application code header
         ],

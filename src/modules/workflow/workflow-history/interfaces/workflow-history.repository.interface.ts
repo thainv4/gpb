@@ -55,6 +55,7 @@ export interface IWorkflowHistoryRepository {
         offset: number,
         order: 'ASC' | 'DESC',
         orderBy: 'actionTimestamp' | 'createdAt' | 'startedAt',
+        hisBranchId?: number,
     ): Promise<{ items: WorkflowHistory[]; total: number }>;
 
     /**
@@ -80,6 +81,7 @@ export interface IWorkflowHistoryRepository {
         maxRows: number,
         order: 'ASC' | 'DESC',
         orderBy: 'actionTimestamp' | 'createdAt' | 'startedAt',
+        hisBranchId?: number,
     ): Promise<string[]>;
 
     save(entity: WorkflowHistory): Promise<WorkflowHistory>;

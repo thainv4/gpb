@@ -89,6 +89,11 @@ export class ServiceRequestView {
   @Column({ name: 'EXECUTE_DEPARTMENT_NAME', type: 'varchar2', length: 200 })
   executeDepartmentName: string;
 
+  // Execute Branch (join HIS_DEPARTMENT -> HIS_BRANCH theo EXECUTE_DEPARTMENT_ID) — không phải cột view
+  executeBranchId?: number | null;
+  executeBranchCode?: string | null;
+  executeBranchName?: string | null;
+
   // Patient Info
   @Column({ name: 'TDL_PATIENT_ID', type: 'number' })
   patientId: number;

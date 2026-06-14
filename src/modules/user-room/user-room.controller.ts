@@ -12,6 +12,7 @@ import { DualAuthGuard } from '../auth/guards/dual-auth.guard';
 import { BadRequestException } from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { CurrentUser as ICurrentUser } from '../../common/interfaces/current-user.interface';
+import { HisBranchId } from '../../common/decorators/his-branch-id.decorator';
 
 @ApiTags('User Rooms')
 @Controller('user-rooms')
@@ -117,8 +118,11 @@ export class UserRoomController {
         description: 'User lấy danh sách phòng được phân quyền cho mình. resultFormType lấy từ Profile → Department, đưa ra ngoài (không nằm trong từng phần tử mảng).'
     })
     @ApiResponse({ status: 200, description: 'resultFormType + danh sách phòng', type: MyRoomsResponseDto })
-    async getMyRooms(@CurrentUser() currentUser: ICurrentUser) {
-        const result = await this.userRoomService.getMyRooms(currentUser.id);
+    async getMyRooms(
+        @CurrentUser() currentUser: ICurrentUser,
+        @HisBranchId() hisBranchId?: number,
+    ) {
+        const result = await this.userRoomService.getMyRooms(currentUser.id, hisBranchId);
         return ResponseBuilder.success(result);
     }
 

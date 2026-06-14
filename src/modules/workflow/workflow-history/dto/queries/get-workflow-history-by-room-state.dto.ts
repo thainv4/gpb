@@ -73,6 +73,15 @@ export class GetWorkflowHistoryByRoomStateDto {
     @IsString()
     icdName?: string;
 
+    @ApiPropertyOptional({
+        description: 'ID cơ sở HIS (HIS_BRANCH.ID) — lọc theo BML_STORED_SERVICE_REQUESTS.HIS_BRANCH_ID. Thường lấy từ header X-His-Branch-Id.',
+        example: 2,
+    })
+    @IsOptional()
+    @Type(() => Number)
+    @IsNumber({}, { message: 'His Branch ID phải là số' })
+    hisBranchId?: number;
+
     @ApiPropertyOptional({ 
         description: 'Loại room field để filter (actionRoomId, currentRoomId, transitionedByRoomId)', 
         enum: ['actionRoomId', 'currentRoomId', 'transitionedByRoomId'],

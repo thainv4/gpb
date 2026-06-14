@@ -136,12 +136,16 @@ export class UserRoomService extends BaseService {
         return userRooms.map(userRoom => this.mapUserRoomToResponseDto(userRoom, resultFormType));
     }
 
-    /** Trả về my-rooms với resultFormType ở ngoài, mảng userRooms không chứa resultFormType. */
-    async getMyRooms(userId: string): Promise<MyRoomsResponseDto> {
+    /** Trả về my-rooms với resultFormType ở ngoài, mảng userRooms không chứa resultFormType.
+     * Nếu truyền hisBranchId thì chỉ trả phòng thuộc cơ sở đó. */
+    async getMyRooms(userId: string, hisBranchId?: number): Promise<MyRoomsResponseDto> {
         const userRooms = await this.userRoomRepository.findWithRoomDetails(userId);
         const resultFormType = await this.getResultFormTypeFromUserProfile(userId);
         const fullDtos = userRooms.map(userRoom => this.mapUserRoomToResponseDto(userRoom, resultFormType));
-        const userRoomsItems: UserRoomItemDto[] = fullDtos.map(({ resultFormType: _r, ...rest }) => rest as UserRoomItemDto);
+        const filtered = hisBranchId !== undefined
+            ? fullDtos.filter(dto => Number(dto.hisBranchId) === Number(hisBranchId))
+            : fullDtos;
+        const userRoomsItems: UserRoomItemDto[] = filtered.map(({ resultFormType: _r, ...rest }) => rest as UserRoomItemDto);
         return { resultFormType: resultFormType ?? null, userRooms: userRoomsItems };
     }
 
@@ -184,6 +188,7 @@ export class UserRoomService extends BaseService {
             resultFormType: resultFormTypeFromProfile !== undefined ? resultFormTypeFromProfile : userRoom.room?.department?.resultFormType,
             branchId: userRoom.room?.department?.branch?.id || '',
             branchName: userRoom.room?.department?.branch?.branchName || '',
+            hisBranchId: userRoom.room?.hisBranchId ?? null,
             isActive: userRoom.isActive,
             createdAt: userRoom.createdAt,
             updatedAt: userRoom.updatedAt,

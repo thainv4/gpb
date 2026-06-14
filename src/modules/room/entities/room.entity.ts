@@ -9,8 +9,8 @@ import { Department } from '../../department/entities/department.entity';
 @Index('IDX_BML_ROOMS_ACTIVE', ['isActive'])
 export class Room extends BaseEntity {
     // ========== BUSINESS FIELDS ==========
-    @Column({ name: 'ROOM_CODE', unique: true, length: 20 })
-    roomCode: string;           // Mã phòng (VD: "P001", "P002")
+    @Column({ name: 'ROOM_CODE', unique: true, length: 30 })
+    roomCode: string;           // Mã phòng (VD: "P001", "P002", "P001-NB" cho cơ sở Ninh Bình)
 
     @Column({ name: 'ROOM_NAME', length: 100 })
     roomName: string;           // Tên phòng (VD: "Phòng 101", "Phòng 201")
@@ -20,6 +20,9 @@ export class Room extends BaseEntity {
 
     @Column({ name: 'DEPARTMENT_ID', type: 'varchar2', length: 36 })
     departmentId: string;       // ID khoa (Foreign Key)
+
+    @Column({ name: 'HIS_BRANCH_ID', type: 'number', nullable: true })
+    hisBranchId?: number;       // Cơ sở của phòng (tham chiếu HIS_BRANCH.ID bên HIS)
 
     @Column({ name: 'DESCRIPTION', type: 'clob', nullable: true })
     description?: string;        // Mô tả phòng

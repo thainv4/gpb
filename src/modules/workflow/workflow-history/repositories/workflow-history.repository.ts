@@ -393,6 +393,7 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
         offset: number = 0,
         order: 'ASC' | 'DESC' = 'DESC',
         orderBy: 'actionTimestamp' | 'createdAt' | 'startedAt' = 'actionTimestamp',
+        hisBranchId?: number,
     ): Promise<{ items: WorkflowHistory[]; total: number }> {
         const roomCol = this.mapRoomTypeToOracleColumn(roomType);
         const timeCol = this.getTimeColumnName(timeType);
@@ -477,6 +478,7 @@ export class WorkflowHistoryRepository implements IWorkflowHistoryRepository {
             sampleTypeId,
             resultConclude,
             icdName,
+            hisBranchId,
         });
 
         let timeFromCondition = '';
@@ -623,6 +625,7 @@ OFFSET :p_offset ROWS FETCH NEXT :p_limit ROWS ONLY`;
         maxRows: number = 200000,
         order: 'ASC' | 'DESC' = 'DESC',
         orderBy: 'actionTimestamp' | 'createdAt' | 'startedAt' = 'actionTimestamp',
+        hisBranchId?: number,
     ): Promise<string[]> {
         const roomCol = this.mapRoomTypeToOracleColumn(roomType);
         const timeCol = this.getTimeColumnName(timeType);
@@ -707,6 +710,7 @@ OFFSET :p_offset ROWS FETCH NEXT :p_limit ROWS ONLY`;
             sampleTypeId,
             resultConclude,
             icdName,
+            hisBranchId,
         });
 
         let timeFromCondition = '';
@@ -901,9 +905,19 @@ FETCH NEXT :p_max_rows ROWS ONLY`;
             sampleTypeId?: string;
             resultConclude?: string;
             icdName?: string;
+            hisBranchId?: number;
         },
     ): string {
         let sql = '';
+        if (filters.hisBranchId !== undefined) {
+            sql += `AND EXISTS (
+                SELECT 1 FROM BML_STORED_SERVICE_REQUESTS ssr_br
+                WHERE ssr_br.ID = wh.STORED_SERVICE_REQ_ID
+                AND ssr_br.HIS_BRANCH_ID = :p_his_branch_id
+                AND ssr_br.DELETED_AT IS NULL
+            )`;
+            binds.p_his_branch_id = filters.hisBranchId;
+        }
         const sampleTypeId = filters.sampleTypeId?.trim();
         if (sampleTypeId) {
             sql += `AND EXISTS (

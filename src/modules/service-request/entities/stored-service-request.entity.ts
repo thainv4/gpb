@@ -106,6 +106,10 @@ export class StoredServiceRequest extends BaseEntity {
     @Column({ name: 'EXECUTE_DEPARTMENT_LIS_ID', type: 'varchar2', length: 36, nullable: true })
     executeDepartmentLisId?: string;
 
+    // Cơ sở của y lệnh (tham chiếu HIS_BRANCH.ID), ghi lúc tiếp nhận
+    @Column({ name: 'HIS_BRANCH_ID', type: 'number', nullable: true })
+    hisBranchId?: number;
+
     // Patient Info
     @Column({ name: 'PATIENT_ID', type: 'number', nullable: true })
     patientId?: number;

@@ -55,6 +55,7 @@ interface EnrichedRoomStateFetchParams {
     normalizedSampleTypeId?: string;
     normalizedResultConclude?: string;
     normalizedIcdName?: string;
+    hisBranchId?: number;
     limit: number;
     offset: number;
     order: 'ASC' | 'DESC';
@@ -832,6 +833,7 @@ export class WorkflowHistoryService {
             normalizedSampleTypeId,
             normalizedResultConclude,
             normalizedIcdName,
+            hisBranchId: dto.hisBranchId,
             limit,
             offset,
             order: dto.order || 'DESC',
@@ -1148,6 +1150,7 @@ export class WorkflowHistoryService {
                 p.offset,
                 p.order,
                 p.orderBy,
+                p.hisBranchId,
             );
 
         try {

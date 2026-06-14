@@ -16,6 +16,7 @@ import { ResponseBuilder } from '../../../../common/builders/response.builder';
 import { DualAuthGuard } from '../../../auth/guards/dual-auth.guard';
 import { CurrentUser } from '../../../../common/decorators/current-user.decorator';
 import { CurrentUser as ICurrentUser } from '../../../../common/interfaces/current-user.interface';
+import { HisBranchId } from '../../../../common/decorators/his-branch-id.decorator';
 
 @ApiTags('Workflow History')
 @Controller('workflow-history')
@@ -210,8 +211,12 @@ export class WorkflowHistoryController {
     @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
     async getByRoomAndState(
         @Query() query: GetWorkflowHistoryByRoomStateDto,
-        @CurrentUser() currentUser: ICurrentUser | null
+        @CurrentUser() currentUser: ICurrentUser | null,
+        @HisBranchId() hisBranchId?: number,
     ) {
+        if (hisBranchId !== undefined) {
+            query.hisBranchId = hisBranchId;
+        }
         const result = await this.workflowHistoryService.getByRoomAndState(query, currentUser);
         return ResponseBuilder.success({
             items: result.items,

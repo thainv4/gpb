@@ -30,6 +30,7 @@ import { ResponseBuilder } from '../../../common/builders/response.builder';
 import { DualAuthGuard } from '../../auth/guards/dual-auth.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { CurrentUser as ICurrentUser } from '../../../common/interfaces/current-user.interface';
+import { HisBranchId } from '../../../common/decorators/his-branch-id.decorator';
 
 @ApiTags('service-requests')
 @ApiBearerAuth('JWT-auth')
@@ -104,11 +105,12 @@ export class ServiceRequestController {
     async storeServiceRequest(
         @Body() dto: StoreServiceRequestDto,
         @CurrentUser() currentUser: ICurrentUser | null,
+        @HisBranchId() hisBranchId?: number,
     ) {
         if (!currentUser) {
             throw new BadRequestException('JWT authentication required for storing service requests. HIS token is not supported for write operations.');
         }
-        const result = await this.storedServiceRequestService.storeServiceRequest(dto, currentUser);
+        const result = await this.storedServiceRequestService.storeServiceRequest(dto, currentUser, hisBranchId);
         return ResponseBuilder.success(result, HttpStatus.CREATED);
     }
 

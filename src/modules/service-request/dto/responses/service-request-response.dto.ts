@@ -52,6 +52,17 @@ export class ExecuteDepartmentDto {
     lisDepartmentId?: string | null;
 }
 
+export class ExecuteBranchDto {
+    @ApiPropertyOptional({ description: 'ID cơ sở thực hiện (HIS_BRANCH.ID)', example: 1, nullable: true })
+    id?: number | null;
+
+    @ApiPropertyOptional({ description: 'Mã cơ sở thực hiện (HIS_BRANCH.BRANCH_CODE)', example: 'BM1', nullable: true })
+    code?: string | null;
+
+    @ApiPropertyOptional({ description: 'Tên cơ sở thực hiện (HIS_BRANCH.BRANCH_NAME)', example: 'Bệnh viện Bạch Mai', nullable: true })
+    name?: string | null;
+}
+
 export class PatientDto {
     @ApiProperty({ description: 'ID bệnh nhân', example: 3151131 })
     id: number;
@@ -353,6 +364,9 @@ export class ServiceRequestResponseDto {
 
     @ApiProperty({ description: 'Thông tin khoa thực hiện', type: ExecuteDepartmentDto })
     executeDepartment: ExecuteDepartmentDto;
+
+    @ApiPropertyOptional({ description: 'Thông tin cơ sở thực hiện (suy từ khoa thực hiện -> HIS_BRANCH)', type: ExecuteBranchDto })
+    executeBranch?: ExecuteBranchDto;
 
     @ApiProperty({ description: 'Thông tin bệnh nhân', type: PatientDto })
     patient: PatientDto;

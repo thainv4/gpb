@@ -10,6 +10,7 @@ import { DualAuthGuard } from '../auth/guards/dual-auth.guard';
 import { ResponseBuilder } from '../../common/builders/response.builder';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { CurrentUser as ICurrentUser } from '../../common/interfaces/current-user.interface';
+import { HisBranchId } from '../../common/decorators/his-branch-id.decorator';
 
 @ApiTags('Sample Receptions')
 @Controller('sample-receptions')
@@ -85,9 +86,10 @@ export class SampleReceptionController {
     })
     async createSampleReceptionByPrefix(
         @Body() createDto: CreateSampleReceptionByPrefixDto,
-        @CurrentUser() currentUser: ICurrentUser
+        @CurrentUser() currentUser: ICurrentUser,
+        @HisBranchId() hisBranchId?: number,
     ) {
-        const receptionId = await this.sampleReceptionService.createSampleReceptionByPrefix(createDto, currentUser);
+        const receptionId = await this.sampleReceptionService.createSampleReceptionByPrefix(createDto, currentUser, hisBranchId);
 
         // Lấy mã tiếp nhận vừa tạo để trả về
         const reception = await this.sampleReceptionService.getSampleReceptionById(receptionId);

@@ -47,6 +47,9 @@ export class UserRoomItemDto {
     @ApiProperty({ description: 'Tên cơ sở' })
     branchName: string;
 
+    @ApiProperty({ description: 'ID cơ sở HIS (HIS_BRANCH.ID) của phòng', nullable: true })
+    hisBranchId?: number | null;
+
     @ApiProperty({ description: 'Trạng thái hoạt động' })
     isActive: boolean;
 

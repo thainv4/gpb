@@ -16,6 +16,7 @@ import { BaseService } from '../../common/services/base.service';
 import { CurrentUserContextService } from '../../common/services/current-user-context.service';
 import { CurrentUser } from '../../common/interfaces/current-user.interface';
 import { ISampleTypeRepository } from '../sample-type/interfaces/sample-type.repository.interface';
+import { isNinhBinhBranch } from '../../common/constants/branch.constants';
 
 export interface GetSampleReceptionsResult {
     receptions: SampleReceptionResponseDto[];
@@ -105,11 +106,17 @@ export class SampleReceptionService extends BaseService {
         throw AppError.conflict('Failed to generate unique reception code');
     }
 
-    async createSampleReceptionByPrefix(createDto: CreateSampleReceptionByPrefixDto, currentUser: CurrentUser): Promise<string> {
+    async createSampleReceptionByPrefix(createDto: CreateSampleReceptionByPrefixDto, currentUser: CurrentUser, hisBranchId?: number): Promise<string> {
         this.currentUserContext.setCurrentUser(currentUser);
 
         const codeWidth = createDto.codeWidth || 4;
         const resetPeriod = createDto.resetPeriod || 'MONTHLY';
+
+        // Cơ sở Ninh Bình (cơ sở 2): thêm '2' vào sau tiền tố để phân biệt barcode (vd: S -> S2).
+        // BML_RECEPTION_CODE_SEQ tự tách dãy số theo tiền tố mới.
+        const effectivePrefix = isNinhBinhBranch(hisBranchId)
+            ? `${createDto.prefix}2`
+            : createDto.prefix;
 
         try {
             return await this.transactionWithAudit(async (manager) => {
@@ -125,7 +132,7 @@ export class SampleReceptionService extends BaseService {
 
                 const { sequenceNumber, receptionCode } =
                     await this.sampleReceptionRepository.getNextUniqueSequenceNumberByPrefix(
-                        createDto.prefix,
+                        effectivePrefix,
                         dateStr,
                         codeWidth,
                         targetDate,

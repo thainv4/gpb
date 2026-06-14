@@ -1,4 +1,4 @@
-import { Injectable, Inject, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, ConflictException, NotFoundException, BadRequestException, UnprocessableEntityException } from '@nestjs/common';
 import { DataSource, EntityManager, IsNull } from 'typeorm';
 import { IStoredServiceRequestRepository } from '../interfaces/stored-service-request.repository.interface';
 import { IStoredServiceRequestServiceRepository } from '../interfaces/stored-service-request-service.repository.interface';
@@ -128,7 +128,8 @@ export class StoredServiceRequestService {
 
     async storeServiceRequest(
         dto: StoreServiceRequestDto,
-        currentUser: CurrentUser
+        currentUser: CurrentUser,
+        hisBranchId?: number
     ): Promise<StoredServiceRequestResponseDto> {
         return this.dataSource.transaction(async (manager) => {
             // 1. Kiểm tra đã tồn tại chưa
@@ -143,6 +144,16 @@ export class StoredServiceRequestService {
             const enrichedData = await this.serviceRequestService.getServiceRequestByCode({
                 serviceReqCode: dto.serviceReqCode
             });
+
+            // 2.5. Validate cơ sở: y lệnh phải cùng cơ sở với cơ sở đang đăng nhập (chống bypass FE)
+            const executeBranchId = enrichedData.executeBranch?.id ?? null;
+            if (hisBranchId !== undefined && executeBranchId != null
+                && Number(executeBranchId) !== Number(hisBranchId)) {
+                throw new UnprocessableEntityException(
+                    `Y lệnh thuộc cơ sở khác (${enrichedData.executeBranch?.name ?? executeBranchId}). `
+                    + `Bạn đang đăng nhập ở cơ sở khác nên không thể tiếp nhận y lệnh này.`
+                );
+            }
 
             // 3. Lưu StoredServiceRequest
             const storedRequest = new StoredServiceRequest();
@@ -182,6 +193,9 @@ export class StoredServiceRequestService {
             storedRequest.executeDepartmentCode = enrichedData.executeDepartment.code ?? null;
             storedRequest.executeDepartmentName = enrichedData.executeDepartment.name ?? null;
             storedRequest.executeDepartmentLisId = enrichedData.executeDepartment.lisDepartmentId ?? null;
+
+            // Cơ sở của y lệnh (ưu tiên cơ sở suy từ HIS, fallback header)
+            storedRequest.hisBranchId = (executeBranchId != null ? Number(executeBranchId) : hisBranchId) ?? undefined;
 
             // Patient Info
             storedRequest.patientId = enrichedData.patient.id ?? null;

@@ -318,6 +318,11 @@ export class ServiceRequestService {
                 name: firstItem.executeDepartmentName,
                 lisDepartmentId: exeDept?.id ?? null,
             },
+            executeBranch: {
+                id: firstItem.executeBranchId ?? null,
+                code: firstItem.executeBranchCode ?? null,
+                name: firstItem.executeBranchName ?? null,
+            },
             patient: {
                 id: firstItem.patientId,
                 code: firstItem.patientCode,
