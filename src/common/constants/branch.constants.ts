@@ -7,6 +7,8 @@
  * Cần đặt trong .env trước khi chạy:
  *   PRIMARY_HIS_BRANCH_ID=<HIS_BRANCH.ID của cơ sở 1>
  *   NINH_BINH_HIS_BRANCH_ID=<HIS_BRANCH.ID của cơ sở Ninh Bình>
+ *
+ * Đọc env lúc gọi hàm (không freeze lúc import) vì ConfigModule load .env sau khi module graph khởi tạo.
  */
 
 function parseEnvNumber(value: string | undefined): number | undefined {
@@ -16,10 +18,21 @@ function parseEnvNumber(value: string | undefined): number | undefined {
 }
 
 /** HIS_BRANCH.ID của cơ sở 1 (cơ sở chính). */
-export const PRIMARY_HIS_BRANCH_ID = parseEnvNumber(process.env.PRIMARY_HIS_BRANCH_ID);
+export function getPrimaryHisBranchId(): number | undefined {
+    return parseEnvNumber(process.env.PRIMARY_HIS_BRANCH_ID);
+}
 
 /** HIS_BRANCH.ID của cơ sở Ninh Bình (cơ sở 2). */
-export const NINH_BINH_HIS_BRANCH_ID = parseEnvNumber(process.env.NINH_BINH_HIS_BRANCH_ID);
+export function getNinhBinhHisBranchId(): number | undefined {
+    return parseEnvNumber(process.env.NINH_BINH_HIS_BRANCH_ID);
+}
+
+/** Hai cơ sở đã cấu hình (dùng lọc dropdown login). */
+export function getAllowedHisBranchIds(): number[] {
+    return [getPrimaryHisBranchId(), getNinhBinhHisBranchId()].filter(
+        (id): id is number => id !== undefined,
+    );
+}
 
 /** Hậu tố thêm vào tên phòng nhân bản cho cơ sở Ninh Bình. */
 export const NINH_BINH_ROOM_NAME_SUFFIX = ' - CSNB';
@@ -33,6 +46,7 @@ export const NINH_BINH_ROOM_CODE_SUFFIX = '-NB';
  */
 export function isNinhBinhBranch(hisBranchId: number | undefined | null): boolean {
     if (hisBranchId === undefined || hisBranchId === null) return false;
-    if (NINH_BINH_HIS_BRANCH_ID === undefined) return false;
-    return Number(hisBranchId) === NINH_BINH_HIS_BRANCH_ID;
+    const ninhBinhId = getNinhBinhHisBranchId();
+    if (ninhBinhId === undefined) return false;
+    return Number(hisBranchId) === ninhBinhId;
 }

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { HisBranchResponseDto } from './dto/responses/his-branch-response.dto';
-import { PRIMARY_HIS_BRANCH_ID, NINH_BINH_HIS_BRANCH_ID } from '../../common/constants/branch.constants';
+import { getAllowedHisBranchIds } from '../../common/constants/branch.constants';
 
 @Injectable()
 export class HisBranchService {
@@ -31,9 +31,7 @@ export class HisBranchService {
             branchName: r.BRANCH_NAME,
         }));
 
-        const allowedIds = [PRIMARY_HIS_BRANCH_ID, NINH_BINH_HIS_BRANCH_ID].filter(
-            (id): id is number => id !== undefined,
-        );
+        const allowedIds = getAllowedHisBranchIds();
         if (allowedIds.length === 2) {
             return branches.filter((b) => allowedIds.includes(b.id));
         }
