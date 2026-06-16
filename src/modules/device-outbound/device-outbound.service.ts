@@ -4,8 +4,10 @@ import { IStoredServiceRequestServiceRepository } from '../service-request/inter
 import { CreateDeviceOutboundDto } from './dto/commands/create-device-outbound.dto';
 import { BatchCreateDeviceOutboundDto } from './dto/commands/batch-create-device-outbound.dto';
 import { CancelDeviceOutboundBatchDto } from './dto/commands/cancel-device-outbound-batch.dto';
+import { UpdateDeviceOutboundPatientDto } from './dto/commands/update-device-outbound-patient.dto';
 import { GetDeviceOutboundListDto } from './dto/queries/get-device-outbound-list.dto';
 import { DeviceOutboundResponseDto } from './dto/responses/device-outbound-response.dto';
+import { DeviceOutboundDetailResponseDto } from './dto/responses/device-outbound-detail-response.dto';
 import { DeviceOutboundServiceItemDto } from './dto/responses/device-outbound-service-item.dto';
 import { GetDeviceOutboundListResult } from './dto/responses/device-outbound-list-response.dto';
 import { CurrentUser } from '../../common/interfaces/current-user.interface';
@@ -14,7 +16,7 @@ import { BaseService } from '../../common/services/base.service';
 import { Hl7OutQueueService } from '../hl7-out-queue/hl7-out-queue.service';
 import { Hl7OutQueueBuilderService } from '../hl7-out-queue/hl7-out-queue-builder.service';
 import { Hl7OutQueue } from '../hl7-out-queue/entities/hl7-out-queue.entity';
-import { toHl7OutQueueListItemDto } from '../hl7-out-queue/hl7-out-queue.mapper';
+import { toHl7OutQueueListItemDto, toHl7OutQueueDetailDto } from '../hl7-out-queue/hl7-out-queue.mapper';
 import { hexToBuffer } from '../hl7-out-queue/utils/hl7-queue-id.util';
 
 @Injectable()
@@ -153,6 +155,24 @@ export class DeviceOutboundService extends BaseService {
             isChildService: s.isChildService,
             parentServiceId: s.parentServiceId ?? null,
         }));
+    }
+
+    async getById(id: string): Promise<DeviceOutboundDetailResponseDto> {
+        const buffer = hexToBuffer(id);
+        const entity = await this.hl7OutQueueService.getById(buffer);
+        return toHl7OutQueueDetailDto(entity);
+    }
+
+    async updatePatient(
+        id: string,
+        dto: UpdateDeviceOutboundPatientDto,
+        currentUser: CurrentUser,
+    ): Promise<DeviceOutboundDetailResponseDto> {
+        this.currentUserContext.setCurrentUser(currentUser);
+
+        const buffer = hexToBuffer(id);
+        const saved = await this.hl7OutQueueService.updatePatient(buffer, dto);
+        return toHl7OutQueueDetailDto(saved);
     }
 
     private toResponseDto(entity: Hl7OutQueue): DeviceOutboundResponseDto {

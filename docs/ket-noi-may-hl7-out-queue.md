@@ -15,7 +15,7 @@ Khi người dùng bấm **Gửi** trên dialog **Tạo order**, hệ thống GP
 
 Người dùng có thể **hủy** một hoặc nhiều order trên màn list: GPB cập nhật `STATUS = 3` (không xóa dòng, không sửa các field khác).
 
-GPB **không** gửi HL7 trực tiếp. Ngoài **tạo** và **hủy (status = 3)**, GPB **không** sửa/xóa bản ghi queue.
+GPB **không** gửi HL7 trực tiếp. Ngoài **tạo**, **hủy (status = 3)** và **cập nhật thông tin bệnh nhân (status = 4)**, GPB **không** sửa/xóa các field khác trên bản ghi queue.
 
 ### 1.2 Thay đổi so với phiên bản cũ
 
@@ -31,7 +31,7 @@ GPB **không** gửi HL7 trực tiếp. Ngoài **tạo** và **hủy (status = 3
 ```
 AppModule
   └── Hl7OutQueueModule
-        ├── Hl7OutQueueService          (enqueue, getList, cancelBatch)
+        ├── Hl7OutQueueService          (enqueue, getList, getById, updatePatient, cancelBatch)
         ├── Hl7OutQueueBuilderService    (map field từ stored request + staining + user)
         ├── Hl7OutQueueRepository
         ├── DeviceOutboundController     (route /device-outbound)
@@ -172,9 +172,18 @@ flowchart LR
 | `0` | Chờ gửi | Worker poll và xử lý |
 | `1` | Đã gửi | Worker cập nhật sau khi gửi HL7 thành công; badge **xanh** trên FE |
 | `3` | Đã hủy | GPB cập nhật khi user bấm **Hủy**; badge **đỏ** trên FE |
+| `4` | Đã cập nhật BN | GPB sau `PATCH :id/patient`; badge **vàng/amber** trên FE |
 | Khác | Hiển thị giá trị số | — |
 
-### 3.6 Hủy order (batch)
+### 3.6 Cập nhật thông tin bệnh nhân
+
+- User bấm **Cập nhật** trên một dòng list → `GET /device-outbound/:id` load form.
+- Nhập **Họ**, **Tên**, **Ngày sinh**, **Giới tính** (HL7 `M`/`F`) → `PATCH /device-outbound/:id/patient`.
+- GPB cập nhật `PATIENT_FAMILY`, `PATIENT_GIVEN`, `PATIENT_DOB`, `PATIENT_GENDER` và set **`STATUS = 4`**.
+- **Không cho phép** khi `status = 3` (Đã hủy).
+- Cho phép cập nhật khi `status` là `0`, `1`, `4`, …
+
+### 3.7 Hủy order (batch)
 
 - User chọn một hoặc nhiều dòng trên bảng list bằng **checkbox** (có checkbox "chọn tất cả" trên trang hiện tại).
 - Bấm **Hủy** → `PATCH /device-outbound/cancel-batch` với `{ ids: string[] }`.
@@ -189,8 +198,8 @@ flowchart LR
 ## 4. API Backend
 
 **Auth:** `Authorization: Bearer <JWT>`  
-**Ghi (POST, PATCH cancel-batch):** bắt buộc JWT (HIS token không được phép).  
-**Đọc (GET list/services):** `DualAuthGuard` (JWT hoặc HIS tùy cấu hình guard).
+**Ghi (POST, PATCH cancel-batch, PATCH :id/patient):** bắt buộc JWT (HIS token không được phép).  
+**Đọc (GET list/services/:id):** `DualAuthGuard` (JWT hoặc HIS tùy cấu hình guard).
 
 ### 4.1 POST — Gửi một order
 
@@ -325,15 +334,55 @@ PATCH /api/v1/device-outbound/cancel-batch
 | 404 | Một hoặc nhiều id không tồn tại trong `BML_HL7_OUT_QUEUE` |
 | 400 | Thiếu JWT (HIS token không được phép) |
 
-### 4.6 API đã gỡ
+### 4.6 GET — Chi tiết một bản ghi (kèm BN)
+
+```
+GET /api/v1/device-outbound/:id
+```
+
+| Param | Mô tả |
+|-------|--------|
+| `id` | Hex 32 ký tự (PK `RAW(16)`) |
+
+**Response 200 — `data`:** `DeviceOutboundDetailResponseDto` — các field list + `patientFamily`, `patientGiven`, `patientDob` (`YYYY-MM-DD`), `patientGender` (`M`/`F`).
+
+**Lỗi:** 400 (id không hợp lệ), 404 (không tìm thấy).
+
+### 4.7 PATCH — Cập nhật thông tin bệnh nhân
+
+```
+PATCH /api/v1/device-outbound/:id/patient
+```
+
+**Body:**
+
+```json
+{
+  "patientFamily": "Nguyễn",
+  "patientGiven": "Văn A",
+  "patientDob": "1984-09-07",
+  "patientGender": "M"
+}
+```
+
+**Response 200 — `data`:** `DeviceOutboundDetailResponseDto` với `status: 4`.
+
+**Lỗi thường gặp:**
+
+| HTTP | Message |
+|------|---------|
+| 400 | Validation lỗi, id không hợp lệ, hoặc `status = 3` (đã hủy) |
+| 404 | Không tìm thấy bản ghi |
+| 400 | Thiếu JWT |
+
+### 4.8 API đã gỡ (cũ)
 
 | Method | URL | Lý do |
 |--------|-----|--------|
-| `PUT` | `/device-outbound/:id` | Không sửa field queue (dùng `PATCH cancel-batch` để hủy) |
+| `PUT` | `/device-outbound/:id` | Thay bằng `PATCH :id/patient` (chỉ sửa BN) |
 | `DELETE` | `/device-outbound/:id` | Không xóa queue |
-| `GET` | `/device-outbound/:id` | Không cần chi tiết riêng |
 
-### 4.7 API phụ trợ — Danh sách phương pháp thiết bị
+### 4.9 API phụ trợ — Danh sách phương pháp thiết bị
 
 ```
 GET /api/v1/device-staining-methods?limit=1000&offset=0
@@ -356,7 +405,8 @@ Dùng cho dropdown **Phương pháp** trên FE (không còn giới hạn `limit 
 4. **Gửi** — single hoặc batch (theo checkbox chọn slide trong dialog).
 5. Thành công → đóng dialog, refresh list. Lỗi → toast đỏ với message từ API.
 6. Trên bảng list: chọn một hoặc nhiều dòng bằng **checkbox** → bấm **Hủy** (cạnh **Tạo order**) → `status` thành `3`, list refresh.
-7. Cột **Trạng thái**: **Đã gửi** (badge xanh), **Đã hủy** (badge đỏ); **Chờ gửi** hiển thị text thường.
+7. Cột **Thao tác**: bấm **Cập nhật** → dialog sửa BN → **Lưu** → `status` thành `4`, list refresh.
+8. Cột **Trạng thái**: **Đã gửi** (badge xanh), **Đã hủy** (badge đỏ), **Đã cập nhật BN** (badge vàng); **Chờ gửi** hiển thị text thường.
 
 ### 5.2 Client API (`apiClient`)
 
@@ -366,6 +416,8 @@ Dùng cho dropdown **Phương pháp** trên FE (không còn giới hạn `limit 
 | `createDeviceOutbound` | POST single (throw nếu lỗi) |
 | `createDeviceOutboundBatch` | POST batch (throw nếu lỗi) |
 | `cancelDeviceOutboundBatch` | PATCH cancel-batch (throw nếu lỗi) |
+| `getDeviceOutboundById` | GET chi tiết (kèm BN) |
+| `updateDeviceOutboundPatient` | PATCH cập nhật BN (throw nếu lỗi) |
 | `getDeviceOutboundServices` | GET services |
 | `getDeviceStainingMethods` | GET phương pháp cho dropdown |
 
@@ -405,9 +457,9 @@ fe-gpb/src/components/device-outbound/
 
 ## 7. Phạm vi ngoài GPB (worker HL7)
 
-GPB **INSERT** queue (`STATUS = 0`) và có thể **hủy** (`STATUS = 3`). Worker/service ngoài cần:
+GPB **INSERT** queue (`STATUS = 0`), có thể **hủy** (`STATUS = 3`) và **cập nhật BN** (`STATUS = 4`). Worker/service ngoài cần:
 
-1. Poll `BML_HL7_OUT_QUEUE` where `STATUS = 0` (có index `IDX_HL7_STATUS`).
+1. Poll `BML_HL7_OUT_QUEUE` where **`STATUS IN (0, 4)`** (có index `IDX_HL7_STATUS`).
 2. **Bỏ qua** bản ghi `STATUS = 3` (đã hủy) và `STATUS = 1` (đã gửi).
 3. Build/gửi HL7 theo field đã lưu.
 4. Cập nhật `STATUS`, `SENT_TIME`, `ERROR_MESSAGE`, `RETRY_COUNT` (và `IDX_OUT_RETRY` nếu retry).
@@ -429,6 +481,9 @@ GPB **INSERT** queue (`STATUS = 0`) và có thể **hủy** (`STATUS = 3`). Work
 | 9 | Checkbox chọn tất cả | Chỉ chọn bản ghi trang hiện tại |
 | 10 | Đổi trang / lọc | Selection bị xóa |
 | 11 | Hủy id không tồn tại | 404, không cập nhật bản ghi nào (rollback) |
+| 12 | Cập nhật BN hợp lệ | `status=4`, badge **Đã cập nhật BN** |
+| 13 | Cập nhật BN khi `status=3` | Nút disabled / API 400 |
+| 14 | GET :id | Trả đủ 4 field BN |
 
 ---
 

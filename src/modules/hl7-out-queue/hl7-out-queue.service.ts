@@ -1,8 +1,10 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Hl7OutQueue } from './entities/hl7-out-queue.entity';
 import { IHl7OutQueueRepository } from './interfaces/hl7-out-queue.repository.interface';
 import { Hl7OutQueueListItemDto } from './dto/responses/hl7-out-queue-list-item.dto';
 import { toHl7OutQueueListItemDto } from './hl7-out-queue.mapper';
+import { UpdateHl7OutQueuePatientInput } from './interfaces/update-hl7-out-queue-patient.input';
+import { parsePatientDobFromApi } from './utils/format-patient-dob-for-api';
 
 export interface GetHl7OutQueueListResult {
     items: Hl7OutQueueListItemDto[];
@@ -29,6 +31,30 @@ export class Hl7OutQueueService {
 
     async findById(id: Buffer): Promise<Hl7OutQueue | null> {
         return this.hl7OutQueueRepo.findById(id);
+    }
+
+    async getById(id: Buffer): Promise<Hl7OutQueue> {
+        const entity = await this.hl7OutQueueRepo.findById(id);
+        if (!entity) {
+            throw new NotFoundException(`HL7 queue record not found: ${id.toString('hex').toUpperCase()}`);
+        }
+        return entity;
+    }
+
+    async updatePatient(id: Buffer, dto: UpdateHl7OutQueuePatientInput): Promise<Hl7OutQueue> {
+        const entity = await this.getById(id);
+
+        if (entity.status === 3) {
+            throw new BadRequestException('Cannot update patient info for cancelled queue records (status = 3)');
+        }
+
+        entity.patientFamily = dto.patientFamily.trim();
+        entity.patientGiven = dto.patientGiven.trim();
+        entity.patientDob = parsePatientDobFromApi(dto.patientDob);
+        entity.patientGender = dto.patientGender;
+        entity.status = 4;
+
+        return this.hl7OutQueueRepo.save(entity);
     }
 
     async findByLisCaseId(lisCaseId: string): Promise<Hl7OutQueue[]> {

@@ -5,16 +5,19 @@ import {
     Patch,
     Body,
     Query,
+    Param,
     UseGuards,
     BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { DeviceOutboundService } from './device-outbound.service';
 import { CreateDeviceOutboundDto } from './dto/commands/create-device-outbound.dto';
 import { BatchCreateDeviceOutboundDto } from './dto/commands/batch-create-device-outbound.dto';
 import { CancelDeviceOutboundBatchDto } from './dto/commands/cancel-device-outbound-batch.dto';
+import { UpdateDeviceOutboundPatientDto } from './dto/commands/update-device-outbound-patient.dto';
 import { GetDeviceOutboundListDto } from './dto/queries/get-device-outbound-list.dto';
 import { DeviceOutboundResponseDto } from './dto/responses/device-outbound-response.dto';
+import { DeviceOutboundDetailResponseDto } from './dto/responses/device-outbound-detail-response.dto';
 import { DeviceOutboundServiceItemDto } from './dto/responses/device-outbound-service-item.dto';
 import { DeviceOutboundListResponseDto } from './dto/responses/device-outbound-list-response.dto';
 import { ResponseBuilder } from '../../common/builders/response.builder';
@@ -22,6 +25,16 @@ import { DualAuthGuard } from '../auth/guards/dual-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { CurrentUser as ICurrentUser } from '../../common/interfaces/current-user.interface';
 import { HttpStatus } from '@nestjs/common';
+import { hexToBuffer } from '../hl7-out-queue/utils/hl7-queue-id.util';
+
+function parseQueueIdParam(id: string): string {
+    try {
+        hexToBuffer(id);
+        return id.trim();
+    } catch {
+        throw new BadRequestException('Invalid queue id: expected 32 hex characters');
+    }
+}
 
 @ApiTags('device-outbound')
 @ApiBearerAuth('JWT-auth')
@@ -127,5 +140,47 @@ export class DeviceOutboundController {
         }
         const items = await this.deviceOutboundService.getServicesByReceptionCode(receptionCode.trim());
         return ResponseBuilder.success(items);
+    }
+
+    @Get(':id')
+    @ApiOperation({
+        summary: 'Chi tiết một bản ghi queue (kèm thông tin bệnh nhân)',
+        description: 'Lấy chi tiết BML_HL7_OUT_QUEUE theo id hex 32 ký tự.',
+    })
+    @ApiParam({ name: 'id', description: 'ID queue hex 32 ký tự' })
+    @ApiResponse({ status: 200, description: 'Chi tiết bản ghi', type: DeviceOutboundDetailResponseDto })
+    @ApiResponse({ status: 400, description: 'ID không hợp lệ' })
+    @ApiResponse({ status: 404, description: 'Không tìm thấy bản ghi' })
+    async getById(@Param('id') id: string) {
+        const result = await this.deviceOutboundService.getById(parseQueueIdParam(id));
+        return ResponseBuilder.success(result);
+    }
+
+    @Patch(':id/patient')
+    @ApiOperation({
+        summary: 'Cập nhật thông tin bệnh nhân trên queue',
+        description:
+            'Cập nhật PATIENT_FAMILY, PATIENT_GIVEN, PATIENT_DOB, PATIENT_GENDER và set STATUS = 4. Không cho phép khi status = 3.',
+    })
+    @ApiParam({ name: 'id', description: 'ID queue hex 32 ký tự' })
+    @ApiResponse({ status: 200, description: 'Cập nhật thành công', type: DeviceOutboundDetailResponseDto })
+    @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ hoặc bản ghi đã hủy' })
+    @ApiResponse({ status: 404, description: 'Không tìm thấy bản ghi' })
+    async updatePatient(
+        @Param('id') id: string,
+        @Body() dto: UpdateDeviceOutboundPatientDto,
+        @CurrentUser() currentUser: ICurrentUser | null,
+    ) {
+        if (!currentUser) {
+            throw new BadRequestException(
+                'JWT authentication required for device outbound. HIS token is not supported for write operations.',
+            );
+        }
+        const result = await this.deviceOutboundService.updatePatient(
+            parseQueueIdParam(id),
+            dto,
+            currentUser,
+        );
+        return ResponseBuilder.success(result);
     }
 }
